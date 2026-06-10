@@ -1,0 +1,49 @@
+# Nom du workflow affiché dans l'onglet Actions de GitHub
+name: SkillHunt - CI NestJS API
+
+# Déclencheurs du workflow : s'exécute sur les pushs et pull requests
+# uniquement sur les branches de développement (develop) et de production (main)
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  validation-backend:
+    name: Validation de la Base de Code NestJS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1 : Récupérer le code source du dépôt GitHub
+      - name: 📥 Récupération du code source
+        uses: actions/checkout@v4
+
+      # Étape 2 : Configurer l'environnement Node.js (version 20 LTS recommandée)
+      - name: 🟢 Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Le cache automatique d'npm accélère grandement les exécutions futures (gain de 1 à 2 min par run)
+          cache: 'npm'
+
+      # Étape 3 : Installer proprement les dépendances définies dans package-lock.json
+      - name: 📦 Installation propre des dépendances (ci)
+        run: npm ci
+
+      # Étape 4 : Auditer le code pour traquer d'éventuelles failles de sécurité dans nos dépendances
+      - name: 🛡️ Audit de sécurité des dépendances NPM
+        run: npm audit --audit-level=high
+        continue-on-error: true # Permet de ne pas bloquer complètement la CI pour de simples alertes, mais logue l'info
+
+      # Étape 5 : Analyser le code avec le Linter (ESLint) pour s'assurer du respect des normes
+      - name: 🔍 Analyse statique du code (Lint)
+        run: npm run lint
+
+      # Étape 6 : Lancer les tests unitaires et d'intégration
+      - name: 🧪 Exécution des tests automatisés
+        run: npm run test
+
+      # Étape 7 : Vérifier que TypeScript compile correctement l'application pour la production
+      - name: 🏗️ Validation de la compilation (Build)
+        run: npm run build
