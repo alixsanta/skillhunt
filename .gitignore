@@ -1,0 +1,55 @@
+# --- OS générés ---
+.DS_Store
+Thumbs.db
+db.sqlite3
+
+# --- Environnements & Secrets ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+
+# --- IDE et Éditeurs ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# --- Node.js & NestJS (backend-core/) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/backend-core/dist/
+/backend-core/build/
+.tsccard/
+.tsbuildinfo
+
+# --- Python & FastAPI (matching-service/) ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+/matching-service/dist/
+/matching-service/build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# --- Divers ---
+/private/
+*.log
