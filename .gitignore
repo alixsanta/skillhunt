@@ -13,6 +13,11 @@ db.sqlite3
 *.pem
 *.key
 
+# --- Assistants IA (réglages PERSO uniquement) ---
+# Les instructions partagées (CLAUDE.md, GEMINI.md, */CLAUDE.md) DOIVENT être versionnées.
+# Seuls les réglages locaux propres à la machine sont ignorés :
+.claude/settings.local.json
+
 # --- IDE et Éditeurs ---
 .vscode/
 .idea/
@@ -30,7 +35,7 @@ yarn-error.log*
 /backend-core/dist/
 /backend-core/build/
 .tsccard/
-.tsbuildinfo
+*.tsbuildinfo
 
 # --- Python & FastAPI (matching-service/) ---
 __pycache__/
