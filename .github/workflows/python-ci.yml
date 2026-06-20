@@ -29,9 +29,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          # Utilisation du cache pip pour accélérer l'exécution des workflows futurs
-          cache: 'pip'
-          cache-dependency-path: 'matching-service/requirements.txt'
+          # Cache pip désactivé tant que matching-service/requirements.txt n'existe pas.
+          # À réactiver lors du scaffolding du microservice (SH-11).
 
       # Étape 3 : Installer pip, les dépendances de l'application et les outils de test/qualité
       - name: 📦 Installation des dépendances et outils de validation
