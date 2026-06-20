@@ -6,13 +6,23 @@ name: SkillHunt - CI NestJS API
 on:
   push:
     branches: [ "main", "develop" ]
+    paths:
+      - 'backend-core/**'
+      - '.github/workflows/node-ci.yml'
   pull_request:
     branches: [ "main", "develop" ]
+    paths:
+      - 'backend-core/**'
+      - '.github/workflows/node-ci.yml'
 
 jobs:
   validation-backend:
     name: Validation de la Base de Code NestJS
     runs-on: ubuntu-latest
+    # Monorepo : toutes les commandes `run` s'exécutent dans backend-core/
+    defaults:
+      run:
+        working-directory: backend-core
 
     steps:
       # Étape 1 : Récupérer le code source du dépôt GitHub
@@ -26,6 +36,8 @@ jobs:
           node-version: '20'
           # Le cache automatique d'npm accélère grandement les exécutions futures (gain de 1 à 2 min par run)
           cache: 'npm'
+          # Monorepo : le lockfile est dans backend-core/ (et non à la racine du dépôt)
+          cache-dependency-path: 'backend-core/package-lock.json'
 
       # Étape 3 : Installer proprement les dépendances définies dans package-lock.json
       - name: 📦 Installation propre des dépendances (ci)
