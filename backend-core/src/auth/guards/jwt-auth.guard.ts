@@ -5,7 +5,9 @@ import {
   ExecutionContext,
   CanActivate,
   createParamDecorator,
+  SetMetadata,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '../../common/enums';
 
@@ -22,6 +24,10 @@ export const CurrentUser = createParamDecorator(
     return request.user;
   },
 );
+
+// Clé de métadonnée + décorateur déclaratif pour restreindre une route à certains rôles (RBAC — SH-8)
+export const ROLES_KEY = 'roles';
+export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -59,14 +65,27 @@ export class JwtAuthGuard implements CanActivate {
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private readonly allowedRoles: UserRole[]) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as JwtPayload;
+    // Rôles requis déclarés via @Roles() sur la route (handler) ou le contrôleur (class)
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    if (!user || !this.allowedRoles.includes(user.role)) {
-      throw new ForbiddenException('Votre profil n\'a pas les autorisations nécessaires pour cette ressource');
+    // Aucune restriction de rôle : l'accès reste régi par le seul JwtAuthGuard
+    if (!requiredRoles || requiredRoles.length === 0) {
+      return true;
+    }
+
+    const request = context.switchToHttp().getRequest();
+    const user = request.user as JwtPayload | undefined;
+
+    if (!user || !requiredRoles.includes(user.role)) {
+      throw new ForbiddenException(
+        'Votre profil n\'a pas les autorisations nécessaires pour cette ressource',
+      );
     }
     return true;
   }
