@@ -3,7 +3,7 @@ import { GearService } from './gear.service';
 import { AddGearDto } from './dto/add-gear.dto';
 import { JwtAuthGuard, CurrentUser, JwtPayload, RolesGuard } from '../auth/guards/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { UserRole } from '../db/db-state';
+import { UserRole } from '../common/enums';
 
 @ApiTags('🎒 Armurerie (Gear Locker)')
 @ApiBearerAuth() // Indique à Swagger que ces routes nécessitent un Token JWT

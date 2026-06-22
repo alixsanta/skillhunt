@@ -1,37 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DbState, GearItem, GearStatus, UserRole } from '../db/db-state';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { GearStatus, UserRole } from '../common/enums';
+import { Gear } from './gear.entity';
+import { User } from '../users/user.entity';
 import { AddGearDto } from './dto/add-gear.dto';
 
 @Injectable()
 export class GearService {
-  constructor(private readonly db: DbState) {}
+  constructor(
+    @InjectRepository(Gear)
+    private readonly gearRepo: Repository<Gear>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
+  ) {}
 
-  addGearToLocker(freelanceId: string, dto: AddGearDto): GearItem {
+  async addGearToLocker(freelanceId: string, dto: AddGearDto): Promise<Gear> {
     // 1. Vérifier que l'utilisateur existe bien et est un freelance
-    const user = this.db.users$.getValue().find(u => u.id === freelanceId);
+    const user = await this.usersRepo.findOne({ where: { id: freelanceId } });
     if (!user || user.role !== UserRole.FREELANCE) {
       throw new NotFoundException('Profil Freelance introuvable ou non autorisé');
     }
 
-    // 2. Créer le nouvel équipement (En attente de validation)
-    const newGear: GearItem = {
-      id: `gear-${Math.random().toString(36).substring(2, 9)}`,
+    // 2. Créer le nouvel équipement (En attente de validation par un Admin)
+    const gear = this.gearRepo.create({
       freelanceId: user.id,
       brand: dto.brand,
       model: dto.model,
       serialNumber: dto.serialNumber,
-      status: GearStatus.PENDING, // Par défaut, l'équipement doit être validé par un Admin
-      createdAt: new Date(),
-    };
+      status: GearStatus.PENDING,
+    });
 
-    // 3. Sauvegarder dans notre base en mémoire
-    const currentGear = this.db.gear$.getValue();
-    this.db.gear$.next([...currentGear, newGear]);
-
-    return newGear;
+    // 3. Persister en base
+    return this.gearRepo.save(gear);
   }
 
-  getFreelanceGear(freelanceId: string): GearItem[] {
-    return this.db.gear$.getValue().filter(gear => gear.freelanceId === freelanceId);
+  getFreelanceGear(freelanceId: string): Promise<Gear[]> {
+    return this.gearRepo.find({ where: { freelanceId } });
   }
 }

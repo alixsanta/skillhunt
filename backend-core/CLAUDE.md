@@ -28,8 +28,8 @@ Déclarer chaque controller/service dans `app.module.ts`.
 
 ## Dette technique connue à résorber (placeholders)
 Voir §5 du `CLAUDE.md` racine. En particulier dans ce service :
-- `db/db-state.ts` : **état en mémoire** (RxJS `BehaviorSubject`) simulant la BDD → migrer vers **PostgreSQL+PostGIS / MongoDB** (TypeORM ou Prisma).
 - `auth/token-store.service.ts` : registre des refresh tokens **en mémoire** → migrer vers **Redis** (SH-14) pour le TTL natif et le multi-instances.
+- ✅ *Résolu (SH-6)* : persistance **PostgreSQL + PostGIS** réelle via **TypeORM**. `DbState` mémoire supprimé. Entités `users/user.entity.ts` (avec colonne `location` GEOGRAPHY(Point,4326)) et `gear/gear.entity.ts` ; config dans `database/data-source.ts` ; schéma versionné par migrations (`npm run migration:run`). Base de dev via `docker compose up -d` (Postgres+PostGIS sur le port hôte **5433**). MongoDB (NoSQL) reste à brancher.
 - ✅ *Résolu (SH-7)* : hachage **Argon2id** réel, JWT **RS256** signés/vérifiés, `JwtAuthGuard` vérifie réellement la signature. Clés RSA chargées via `JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY` (cf. `.env.example`), fallback éphémère en dev.
 > Quand tu remplaces un placeholder : migre, n'étends pas. Ne copie jamais une signature/secret en dur.
 
