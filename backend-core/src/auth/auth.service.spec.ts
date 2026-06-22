@@ -1,14 +1,54 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { UnauthorizedException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { AuthService } from './auth.service';
-import { DbState, UserRole } from '../db/db-state';
 import { TokenStore } from './token-store.service';
 import { loadJwtKeys } from './keys';
-import { UnauthorizedException } from '@nestjs/common';
+import { User } from '../users/user.entity';
+import { UserRole } from '../common/enums';
+
+/**
+ * Faux repository TypeORM en mémoire : permet de tester la logique d'AuthService
+ * sans dépendre d'une vraie base PostgreSQL (tests unitaires rapides et isolés).
+ */
+class FakeUserRepository {
+  private store: User[] = [];
+
+  findOne({ where }: { where: Partial<User> }): Promise<User | null> {
+    const keys = Object.keys(where) as (keyof User)[];
+    const found = this.store.find((u) => keys.every((k) => u[k] === where[k]));
+    return Promise.resolve(found ?? null);
+  }
+
+  create(partial: Partial<User>): User {
+    return { ...partial } as User;
+  }
+
+  save(user: User): Promise<User> {
+    if (!user.id) {
+      user.id = randomUUID();
+      user.createdAt = new Date();
+    }
+    const idx = this.store.findIndex((u) => u.id === user.id);
+    if (idx >= 0) {
+      this.store[idx] = user;
+    } else {
+      this.store.push(user);
+    }
+    return Promise.resolve(user);
+  }
+
+  // Helper de test : accès direct au contenu persisté
+  all(): User[] {
+    return this.store;
+  }
+}
 
 describe('🔐 AuthService (Tests Unitaires)', () => {
   let service: AuthService;
-  let dbState: DbState;
+  let repo: FakeUserRepository;
 
   beforeEach(async () => {
     // Paire de clés RSA éphémère dédiée aux tests (RS256)
@@ -23,11 +63,15 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
           verifyOptions: { algorithms: ['RS256'], issuer: 'skillhunt' },
         }),
       ],
-      providers: [AuthService, DbState, TokenStore],
+      providers: [
+        AuthService,
+        TokenStore,
+        { provide: getRepositoryToken(User), useClass: FakeUserRepository },
+      ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    dbState = module.get<DbState>(DbState);
+    repo = module.get<FakeUserRepository>(getRepositoryToken(User));
   });
 
   it('devrait être défini (Test de Sanité)', () => {
@@ -50,7 +94,7 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
       expect(user).not.toHaveProperty('passwordHash');
 
       // En base, le mot de passe est stocké haché (format Argon2id), jamais en clair
-      const stored = dbState.users$.getValue().find((u) => u.email === dto.email);
+      const stored = repo.all().find((u) => u.email === dto.email);
       expect(stored).toBeDefined();
       expect(stored!.passwordHash).toMatch(/^\$argon2id\$/);
       expect(stored!.passwordHash).not.toContain(dto.password);
@@ -58,13 +102,17 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
 
     it('devrait lever une 401 si l\'email existe déjà', async () => {
       const dto = {
-        email: 'marcus.thorne@skillhunt.io', // déjà présent dans le seed DbState
-        username: 'MarcusClone',
+        email: 'doublon.pilote@skillhunt.io',
+        username: 'Doublon',
         password: 'Password123!',
         role: UserRole.FREELANCE,
       };
 
-      await expect(service.register(dto)).rejects.toThrow(UnauthorizedException);
+      // Premier enregistrement OK, le second avec le même email doit échouer
+      await service.register(dto);
+      await expect(service.register({ ...dto, username: 'DoublonClone' })).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 

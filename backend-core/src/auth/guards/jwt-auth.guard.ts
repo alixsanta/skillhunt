@@ -7,7 +7,7 @@ import {
   createParamDecorator,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '../../db/db-state';
+import { UserRole } from '../../common/enums';
 
 export interface JwtPayload {
   userId: string;

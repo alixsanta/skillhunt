@@ -1,0 +1,30 @@
+# Infrastructure de développement local — SkillHunt
+# Pour l'instant : PostgreSQL + PostGIS (SH-6). MongoDB, Redis et les services
+# applicatifs seront ajoutés lors de la dockerisation complète (SH-2).
+#
+# Démarrer :  docker compose up -d
+# Les identifiants sont volontairement ceux de DEV (à surcharger par .env en staging/prod).
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: skillhunt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-skillhunt}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-skillhunt}
+      POSTGRES_DB: ${DB_NAME:-skillhunt}
+    ports:
+      # Port HÔTE 5433 par défaut pour éviter un conflit avec un PostgreSQL déjà installé sur 5432.
+      # (Le port INTERNE du conteneur reste 5432.)
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      - skillhunt_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-skillhunt} -d ${DB_NAME:-skillhunt}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  skillhunt_pgdata:

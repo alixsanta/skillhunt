@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
-import { DbState } from './db/db-state';
+import { buildDataSourceOptions } from './database/data-source';
+import { User } from './users/user.entity';
+import { Gear } from './gear/gear.entity';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { GearService } from './gear/gear.service';
@@ -10,6 +14,15 @@ import { loadJwtKeys } from './auth/keys';
 
 @Module({
   imports: [
+    // Chargement global des variables d'environnement (.env)
+    ConfigModule.forRoot({ isGlobal: true }),
+
+    // Persistance réelle PostgreSQL + PostGIS via TypeORM (SH-6, remplace DbState en mémoire)
+    TypeOrmModule.forRootAsync({
+      useFactory: () => buildDataSourceOptions(),
+    }),
+    TypeOrmModule.forFeature([User, Gear]),
+
     // Configuration JWT RS256 (clés asymétriques) — secrets jamais en dur (C2.2.3)
     JwtModule.registerAsync({
       global: true,
@@ -36,7 +49,6 @@ import { loadJwtKeys } from './auth/keys';
     GearController, // Déclaration du contrôleur d'armurerie
   ],
   providers: [
-    DbState,
     AuthService,
     GearService, // Déclaration du service d'armurerie
     TokenStore, // Registre des refresh tokens (en mémoire → Redis SH-14)

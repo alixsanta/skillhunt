@@ -1,8 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { hash, verify, Algorithm } from '@node-rs/argon2';
-import { DbState, User } from '../db/db-state';
+import { User } from '../users/user.entity';
 import { RegisterDto, LoginDto } from './dto/register.dto';
 import { JwtPayload } from './guards/jwt-auth.guard';
 import { TokenStore } from './token-store.service';
@@ -21,34 +23,35 @@ const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 jours
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly db: DbState,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
     private readonly jwt: JwtService,
     private readonly tokenStore: TokenStore,
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
-    const users = this.db.users$.getValue();
-    if (users.find((u) => u.email === dto.email)) {
+    const existing = await this.usersRepo.findOne({ where: { email: dto.email } });
+    if (existing) {
       throw new UnauthorizedException('Cette adresse email est déjà enregistrée');
     }
 
     // Hachage fort du mot de passe en Argon2id (conformité RGPD / OWASP — C2.2.3)
     const passwordHash = await hash(dto.password, { algorithm: Algorithm.Argon2id });
 
-    const newUser: User = {
-      id: `usr-${randomUUID()}`,
+    // L'identifiant UUID est généré par la base (gen_random_uuid), pas côté application
+    const user = this.usersRepo.create({
       email: dto.email,
       username: dto.username,
       role: dto.role,
       passwordHash,
-    };
+    });
 
-    this.db.users$.next([...users, newUser]);
-    return this.toPublicUser(newUser);
+    const saved = await this.usersRepo.save(user);
+    return this.toPublicUser(saved);
   }
 
   async login(dto: LoginDto): Promise<TokenPair> {
-    const user = this.db.users$.getValue().find((u) => u.email === dto.email);
+    const user = await this.usersRepo.findOne({ where: { email: dto.email } });
 
     // Message générique volontaire : ne révèle pas si c'est l'email ou le mot de passe qui est faux
     const invalid = () => new UnauthorizedException('Identifiants ou mot de passe incorrects');
@@ -88,7 +91,7 @@ export class AuthService {
     // Rotation : l'ancien jeton ne pourra plus être réutilisé
     this.tokenStore.revoke(payload.jti);
 
-    const user = this.db.users$.getValue().find((u) => u.id === payload.userId);
+    const user = await this.usersRepo.findOne({ where: { id: payload.userId } });
     if (!user) {
       throw new UnauthorizedException('Utilisateur introuvable');
     }
@@ -126,7 +129,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // Argon2 lève une erreur si le hash stocké n'est pas un hash Argon2 valide (ex. seed placeholder) :
+  // Argon2 lève une erreur si le hash stocké n'est pas un hash Argon2 valide :
   // on neutralise ce cas en renvoyant simplement « mot de passe invalide ».
   private async safeVerify(storedHash: string, password: string): Promise<boolean> {
     try {
