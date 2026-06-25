@@ -1,6 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, IsNotEmpty, MinLength, IsEnum } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn } from 'class-validator';
 import { UserRole } from '../../common/enums';
+
+// Rôles auto-attribuables à l'inscription publique. ADMIN est volontairement EXCLU :
+// il est provisionné hors-ligne (seed/migration) pour empêcher toute élévation de privilèges (OWASP A01 — C2.2.3).
+export const SELF_ASSIGNABLE_ROLES: UserRole[] = [UserRole.FREELANCE, UserRole.RECRUITER];
 
 export class RegisterDto {
   @ApiProperty({ example: 'pilote.expert@skillhunt.io', description: 'Email unique de l\'utilisateur' })
@@ -17,8 +21,12 @@ export class RegisterDto {
   @MinLength(8, { message: 'Le mot de passe doit faire au moins 8 caractères' })
   password!: string;
 
-  @ApiProperty({ enum: UserRole, example: UserRole.FREELANCE })
-  @IsEnum(UserRole, { message: 'Le rôle spécifié est invalide' })
+  @ApiProperty({
+    enum: SELF_ASSIGNABLE_ROLES,
+    example: UserRole.FREELANCE,
+    description: 'FREELANCE ou RECRUITER (le rôle ADMIN n\'est pas auto-attribuable)',
+  })
+  @IsIn(SELF_ASSIGNABLE_ROLES, { message: 'Le rôle doit être FREELANCE ou RECRUITER' })
   role!: UserRole;
 }
 
