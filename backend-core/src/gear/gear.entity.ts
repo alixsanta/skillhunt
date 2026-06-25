@@ -7,7 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { GearStatus } from '../common/enums';
+import { GearStatus, GearCategory } from '../common/enums';
 import { User } from '../users/user.entity';
 
 /**
@@ -28,6 +28,13 @@ export class Gear {
   @Column()
   serialNumber!: string;
 
+  // Catégorie de matériel : axe de filtre principal de l'Armurerie, indexée
+  @Index()
+  @Column({ type: 'enum', enum: GearCategory, default: GearCategory.OTHER })
+  category!: GearCategory;
+
+  // Statut du workflow de validation, indexé (file d'attente admin)
+  @Index()
   @Column({ type: 'enum', enum: GearStatus, default: GearStatus.PENDING })
   status!: GearStatus;
 

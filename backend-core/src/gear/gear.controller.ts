@@ -1,6 +1,18 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Query,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import { GearService } from './gear.service';
 import { AddGearDto } from './dto/add-gear.dto';
+import { QueryGearDto } from './dto/query-gear.dto';
+import { ReviewGearDto } from './dto/review-gear.dto';
 import {
   JwtAuthGuard,
   CurrentUser,
@@ -18,28 +30,41 @@ import {
 import { UserRole } from '../common/enums';
 
 @ApiTags('🎒 Armurerie (Gear Locker)')
-@ApiBearerAuth() // Indique à Swagger que ces routes nécessitent un Token JWT
+@ApiBearerAuth() // Toutes les routes nécessitent un Token JWT
 @ApiUnauthorizedResponse({ description: 'Token JWT manquant, invalide ou expiré (401)' })
-@ApiForbiddenResponse({ description: 'Rôle insuffisant : route réservée aux Freelances (403)' })
-// Double protection : authentification (JWT) puis autorisation par rôle (RBAC)
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.FREELANCE) // Tout le contrôleur est réservé aux Freelances
+@ApiForbiddenResponse({ description: 'Rôle insuffisant pour cette ressource (403)' })
+@UseGuards(JwtAuthGuard, RolesGuard) // Authentification puis autorisation par rôle (le rôle requis est défini par route)
 @Controller('api/v1/gear')
 export class GearController {
   constructor(private readonly gearService: GearService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Ajouter un équipement à son casier' })
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({ summary: 'Déclarer un équipement dans son casier (Freelance)' })
   addGear(@CurrentUser() user: JwtPayload, @Body() dto: AddGearDto) {
-    // Grâce au décorateur @CurrentUser, on est sûr à 100% que l'ID vient du token chiffré.
-    // C'est une protection vitale contre l'usurpation d'identité (OWASP) : aucun {id} client n'est accepté.
+    // Identité issue du token : aucun {id} client n'est accepté (anti-usurpation, OWASP)
     return this.gearService.addGearToLocker(user.userId, dto);
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Récupérer la liste de son équipement' })
-  getMyGear(@CurrentUser() user: JwtPayload) {
-    // L'identité provient du token : un Freelance ne peut interroger que SON propre casier (étanchéité)
-    return this.gearService.getFreelanceGear(user.userId);
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({ summary: 'Lister son propre matériel (filtres + pagination)' })
+  getMyGear(@CurrentUser() user: JwtPayload, @Query() query: QueryGearDto) {
+    // Un Freelance ne peut interroger que SON casier (étanchéité garantie par l'id du token)
+    return this.gearService.getFreelanceGear(user.userId, query);
+  }
+
+  @Get('pending')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'File de validation : matériel en attente (Admin)' })
+  getPending(@Query() query: QueryGearDto) {
+    return this.gearService.listPendingForValidation(query);
+  }
+
+  @Patch(':id/review')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Valider ou rejeter un équipement (Admin)' })
+  review(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewGearDto) {
+    return this.gearService.reviewGear(id, dto.decision);
   }
 }
