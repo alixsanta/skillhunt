@@ -1,7 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MinLength } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsEnum } from 'class-validator';
+import { GearCategory } from '../../common/enums';
 
 export class AddGearDto {
+  @ApiProperty({ enum: GearCategory, example: GearCategory.DRONE, description: 'Catégorie de matériel' })
+  @IsEnum(GearCategory, { message: 'La catégorie de matériel est invalide' })
+  category!: GearCategory;
+
   @ApiProperty({ example: 'DJI', description: 'Marque de l\'équipement' })
   @IsString()
   @IsNotEmpty({ message: 'La marque est obligatoire' })

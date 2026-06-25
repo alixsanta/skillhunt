@@ -12,3 +12,12 @@ export enum GearStatus {
   VALIDATED = 'VALIDATED',
   REJECTED = 'REJECTED',
 }
+
+// Catégories de matériel de l'Armurerie — alimente les filtres et le matching (SH-12).
+export enum GearCategory {
+  DRONE = 'DRONE',
+  CAMERA_360 = 'CAMERA_360',
+  ROBOTICS = 'ROBOTICS',
+  SENSOR = 'SENSOR',
+  OTHER = 'OTHER',
+}
