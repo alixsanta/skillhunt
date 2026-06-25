@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { hash, verify, Algorithm } from '@node-rs/argon2';
 import { User } from '../users/user.entity';
-import { RegisterDto, LoginDto } from './dto/register.dto';
+import { RegisterDto, LoginDto, SELF_ASSIGNABLE_ROLES } from './dto/register.dto';
 import { JwtPayload } from './guards/jwt-auth.guard';
 import { TokenStore } from './token-store.service';
 
@@ -30,6 +30,12 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<PublicUser> {
+    // Défense en profondeur : le rôle ADMIN n'est jamais auto-attribuable à l'inscription.
+    // Le DTO le bloque déjà (400) ; ce garde couvre aussi les appels internes (anti-élévation de privilèges, OWASP A01).
+    if (!SELF_ASSIGNABLE_ROLES.includes(dto.role)) {
+      throw new ForbiddenException('Ce rôle ne peut pas être auto-attribué à l\'inscription');
+    }
+
     const existing = await this.usersRepo.findOne({ where: { email: dto.email } });
     if (existing) {
       throw new UnauthorizedException('Cette adresse email est déjà enregistrée');

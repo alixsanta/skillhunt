@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuthService } from './auth.service';
 import { TokenStore } from './token-store.service';
@@ -113,6 +113,31 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
       await expect(service.register({ ...dto, username: 'DoublonClone' })).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+
+    it('devrait REFUSER l\'auto-attribution du rôle ADMIN (anti-élévation de privilèges)', async () => {
+      const dto = {
+        email: 'pirate@skillhunt.io',
+        username: 'Pirate',
+        password: 'Password123!',
+        role: UserRole.ADMIN, // tentative d'escalade
+      };
+
+      await expect(service.register(dto)).rejects.toThrow(ForbiddenException);
+      // Aucun compte ADMIN ne doit avoir été créé
+      expect(repo.all().find((u) => u.email === dto.email)).toBeUndefined();
+    });
+
+    it('devrait autoriser l\'inscription en tant que RECRUITER', async () => {
+      const dto = {
+        email: 'recruteur@skillhunt.io',
+        username: 'Recruteur',
+        password: 'Password123!',
+        role: UserRole.RECRUITER,
+      };
+
+      const user = await service.register(dto);
+      expect(user.role).toBe(UserRole.RECRUITER);
     });
   });
 
