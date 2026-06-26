@@ -220,6 +220,7 @@ feature/SH-XX-slug   ← une branche par ticket, créée DEPUIS develop
 - **`develop` → `main`** uniquement via une PR de release (ex. fin de sprint), après validation complète.
 - Jamais de commit direct sur `main` ni sur `develop`.
 - Ne committe/push **que sur demande explicite**.
+- **Ne jamais supprimer les branches après merge** : elles servent de preuve de traçabilité pour le jury RNCP. Ne pas passer `--delete-branch` lors d'un merge, et ne pas exécuter `git branch -d` sur une branche mergée sans demande explicite.
 
 **Nommage :**
 - Features : `feature/SH-<id>-<slug>` (ex. `feature/SH-11-scaffolding-fastapi`)

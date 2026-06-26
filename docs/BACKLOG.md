@@ -40,6 +40,7 @@
 | [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟢 Terminé | 3 | C2.2.2 | — |
 | [SH-4](tickets/SH-4-securite-hardening.md) | Hardening : TLS 1.3, gestion des secrets (Vault/env), mTLS inter-services | 🔵 Backlog | 5 | C2.2.3 | R9 |
 | [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (Kong/Nginx) : point d'entrée unique + rate-limiting | 🔵 Backlog | 5 | C2.2.3 | R7, R9 |
+| [SH-32](tickets/SH-32-audit-deps-transitives.md) | Hygiène des dépendances backend-core : résorber les vulnérabilités transitives (audit npm) — dette relevée en SH-31 | 🟡 Prêt | 2 | C2.2.3, C2.1.2 | R7 |
 
 ## EP02 — Monolithe & Authentification · *18 J/H* · 🎯 J2
 
@@ -49,7 +50,8 @@
 | [SH-7](tickets/SH-7-auth-argon2-jwt-rs256.md) | Auth réelle : Argon2id + JWT RS256 + refresh tokens (Redis) | 🟢 Terminé | 5 | C2.2.3 | R7 |
 | [SH-8](tickets/SH-8-rbac-guards.md) | RBAC durci : vérification cryptographique JWT + tests d'étanchéité | 🟢 Terminé | 3 | C2.2.2, C2.2.3 | R7 |
 | [SH-9](tickets/SH-9-armurerie-backend.md) | Armurerie (Gear Locker) : déclaration matériel + filtres + workflow validation | 🟢 Terminé | 5 | C2.2.3 | R10 |
-| [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (MIME, Signed URL, purge PII) + validation admin | 🔵 Backlog | 8 | C2.2.3 | R2, R3 |
+| [SH-31](tickets/SH-31-storage-abstraction.md) | Abstraction de stockage objet (`StorageService` + adaptateur S3 + LocalStack) — prérequis SH-10, réutilisé SH-17 | 🟢 Terminé | 3 | C2.1.2, C2.2.3 | R8 |
+| [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟡 Prêt | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
@@ -118,5 +120,5 @@
 ## Prochaines actions suggérées
 
 1. **🟠 En cours :** `SH-12` (Moteur de scoring multicritères) → exploite le scaffolding EP03.
-2. **Suivant :** `SH-10` (Certifications upload S3 + Signed URLs) → complète EP02.
+2. **Suivant :** `SH-10` (Certifications) → complète EP02. `SH-31` (Abstraction de stockage objet, prérequis dur) est 🟢 terminé ; `StorageService` est prêt à être consommé (et réutilisé par SH-17).
 3. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
