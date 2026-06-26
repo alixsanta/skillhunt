@@ -29,6 +29,37 @@ Test.createTestingModule({ imports: [StorageModule] })
   .compile();
 ```
 
+## Divergence fake ↔ S3 réel sur `getSignedUrl`
+
+⚠️ À connaître pour écrire les tests des modules consommateurs (SH-10/SH-17) :
+
+- **`FakeStorageService.getSignedUrl`** **rejette** (`NotFoundException`) si la clé est absente.
+  Choix assumé : il permet d'attester l'inaccessibilité d'un objet après purge dans des tests
+  unitaires hermétiques.
+- **`S3StorageService.getSignedUrl`** (et S3 réel) **signe l'URL sans vérifier l'existence** de
+  l'objet : le presigner calcule la signature hors-ligne. Une clé inexistante produit donc une URL
+  valide qui renverra `404 NoSuchKey` seulement **à l'accès**.
+
+Conséquence : ne pas écrire de logique métier qui s'appuie sur une exception de `getSignedUrl`
+pour détecter une clé absente. Côté SH-10, l'inexistence se détecte en amont via `s3Key === null`
+(positionné à la purge) **avant** d'appeler `getSignedUrl`.
+
+## Améliorations identifiées (suivi, non bloquant)
+
+Pistes relevées en revue de SH-31, à arbitrer ultérieurement :
+
+1. **Envelopper les erreurs `@aws-sdk`** de `put`/`delete`/`getSignedUrl` dans une
+   `InternalServerErrorException` (message FR, sans fuiter les internes AWS) — défense en
+   profondeur (CLAUDE.md §8).
+2. **Healthcheck LocalStack** : préférer l'endpoint natif
+   `curl -sf http://localhost:4566/_localstack/health` (plus léger, indépendant du CLI/creds)
+   au `awslocal s3 ls` actuel.
+3. **Borne du TTL** : `getSignedUrl` pourrait clamper `ttlSeconds` au plafond SigV4 (604800 s /
+   7 jours) pour échouer proprement plutôt que de laisser AWS rejeter.
+
+> Hygiène des dépendances (audit `npm` rouge en CI sur des vulns transitives NestJS/swagger/multer)
+> est traitée hors de ce module : voir le ticket **SH-32**.
+
 ## Bascule d'environnement (Scénario 4 du ticket)
 
 Le choix AWS réel ↔ LocalStack se fait **uniquement par configuration** (cf. `.env.example`) :
