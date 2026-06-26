@@ -73,11 +73,11 @@ sans compte AWS réel.
   (aucune vraie valeur).
 
 ### 5. Definition of Done (DoD)
-- [ ] Interface `StorageService` + `S3StorageService` + `FakeStorageService` + `StorageModule`.
-- [ ] Chiffrement au repos (AES-256) au `put` ; Signed URL avec TTL ; `delete` effectif.
-- [ ] Tests Jest unitaires sur le fake (put/get/delete) **sans réseau**.
-- [ ] Procédure d'intégration LocalStack documentée (manuelle, non bloquante en CI).
-- [ ] `npm run lint`, `npm run test`, `npm run build` verts.
-- [ ] Service `localstack` ajouté à `docker-compose.yml`.
-- [ ] Aucun secret en dur ; `.env.example` à jour (variables AWS, sans valeur).
-- [ ] Backlog mis à jour (SH-31 → 🟢).
+- [x] Interface `StorageService` + `S3StorageService` + `FakeStorageService` + `StorageModule`.
+- [x] Chiffrement au repos (AES-256) au `put` ; Signed URL avec TTL ; `delete` effectif.
+- [x] Tests Jest unitaires sur le fake (put/get/delete) **sans réseau**.
+- [x] Procédure d'intégration LocalStack documentée (manuelle, non bloquante en CI) — `src/storage/README.md`.
+- [x] `npm run lint`, `npm run test`, `npm run build` verts.
+- [x] Service `localstack` ajouté à `docker-compose.yml`.
+- [x] Aucun secret en dur ; `.env.example` à jour (variables AWS, sans valeur).
+- [x] Backlog mis à jour (SH-31 → 🟢).
