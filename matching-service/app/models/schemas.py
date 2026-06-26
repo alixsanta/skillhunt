@@ -1,5 +1,6 @@
+from typing import Annotated
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class HealthResponse(BaseModel):
@@ -10,9 +11,19 @@ class HealthResponse(BaseModel):
 class MatchRequest(BaseModel):
     # C2.2.3 — Validation stricte des entrées (anti-injection, OWASP A03)
     freelance_id: UUID
-    skills: list[str] = Field(min_length=1)
+    skills: list[Annotated[str, Field(min_length=1)]] = Field(min_length=1)
     location: tuple[float, float]
     radius_km: float = Field(gt=0, le=500)
+
+    @field_validator("location")
+    @classmethod
+    def validate_location_bounds(cls, v: tuple[float, float]) -> tuple[float, float]:
+        lat, lon = v
+        if not (-90.0 <= lat <= 90.0):
+            raise ValueError(f"Latitude doit être entre -90 et 90, reçu : {lat}")
+        if not (-180.0 <= lon <= 180.0):
+            raise ValueError(f"Longitude doit être entre -180 et 180, reçu : {lon}")
+        return v
 
 
 class MatchResult(BaseModel):

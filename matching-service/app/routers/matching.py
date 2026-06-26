@@ -4,6 +4,7 @@ from app.models.schemas import MatchRequest, MatchResult
 router = APIRouter(tags=["Matching"])
 
 
+# C2.4.1 — Documentation OpenAPI (summary, response_model, tags)
 @router.post(
     "/match",
     response_model=list[MatchResult],
