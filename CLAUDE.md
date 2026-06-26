@@ -205,10 +205,29 @@ pytest --cov=. tests/
 
 ## 11. Git & workflow
 
-- Branches : `feature/SH-<id>-<slug>` (ex. `feature/SH-1-backend-init`).
-- Commits **Conventional Commits** (`feat:`, `fix:`, `ci:`, `chore:`, `docs:`, `test:`).
-- La CI (GitHub Actions) tourne sur `main` et `develop` : lint + audit + tests + build doivent passer.
-- Ne committe/push **que sur demande explicite**. Jamais directement sur `main`.
+**Flux obligatoire (Gitflow simplifié) :**
+```
+main        ← branche de production (releases uniquement)
+  ↑
+develop     ← branche d'intégration (toujours stable)
+  ↑
+feature/SH-XX-slug   ← une branche par ticket, créée DEPUIS develop
+```
+
+**Règles non négociables :**
+- **Toute branche de feature part de `develop`** : `git checkout develop && git checkout -b feature/SH-XX-slug`. Jamais depuis `main`.
+- **Toute PR cible `develop`** comme branche de base. Jamais `main` directement.
+- **`develop` → `main`** uniquement via une PR de release (ex. fin de sprint), après validation complète.
+- Jamais de commit direct sur `main` ni sur `develop`.
+- Ne committe/push **que sur demande explicite**.
+
+**Nommage :**
+- Features : `feature/SH-<id>-<slug>` (ex. `feature/SH-11-scaffolding-fastapi`)
+- Correctifs urgents : `fix/SH-<id>-<slug>`
+
+**Commits :** Conventional Commits — `feat:`, `fix:`, `ci:`, `chore:`, `docs:`, `test:` avec scope `(SH-XX/service)`.
+
+**CI (GitHub Actions) :** se déclenche sur `push` et `pull_request` vers `main` et `develop` — la CI couvre donc les PRs feature→develop ET les PRs release develop→main. Lint + audit sécurité + tests + build doivent tous passer avant merge.
 
 ---
 
@@ -230,5 +249,7 @@ Le contexte est partagé : `GEMINI.md` **importe** ce fichier (`@CLAUDE.md`). **
 - **Ne pas** réintroduire de secrets, signatures factices ou hash en dur (le code de démo en contient — ils sont à remplacer, pas à copier).
 - **Ne pas** ajouter une dépendance lourde ou changer une techno structurante (§3) sans le signaler et le justifier.
 - **Ne pas** élargir le périmètre du Lot 1 (pas de React Native maintenant).
+- **Ne jamais créer une branche depuis `main`** — toujours depuis `develop` (voir §11). Ne jamais ouvrir une PR ciblant `main` directement pour une feature.
+- **Ne jamais commiter/pusher directement sur `main` ou `develop`** — toujours passer par une PR.
 - **Privilégier** : petites étapes vérifiables, tests à l'appui, cohérence avec le code voisin (mêmes patterns, mêmes conventions de commentaires).
 - En cas d'ambiguïté entre ce fichier et le dossier RNCP : **demander** plutôt que supposer.

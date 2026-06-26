@@ -35,9 +35,9 @@
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
-| [SH-1](tickets/SH-1-init-monorepo-backend.md) | Init monorepo + squelette backend-core NestJS | 🟠 En cours | 3 | C2.1.2 | — |
+| [SH-1](tickets/SH-1-init-monorepo-backend.md) | Init monorepo + squelette backend-core NestJS | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-2](tickets/SH-2-dockerisation.md) | Dockerisation + environnements Dev/Staging/Prod | 🔵 Backlog | 5 | C2.1.2 | — |
-| [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟠 En cours | 3 | C2.2.2 | — |
+| [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟢 Terminé | 3 | C2.2.2 | — |
 | [SH-4](tickets/SH-4-securite-hardening.md) | Hardening : TLS 1.3, gestion des secrets (Vault/env), mTLS inter-services | 🔵 Backlog | 5 | C2.2.3 | R9 |
 | [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (Kong/Nginx) : point d'entrée unique + rate-limiting | 🔵 Backlog | 5 | C2.2.3 | R7, R9 |
 
@@ -45,17 +45,17 @@
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
-| [SH-6](tickets/SH-6-persistance-reelle.md) | Persistance réelle : `DbState` → PostgreSQL+PostGIS / MongoDB / Redis | 🔵 Backlog | 8 | C2.2.3 | — |
+| [SH-6](tickets/SH-6-persistance-reelle.md) | Persistance réelle : `DbState` → PostgreSQL+PostGIS / MongoDB / Redis | 🟢 Terminé | 8 | C2.2.3 | — |
 | [SH-7](tickets/SH-7-auth-argon2-jwt-rs256.md) | Auth réelle : Argon2id + JWT RS256 + refresh tokens (Redis) | 🟢 Terminé | 5 | C2.2.3 | R7 |
-| [SH-8](tickets/SH-8-rbac-guards.md) | RBAC durci : vérification cryptographique JWT + tests d'étanchéité | 🟡 Prêt | 3 | C2.2.2, C2.2.3 | R7 |
-| [SH-9](tickets/SH-9-armurerie-backend.md) | Armurerie (Gear Locker) : déclaration matériel + filtres + workflow validation | 🔵 Backlog | 5 | C2.2.3 | R10 |
+| [SH-8](tickets/SH-8-rbac-guards.md) | RBAC durci : vérification cryptographique JWT + tests d'étanchéité | 🟢 Terminé | 3 | C2.2.2, C2.2.3 | R7 |
+| [SH-9](tickets/SH-9-armurerie-backend.md) | Armurerie (Gear Locker) : déclaration matériel + filtres + workflow validation | 🟢 Terminé | 5 | C2.2.3 | R10 |
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (MIME, Signed URL, purge PII) + validation admin | 🔵 Backlog | 8 | C2.2.3 | R2, R3 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
-| [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🔵 Backlog | 3 | C2.1.2 | — |
+| [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🔵 Backlog | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🔵 Backlog | 5 | C2.2.3 | R4 |
 | [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats | 🔵 Backlog | 5 | C2.2.2 | R4 |
@@ -117,6 +117,6 @@
 
 ## Prochaines actions suggérées
 
-1. Démarrer par les tickets **🟡 Prêt** : `SH-7` (Auth réelle) puis `SH-8` (RBAC) → débloque le **Jalon J2**.
-2. Créer le fichier de ticket correspondant depuis `docs/templates/TICKET_TEMPLATE.md` avant de coder.
+1. **🟠 En cours :** `SH-12` (Moteur de scoring multicritères) → exploite le scaffolding EP03.
+2. **Suivant :** `SH-10` (Certifications upload S3 + Signed URLs) → complète EP02.
 3. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
