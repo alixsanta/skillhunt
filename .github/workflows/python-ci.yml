@@ -29,18 +29,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          # Cache pip désactivé tant que matching-service/requirements.txt n'existe pas.
-          # À réactiver lors du scaffolding du microservice (SH-11).
+          cache: 'pip'
+          cache-dependency-path: |
+            matching-service/requirements.txt
+            matching-service/requirements-dev.txt
 
       # Étape 3 : Installer pip, les dépendances de l'application et les outils de test/qualité
       - name: 📦 Installation des dépendances et outils de validation
         run: |
           python -m pip install --upgrade pip
-          if [ -f matching-service/requirements.txt ]; then
-            pip install -r matching-service/requirements.txt
-          fi
-          # Installation des outils d'analyse statique, de sécurité et de test
-          pip install flake8 bandit pytest pytest-cov
+          pip install -r matching-service/requirements.txt
+          pip install -r matching-service/requirements-dev.txt
 
       # Étape 4 : Analyse de sécurité statique (Compétence C2.2.3 - Sécurité OWASP)
       - name: 🛡️ Audit de sécurité statique du code (Bandit)
