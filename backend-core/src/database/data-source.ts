@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Gear } from '../gear/gear.entity';
+import { Certification } from '../certifications/certification.entity';
 
 /**
  * Construit les options de connexion PostgreSQL + PostGIS depuis les variables d'environnement.
@@ -16,7 +17,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     username: process.env.DB_USERNAME ?? 'skillhunt',
     password: process.env.DB_PASSWORD ?? 'skillhunt',
     database: process.env.DB_NAME ?? 'skillhunt',
-    entities: [User, Gear],
+    entities: [User, Gear, Certification],
     migrations: ['src/database/migrations/*.ts'],
     // Jamais de synchronisation automatique : le schéma est versionné par les migrations (anti-perte de données)
     synchronize: false,

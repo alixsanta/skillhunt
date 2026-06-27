@@ -51,7 +51,7 @@
 | [SH-8](tickets/SH-8-rbac-guards.md) | RBAC durci : vérification cryptographique JWT + tests d'étanchéité | 🟢 Terminé | 3 | C2.2.2, C2.2.3 | R7 |
 | [SH-9](tickets/SH-9-armurerie-backend.md) | Armurerie (Gear Locker) : déclaration matériel + filtres + workflow validation | 🟢 Terminé | 5 | C2.2.3 | R10 |
 | [SH-31](tickets/SH-31-storage-abstraction.md) | Abstraction de stockage objet (`StorageService` + adaptateur S3 + LocalStack) — prérequis SH-10, réutilisé SH-17 | 🟢 Terminé | 3 | C2.1.2, C2.2.3 | R8 |
-| [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟡 Prêt | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
+| [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
@@ -119,6 +119,7 @@
 
 ## Prochaines actions suggérées
 
-1. **🟠 En cours :** `SH-12` (Moteur de scoring multicritères) → exploite le scaffolding EP03.
-2. **Suivant :** `SH-10` (Certifications) → complète EP02. `SH-31` (Abstraction de stockage objet, prérequis dur) est 🟢 terminé ; `StorageService` est prêt à être consommé (et réutilisé par SH-17).
-3. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+1. **✅ EP02 complet** : `SH-6/7/8/9/31/10` tous 🟢 terminés (le jalon J2 « APIs Core + sécurité JWT » est couvert côté monolithe).
+2. **🟠 En cours :** `SH-12` (Moteur de scoring multicritères) → exploite le scaffolding EP03.
+3. **Dette à planifier :** `SH-32` (hygiène des dépendances npm, relevée en SH-31).
+4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
