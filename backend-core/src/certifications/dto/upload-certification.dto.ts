@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsString, IsNotEmpty, IsEnum, IsDate, MinDate } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsDate, MinDate, MaxLength } from 'class-validator';
 import { CertificationType } from '../../common/enums';
 
 /**
@@ -23,6 +23,7 @@ export class UploadCertificationDto {
   })
   @IsString()
   @IsNotEmpty({ message: 'Le numéro de brevet est obligatoire' })
+  @MaxLength(100, { message: 'Le numéro de brevet ne peut pas dépasser 100 caractères' })
   number!: string;
 
   @ApiProperty({

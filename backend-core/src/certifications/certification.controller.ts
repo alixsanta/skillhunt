@@ -34,6 +34,14 @@ import {
 } from '../auth/guards/jwt-auth.guard';
 import { UserRole } from '../common/enums';
 
+/**
+ * Plafond mémoire DUR de l'upload (anti-DoS R7/R9) : multer coupe le flux au-delà, AVANT
+ * de tout bufferiser en RAM. C'est un garde-fou volontairement supérieur à la limite métier
+ * `CERT_MAX_FILE_MB` (vérifiée dans le service, qui produit le 400 « Fichier trop volumineux »).
+ * Si `CERT_MAX_FILE_MB` est porté au-delà de 10 Mo, relever aussi cette constante.
+ */
+const UPLOAD_MEMORY_LIMIT_BYTES = 10 * 1024 * 1024;
+
 @ApiTags('📜 Certifications')
 @ApiBearerAuth() // Toutes les routes nécessitent un Token JWT
 @ApiUnauthorizedResponse({ description: 'Token JWT manquant, invalide ou expiré (401)' })
@@ -45,7 +53,8 @@ export class CertificationController {
 
   @Post()
   @Roles(UserRole.FREELANCE)
-  @UseInterceptors(FileInterceptor('file')) // stockage mémoire : le buffer est assaini puis chiffré
+  // Stockage mémoire (buffer assaini puis chiffré) + plafond mémoire dur anti-DoS
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: UPLOAD_MEMORY_LIMIT_BYTES } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Uploader une certification PDF (Freelance)' })
   @ApiBody({

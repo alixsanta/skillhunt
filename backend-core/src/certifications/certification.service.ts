@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, In, Not } from 'typeorm';
 import { randomUUID } from 'crypto';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFName } from 'pdf-lib';
 import { Certification } from './certification.entity';
 import { CertificationStatus, UserRole } from '../common/enums';
 import { STORAGE_SERVICE, StorageService } from '../storage/storage.service';
@@ -199,6 +199,7 @@ export class CertificationService {
   private async stripPdfMetadata(buffer: Buffer): Promise<Buffer> {
     try {
       const doc = await PDFDocument.load(buffer);
+      // 1) Dictionnaire Info (auteur, titre, logiciel…)
       doc.setTitle('');
       doc.setAuthor('');
       doc.setSubject('');
@@ -208,6 +209,9 @@ export class CertificationService {
       const epoch = new Date(0);
       doc.setCreationDate(epoch);
       doc.setModificationDate(epoch);
+      // 2) Flux XMP /Metadata du catalogue : où Acrobat & co cachent AUSSI auteur/GPS/logiciel.
+      //    pdf-lib ne le scrubbe pas tout seul → on le retire explicitement (purge PII complète, R3).
+      doc.catalog.delete(PDFName.of('Metadata'));
       return Buffer.from(await doc.save());
     } catch {
       // PDF chiffré/corrompu illisible par pdf-lib : on refuse plutôt que de stocker un fichier douteux

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { FindOperator } from 'typeorm';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFName } from 'pdf-lib';
 import { CertificationService } from './certification.service';
 import { Certification } from './certification.entity';
 import { STORAGE_SERVICE } from '../storage/storage.service';
@@ -92,6 +92,16 @@ async function makePdf(author = 'Jean Dupont', title = 'Document confidentiel'):
   return Buffer.from(await doc.save());
 }
 
+// Construit un PDF porteur d'un flux XMP /Metadata (où se cachent auteur, GPS, logiciel).
+async function makePdfWithXmp(): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  doc.addPage();
+  const xmp = '<x:xmpmeta><dc:creator>Jean Dupont</dc:creator><geo>48.85,2.35</geo></x:xmpmeta>';
+  const stream = doc.context.stream(xmp, { Type: 'Metadata', Subtype: 'XML' });
+  doc.catalog.set(PDFName.of('Metadata'), doc.context.register(stream));
+  return Buffer.from(await doc.save());
+}
+
 // Fabrique un faux fichier multer (seuls buffer/size/mimetype sont lus par le service).
 function fakeFile(buffer: Buffer): Express.Multer.File {
   return {
@@ -156,6 +166,16 @@ describe('📜 CertificationService (SH-10)', () => {
     expect(reloaded.getTitle() ?? '').toBe('');
     // La réponse publique ne fuite jamais la clé de stockage interne (minimisation)
     expect((result as unknown as Record<string, unknown>).s3Key).toBeUndefined();
+  });
+
+  it('retire aussi le flux XMP /Metadata du catalogue (purge PII complète RGPD)', async () => {
+    const pdf = await makePdfWithXmp();
+
+    const result = await service.uploadCertification('free-A', dto(), fakeFile(pdf));
+
+    const reloaded = await PDFDocument.load(storage.get(keyOf(result)) as Buffer);
+    // Le flux XMP (auteur/GPS) ne doit plus exister après assainissement
+    expect(reloaded.catalog.has(PDFName.of('Metadata'))).toBe(false);
   });
 
   // --- Scénario 2 : Format / taille invalide ---
