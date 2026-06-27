@@ -5,10 +5,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { buildDataSourceOptions } from './database/data-source';
 import { User } from './users/user.entity';
 import { Gear } from './gear/gear.entity';
+import { Certification } from './certifications/certification.entity';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { GearService } from './gear/gear.service';
 import { GearController } from './gear/gear.controller';
+import { CertificationService } from './certifications/certification.service';
+import { CertificationController } from './certifications/certification.controller';
+import { StorageModule } from './storage/storage.module';
 import { TokenStore } from './auth/token-store.service';
 import { loadJwtKeys } from './auth/keys';
 
@@ -21,7 +25,10 @@ import { loadJwtKeys } from './auth/keys';
     TypeOrmModule.forRootAsync({
       useFactory: () => buildDataSourceOptions(),
     }),
-    TypeOrmModule.forFeature([User, Gear]),
+    TypeOrmModule.forFeature([User, Gear, Certification]),
+
+    // Stockage objet privé (SH-31) — fournit STORAGE_SERVICE aux certifications (et médias SH-17)
+    StorageModule,
 
     // Configuration JWT RS256 (clés asymétriques) — secrets jamais en dur (C2.2.3)
     JwtModule.registerAsync({
@@ -47,10 +54,12 @@ import { loadJwtKeys } from './auth/keys';
   controllers: [
     AuthController,
     GearController, // Déclaration du contrôleur d'armurerie
+    CertificationController, // Déclaration du contrôleur de certifications (SH-10)
   ],
   providers: [
     AuthService,
     GearService, // Déclaration du service d'armurerie
+    CertificationService, // Déclaration du service de certifications (SH-10)
     TokenStore, // Registre des refresh tokens (en mémoire → Redis SH-14)
   ],
 })

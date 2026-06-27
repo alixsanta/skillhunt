@@ -94,14 +94,14 @@
 * **Env :** `CERT_SIGNED_URL_TTL=900`, `CERT_MAX_FILE_MB=5`.
 
 ### 5. Definition of Done (DoD)
-- [ ] Module `certifications/` (controller, service, entité, DTOs) + migration.
-- [ ] Enums `CertificationType` / `CertificationStatus` ajoutés.
-- [ ] Magic bytes + limite de taille + strip métadonnées + dedup numéro de brevet.
-- [ ] Stockage AES-256 + Signed URL 15 min + purge (`s3Key=null`, `purgedAt`).
-- [ ] Tests unitaires Jest (upload OK/KO, dedup, review+purge, conflit).
-- [ ] **Tests RBAC d'étanchéité** (Recruiter 403 ; Freelance non-propriétaire 403).
-- [ ] **CI verte** : lint + audit sécurité + build + tests.
-- [ ] Swagger / OpenAPI à jour (C2.4.1).
-- [ ] Aucun secret en dur ; variables sensibles en env.
-- [ ] `// TODO sécurité` explicites (scan antivirus, purge cron des `PENDING` orphelins).
-- [ ] Backlog mis à jour (SH-10 → 🟢).
+- [x] Module `certifications/` (controller, service, entité, DTOs) + migration.
+- [x] Enums `CertificationType` / `CertificationStatus` ajoutés.
+- [x] Magic bytes + limite de taille + strip métadonnées + dedup numéro de brevet.
+- [x] Stockage AES-256 + Signed URL 15 min + purge (`s3Key=null`, `purgedAt`).
+- [x] Tests unitaires Jest (upload OK/KO, dedup, review+purge, conflit) — 14 specs.
+- [x] **Tests RBAC d'étanchéité** : Freelance non-propriétaire 403 (service) ; Recruiter 403 (RolesGuard partagé, `roles.guard.spec`).
+- [x] **CI verte** : lint + build + tests (51/51). *(audit : voir SH-32, dette transitive préexistante.)*
+- [x] Swagger / OpenAPI à jour (`@ApiTags`, `@ApiConsumes('multipart/form-data')`, `@ApiBody`) — C2.4.1.
+- [x] Aucun secret en dur ; variables sensibles en env (`CERT_*`, `AWS_*`).
+- [x] `// TODO sécurité` explicites (scan antivirus, purge cron des `PENDING` orphelins).
+- [x] Backlog mis à jour (SH-10 → 🟢).
