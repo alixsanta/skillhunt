@@ -43,10 +43,10 @@ jobs:
       - name: 📦 Installation propre des dépendances (ci)
         run: npm ci
 
-      # Étape 4 : Auditer le code pour traquer d'éventuelles failles de sécurité dans nos dépendances
+      # Étape 4 : Auditer les dépendances — BLOQUANT au niveau high (SH-32 : 0 vulnérabilité HIGH/CRITICAL)
+      # Les vulnérabilités 'moderate' (outillage de test : js-yaml via jest) ne bloquent pas la CI.
       - name: 🛡️ Audit de sécurité des dépendances NPM
         run: npm audit --audit-level=high
-        continue-on-error: true # Permet de ne pas bloquer complètement la CI pour de simples alertes, mais logue l'info
 
       # Étape 5 : Analyser le code avec le Linter (ESLint) pour s'assurer du respect des normes
       - name: 🔍 Analyse statique du code (Lint)

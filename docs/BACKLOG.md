@@ -40,7 +40,7 @@
 | [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟢 Terminé | 3 | C2.2.2 | — |
 | [SH-4](tickets/SH-4-securite-hardening.md) | Hardening : TLS 1.3, gestion des secrets (Vault/env), mTLS inter-services | 🔵 Backlog | 5 | C2.2.3 | R9 |
 | [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (Kong/Nginx) : point d'entrée unique + rate-limiting | 🔵 Backlog | 5 | C2.2.3 | R7, R9 |
-| [SH-32](tickets/SH-32-audit-deps-transitives.md) | Hygiène des dépendances backend-core : résorber les vulnérabilités transitives (audit npm) — dette relevée en SH-31 | 🟡 Prêt | 2 | C2.2.3, C2.1.2 | R7 |
+| [SH-32](tickets/SH-32-audit-deps-transitives.md) | Hygiène des dépendances backend-core : résorber les vulnérabilités transitives (audit npm) — dette relevée en SH-31 | 🟢 Terminé | 2 | C2.2.3, C2.1.2 | R7 |
 
 ## EP02 — Monolithe & Authentification · *18 J/H* · 🎯 J2
 
@@ -121,5 +121,4 @@
 
 1. **✅ EP02 complet** : `SH-6/7/8/9/31/10` tous 🟢 terminés (le jalon J2 « APIs Core + sécurité JWT » est couvert côté monolithe).
 2. **🟠 En cours :** `SH-12` (Moteur de scoring multicritères) → exploite le scaffolding EP03.
-3. **Dette à planifier :** `SH-32` (hygiène des dépendances npm, relevée en SH-31).
-4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+3. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).

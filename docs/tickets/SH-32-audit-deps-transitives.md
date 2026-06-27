@@ -52,9 +52,25 @@ Vulnérabilités **HIGH** réellement installées (audit `--omit=dev`) :
 * **THEN** tout est vert (aucune régression fonctionnelle introduite par les montées de version).
 
 ### 5. Definition of Done (DoD)
-- [ ] `npm audit --audit-level=high` → 0 vulnérabilité HIGH/CRITICAL (ou exceptions documentées et justifiées).
-- [ ] Bumps appliqués de façon cohérente avec l'écosystème NestJS (pas de mélange de majeures cassé).
-- [ ] `npm run lint`, `npm run test`, `npm run build` verts ; lockfile à jour (`npm ci` reproductible).
-- [ ] Décider du sort de `continue-on-error` sur l'étape audit (le retirer une fois l'audit propre, pour rendre l'audit **bloquant** et tirer parti de la garantie).
-- [ ] Aucun secret en dur ; aucune techno structurante (§3) changée sans justification au dossier.
-- [ ] Backlog mis à jour (SH-32 → 🟢).
+- [x] `npm audit --audit-level=high` → **0 vulnérabilité HIGH/CRITICAL** (exit 0). Reste 19 *moderate* (js-yaml via outillage de test jest/ts-jest), sous le seuil CI.
+- [x] Bumps cohérents : montée **NestJS 10 → 11** (common/core/platform-express/testing `^11.1.27`, swagger `^11.4.4`, `@types/express ^5`) + `overrides: { multer: ^2.2.0 }`. lodash → 4.18.1 (hors plage vulnérable), multer → 2.2.0.
+- [x] `npm run lint`, `npm run test` (52/52), `npm run build` verts ; lockfile régénéré.
+- [x] `continue-on-error` **retiré** de l'étape audit (`node-ci.yml`) → audit **bloquant** au niveau high.
+- [x] Aucun secret en dur ; NestJS reste la techno structurante (§3) — montée de version mineure d'écosystème, pas de changement de stack.
+- [x] Backlog mis à jour (SH-32 → 🟢).
+
+> **Note technique.** lodash n'a aucune version patchée en 4.17.x (toutes ≤4.17.23 vulnérables) ;
+> le seul remède est swagger ≥ 11.4.4 (lodash 4.18.1), qui exige NestJS 11 — d'où le bump majeur.
+> platform-express 11 passe à **Express 5** (corrige aussi les *moderate* qs/body-parser).
+> ⚠️ Non couvert : boot HTTP réel (Express 5). Les routes du projet sont simples (`:id`, segments
+> statiques, aucun wildcard impacté) et `tsc`/tests/lint passent ; un **smoke test manuel**
+> (`npm run start:dev` + appel d'un endpoint) reste recommandé avant mise en production.
+
+> **Note opérationnelle — audit bloquant sans allowlist.** L'audit étant désormais bloquant et
+> `npm audit` n'ayant **pas** de mécanisme natif d'exclusion, une future advisory tombant sur un
+> paquet déjà installé **sans correctif disponible** (cas qu'a connu lodash) bloquerait **toutes**
+> les PR vers `develop`, y compris des features sans rapport. Parades le jour venu :
+> 1. ré-activer temporairement `continue-on-error` (retour à l'avertissement) ;
+> 2. `overrides`/pin si un correctif existe ;
+> 3. adopter un wrapper avec allowlist (`audit-ci` / `better-npm-audit`) pour ignorer **nommément**
+>    une advisory tracée, sans baisser le seuil global. *(Option recommandée si le cas se présente.)*
