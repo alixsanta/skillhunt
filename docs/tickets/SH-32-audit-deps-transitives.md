@@ -65,3 +65,12 @@ Vulnérabilités **HIGH** réellement installées (audit `--omit=dev`) :
 > ⚠️ Non couvert : boot HTTP réel (Express 5). Les routes du projet sont simples (`:id`, segments
 > statiques, aucun wildcard impacté) et `tsc`/tests/lint passent ; un **smoke test manuel**
 > (`npm run start:dev` + appel d'un endpoint) reste recommandé avant mise en production.
+
+> **Note opérationnelle — audit bloquant sans allowlist.** L'audit étant désormais bloquant et
+> `npm audit` n'ayant **pas** de mécanisme natif d'exclusion, une future advisory tombant sur un
+> paquet déjà installé **sans correctif disponible** (cas qu'a connu lodash) bloquerait **toutes**
+> les PR vers `develop`, y compris des features sans rapport. Parades le jour venu :
+> 1. ré-activer temporairement `continue-on-error` (retour à l'avertissement) ;
+> 2. `overrides`/pin si un correctif existe ;
+> 3. adopter un wrapper avec allowlist (`audit-ci` / `better-npm-audit`) pour ignorer **nommément**
+>    une advisory tracée, sans baisser le seuil global. *(Option recommandée si le cas se présente.)*
