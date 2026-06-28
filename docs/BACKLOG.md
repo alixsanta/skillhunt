@@ -61,6 +61,7 @@
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🔵 Backlog | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🔵 Backlog | 5 | C2.2.3 | R4 |
 | [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats | 🔵 Backlog | 5 | C2.2.2 | R4 |
+| [SH-33](tickets/SH-33-resolveur-besoin-criteres.md) | Résolveur besoin→critères : catalogue de cas d'usage (recruteur non-expert B2C) — *dépend de SH-12* | 🟡 Prêt | 5 | C2.2.2, C2.2.3, C2.4.1 | R4, R10 |
 
 ## EP04 — Microservice Médias & Portfolio · *14 J/H* · 🎯 J3
 
