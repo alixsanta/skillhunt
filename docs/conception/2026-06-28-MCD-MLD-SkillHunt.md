@@ -11,9 +11,13 @@ SkillHunt est **polyglotte** (cf. dossier §3.2.5) :
 - **MongoDB** — documentaire : chat (`conversations`/`messages`), logs. Schéma flexible → décrit en §4, hors MLD relationnel.
 - **Redis** — éphémère : refresh tokens (jti), cache de matching. Hors modèle persistant.
 
-> ⚠️ **Écart dossier ↔ code à réconcilier.** Le benchmark persistance du dossier (§3.2.5) range le
-> **Gear Locker dans MongoDB**, mais l'implémentation (SH-9) l'a mis dans **PostgreSQL** (`gear`,
-> TypeORM). Le présent modèle reflète le **code réel** (PostgreSQL). À aligner dans `SkillHunt.docx`.
+> ⚠️ **Écarts conception ↔ code à réconcilier** (le présent modèle reflète le **code réel**) :
+> 1. **Persistance Armurerie** : le dossier (§3.2.5) range le Gear Locker dans **MongoDB** ;
+>    l'implémentation (SH-9) l'a mis dans **PostgreSQL** (`gear`, TypeORM) — à aligner (+ JSONB).
+> 2. **Modèle matériel** : SCRUM-8 (conception) prévoit `gear_catalog` + jointure M:N `user_gear` ;
+>    le MVP a un `gear` **plat** 1:N en texte libre. Normalisation documentée en **cible** (§3).
+> 3. **Persona** : le dossier positionne le recruteur en **B2B** ; on ajoute le **B2C** non-expert
+>    (SH-33). → patchs `SkillHunt.docx` à intégrer.
 
 Légende statut : ✅ implémenté · 🔲 cible/planifié.
 
@@ -94,10 +98,12 @@ erDiagram
 Index notables : `users.email` (unique), `users.location` (GiST spatial), `gear.status`,
 `gear.category`, `gear.freelanceId`, `user_certifications.status`, `user_certifications.freelanceId`.
 
-> 🔲 **Évolution cible sur `gear`** : ajout d'une colonne **`specs JSONB`** (indexable GIN) pour les
-> attributs hétérogènes par catégorie (autonomie d'un drone, résolution d'une 360°…) — sans migration
-> à chaque attribut. C'est l'argument qui justifie **PostgreSQL + JSONB** plutôt que MongoDB pour
-> l'Armurerie (cf. §0 et §3). Enrichit SH-21.
+> 🔲 **Évolutions cibles sur `gear`** (cf. §3) :
+> - **`specs JSONB`** (indexable GIN) pour les attributs hétérogènes par catégorie (autonomie d'un
+>   drone, résolution d'une 360°…) sans migration — justifie **PostgreSQL + JSONB** plutôt que MongoDB.
+> - **Normalisation `gear_catalog`** : `brand`/`model`/`category` (texte libre au MVP) extraits dans
+>   un **référentiel** Admin ; `gear` les référence via `gearCatalogId` et devient la jointure
+>   d'instances (rôle `user_gear` de SCRUM-8). Enrichit SH-21.
 
 ---
 
@@ -112,6 +118,21 @@ erDiagram
     user_certifications ||--o{ user_skills : "atteste (source=CERTIFIED)"
     missions ||--o{ mission_skills : "requiert"
     skills ||--o{ mission_skills : ""
+    gear_catalog ||--o{ gear : "décliné en (instances)"
+
+    gear_catalog {
+        uuid id PK
+        varchar brand
+        varchar model "UK (brand+model)"
+        enum category "DRONE | CAMERA_360 | ROBOTICS | SENSOR"
+        jsonb officialSpecs "specs officielles du modèle"
+    }
+
+    gear {
+        uuid gearCatalogId FK "→ gear_catalog.id (remplace brand/model libres)"
+        date purchaseDate "métadonnée d'instance"
+        enum condition "NEW | USED"
+    }
 
     skills {
         uuid id PK
@@ -152,6 +173,11 @@ erDiagram
     }
 ```
 
+- **`gear_catalog`** (référentiel curé par l'Admin — « catalogue officiel », cf. dossier §1.4/§1.6)
+  normalise le matériel : `gear` (table existante §2) **évolue** pour le référencer
+  (`gearCatalogId`) et ne porter que les **métadonnées d'instance** (`serialNumber`, `purchaseDate`,
+  `condition`). `gear` joue alors le rôle de la jointure **`user_gear`** prévue par SCRUM-8 (M:N
+  Expert↔Modèle). **MVP** : `gear` plat avec `brand`/`model` en texte libre (§2).
 - **`skills`** (référentiel) est le **hub** : il relie l'inférence matériel (MVP), les déclarations
   freelance, les certifications et les besoins des missions.
 - **`user_skills`** (N:N) porte l'origine du skill : `DECLARED` (saisi) ou `CERTIFIED` (accordé par
@@ -193,6 +219,7 @@ Hors MLD relationnel (cf. dossier §3.2.5). Collections cibles :
 | Matching (lecture `users`/`gear`) | SH-12 | 🟡 Prêt |
 | `skills` + `user_skills` (déclarées / attestées) | cible (matching avancé) | 🔲 |
 | `gear.specs JSONB` (specs hétérogènes par type) | SH-21 | 🔲 |
+| `gear_catalog` (référentiel Admin) + `gear` normalisé (`user_gear`) | SCRUM-8 / cible | 🔲 |
 | `missions` + `mission_skills` + bus d'événements | SH-12 / SH-14 | 🔲 |
 | `use_cases` (référentiel) | SH-33 | 🟡 Prêt |
 | `media` (portfolio) | SH-18 | 🔲 |

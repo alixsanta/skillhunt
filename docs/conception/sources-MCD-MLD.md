@@ -12,11 +12,13 @@ mise en page automatique → export SVG/PNG. Mocodo dérive aussi le MLD (menu *
 
 > Cardinalité Mocodo : elle précède l'entité et exprime sa participation.
 > `0N UTILISATEUR` = un utilisateur participe 0..N fois à l'association.
-> Existant : `possède`, `détient`. Cible : `publie`, `expose`, `échange`, `maîtrise`, `requiert`, `atteste`.
+> Existant : `possède`, `détient`. Cible : `réfère`, `publie`, `expose`, `échange`, `maîtrise`, `requiert`, `atteste`.
+> Cible `MODELE_MATERIEL` = catalogue officiel curé par l'Admin (SCRUM-8). Au MVP, `brand`/`model`/`category` sont portés directement par `MATERIEL` (texte libre) ; en cible ils migrent vers `MODELE_MATERIEL` et `MATERIEL` ne garde que les métadonnées d'instance.
 
 ```mocodo
 UTILISATEUR: id, email, username, role, localisation
-MATERIEL: id, brand, model, serialNumber, category, statut
+MATERIEL: id, serialNumber, purchaseDate, condition, statut
+MODELE_MATERIEL: id, brand, model, category, officialSpecs
 CERTIFICATION: id, type, number, validUntil, statut
 COMPETENCE: id, code, label, category
 MISSION: id, useCaseId, rayon_km, statut, createdAt, localisation
@@ -24,6 +26,7 @@ MEDIA: id, type, statut, createdAt
 MESSAGE: id, body, sentAt
 
 possède, 0N UTILISATEUR, 11 MATERIEL
+réfère, 0N MATERIEL, 11 MODELE_MATERIEL
 détient, 0N UTILISATEUR, 11 CERTIFICATION
 publie, 0N UTILISATEUR, 11 MISSION
 expose, 0N UTILISATEUR, 11 MEDIA
@@ -73,6 +76,7 @@ entity "gear" as gear #E1F5EE {
   * category : enum
   * status : enum
   specs : jsonb  /* 🔲 cible : specs hétérogènes */
+  gearCatalogId : uuid <<FK>>  /* 🔲 cible : → gear_catalog */
   * createdAt : timestamptz
   * freelanceId : uuid <<FK>>
 }
@@ -92,6 +96,14 @@ entity "user_certifications" as cert #E1F5EE {
 }
 
 ' ===== CIBLE (à implémenter) =====
+entity "gear_catalog" as gcat #F1EFE8 {
+  * id : uuid <<PK>>
+  --
+  * brand : varchar
+  * model : varchar <<UK>>
+  * category : enum
+  officialSpecs : jsonb
+}
 entity "skills" as skills #F1EFE8 {
   * id : uuid <<PK>>
   --
@@ -140,6 +152,7 @@ skills ||--o{ uskills
 cert ||--o{ uskills
 missions ||--o{ mskills
 skills ||--o{ mskills
+gcat ||--o{ gear
 
 legend right
   vert  = implémenté (PostgreSQL)
