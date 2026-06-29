@@ -45,8 +45,9 @@ async def get_candidates(
     for freelance_id, dist_km, category in rows:
         profile = profiles.get(freelance_id)
         if profile is None:
+            # asyncpg renvoie un objet UUID natif (pas une str) ; str() normalise les deux cas
             profile = FreelancerProfile(
-                freelance_id=UUID(freelance_id),
+                freelance_id=UUID(str(freelance_id)),
                 gear_categories=[],
                 distance_km=float(dist_km),
             )
