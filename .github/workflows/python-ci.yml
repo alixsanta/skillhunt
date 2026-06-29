@@ -78,7 +78,9 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://skillhunt:skillhunt@localhost:5432/skillhunt_test
         run: |
+          # Se déplace dans le répertoire de service pour charger le contexte d'exécution Python
           cd matching-service
+          # pytest exécute les tests et génère un rapport de couverture de code au format XML
           if [ -d tests ]; then
             pytest --cov=. --cov-report=xml tests/
           else

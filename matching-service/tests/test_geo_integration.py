@@ -3,6 +3,7 @@
 import os
 import pytest
 import pytest_asyncio
+from collections.abc import AsyncGenerator
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from app.services.freelancer_repo import get_candidates
@@ -30,7 +31,7 @@ def _point_sql(latlon: tuple[float, float]) -> str:
 
 
 @pytest_asyncio.fixture
-async def db() -> AsyncSession:
+async def db() -> AsyncGenerator[AsyncSession, None]:
     engine = create_async_engine(DATABASE_URL)
     try:
         async with engine.begin() as conn:
@@ -69,6 +70,10 @@ async def db() -> AsyncSession:
         yield session
     finally:
         await session.close()
+        # Nettoyage des tables de test pour ne pas laisser de résidus dans la base locale
+        async with engine.begin() as conn:
+            await conn.execute(text("DROP TABLE IF EXISTS gear"))
+            await conn.execute(text("DROP TABLE IF EXISTS users"))
         await engine.dispose()
 
 
