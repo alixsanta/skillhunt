@@ -9,9 +9,9 @@ class HealthResponse(BaseModel):
 
 
 class MatchRequest(BaseModel):
-    # C2.2.3 — Validation stricte des entrées (anti-injection, OWASP A03)
-    freelance_id: UUID
-    skills: list[Annotated[str, Field(min_length=1)]] = Field(min_length=1)
+    # C2.2.3 — Validation stricte des entrées (anti-injection, OWASP A03 ;
+    # bornes anti-DoS : une liste de skills non bornée serait amplifiée par candidat lors du scoring)
+    skills: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(min_length=1, max_length=50)
     location: tuple[float, float]
     radius_km: float = Field(gt=0, le=500)
 

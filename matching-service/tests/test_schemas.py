@@ -13,7 +13,6 @@ def test_health_response_valid():
 
 def test_match_request_valid():
     req = MatchRequest(
-        freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
         skills=["drone-dgac", "fpv"],
         location=(43.6, 1.44),
         radius_km=50.0,
@@ -24,62 +23,44 @@ def test_match_request_valid():
 
 def test_match_request_rejects_empty_skills():
     with pytest.raises(ValidationError):
-        MatchRequest(
-            freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            skills=[],
-            location=(43.6, 1.44),
-            radius_km=50.0,
-        )
+        MatchRequest(skills=[], location=(43.6, 1.44), radius_km=50.0)
 
 
 def test_match_request_rejects_blank_skill():
     with pytest.raises(ValidationError):
-        MatchRequest(
-            freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            skills=[""],
-            location=(43.6, 1.44),
-            radius_km=50.0,
-        )
+        MatchRequest(skills=[""], location=(43.6, 1.44), radius_km=50.0)
+
+
+def test_match_request_rejects_too_many_skills():
+    # C2.2.3 — Borne anti-DoS : liste de skills non bornée = amplification CPU par candidat
+    with pytest.raises(ValidationError):
+        MatchRequest(skills=["fpv"] * 51, location=(43.6, 1.44), radius_km=50.0)
+
+
+def test_match_request_rejects_oversized_skill():
+    # C2.2.3 — Borne anti-DoS : longueur de chaîne bornée
+    with pytest.raises(ValidationError):
+        MatchRequest(skills=["x" * 65], location=(43.6, 1.44), radius_km=50.0)
 
 
 def test_match_request_rejects_negative_radius():
     with pytest.raises(ValidationError):
-        MatchRequest(
-            freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            skills=["fpv"],
-            location=(43.6, 1.44),
-            radius_km=-10.0,
-        )
+        MatchRequest(skills=["fpv"], location=(43.6, 1.44), radius_km=-10.0)
 
 
 def test_match_request_rejects_zero_radius():
     with pytest.raises(ValidationError):
-        MatchRequest(
-            freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            skills=["fpv"],
-            location=(43.6, 1.44),
-            radius_km=0.0,
-        )
+        MatchRequest(skills=["fpv"], location=(43.6, 1.44), radius_km=0.0)
 
 
 def test_match_request_rejects_invalid_latitude():
     with pytest.raises(ValidationError):
-        MatchRequest(
-            freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            skills=["fpv"],
-            location=(91.0, 1.44),
-            radius_km=50.0,
-        )
+        MatchRequest(skills=["fpv"], location=(91.0, 1.44), radius_km=50.0)
 
 
 def test_match_request_rejects_invalid_longitude():
     with pytest.raises(ValidationError):
-        MatchRequest(
-            freelance_id=UUID("123e4567-e89b-12d3-a456-426614174000"),
-            skills=["fpv"],
-            location=(43.6, 181.0),
-            radius_km=50.0,
-        )
+        MatchRequest(skills=["fpv"], location=(43.6, 181.0), radius_km=50.0)
 
 
 def test_match_result_valid():
