@@ -58,7 +58,7 @@
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
 | [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
-| [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🔵 Backlog | 8 | C2.2.2 | R4 |
+| [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🔵 Backlog | 5 | C2.2.3 | R4 |
 | [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats | 🔵 Backlog | 5 | C2.2.2 | R4 |
 
@@ -120,5 +120,6 @@
 ## Prochaines actions suggérées
 
 1. **✅ EP02 complet** : `SH-6/7/8/9/31/10` tous 🟢 terminés (le jalon J2 « APIs Core + sécurité JWT » est couvert côté monolithe).
-2. **🟠 En cours :** `SH-12` (Moteur de scoring multicritères) → exploite le scaffolding EP03.
-3. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+2. **✅ `SH-12`** (Moteur de scoring multicritères) 🟢 terminé → débloque `SH-33` (résolveur besoin→critères) et `SH-13`.
+3. **Suivant :** `SH-13` (Géolocalisation PostGIS) → remplace le stub `score_location` par de vraies distances.
+4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).

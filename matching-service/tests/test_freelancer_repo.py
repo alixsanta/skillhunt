@@ -3,7 +3,6 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID
 from app.services.freelancer_repo import get_candidates
-from app.services.scoring import FreelancerProfile
 
 
 def make_mock_db(rows: list[tuple]) -> AsyncMock:
