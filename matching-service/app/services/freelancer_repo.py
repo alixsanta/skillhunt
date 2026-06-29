@@ -7,7 +7,12 @@ from app.services.scoring import FreelancerProfile
 
 
 async def get_candidates(db: AsyncSession) -> list[FreelancerProfile]:
-    """Charge tous les freelances avec leur matériel VALIDATED via une jointure LEFT OUTER."""
+    """Charge tous les freelances avec leur matériel VALIDATED via une jointure LEFT OUTER.
+
+    TODO SH-13 (perf, KPI R4 < 250 ms) : ce chargement scanne toute la table 'users' à chaque
+    requête. À remplacer par un préfiltrage SQL (rayon PostGIS + présence d'au moins un skill)
+    et/ou une pagination keyset avant de scorer en mémoire.
+    """
     stmt = (
         select(FreelanceDB.id, GearDB.category)
         .outerjoin(GearDB, (GearDB.freelanceId == FreelanceDB.id) & (GearDB.status == "VALIDATED"))

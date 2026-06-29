@@ -31,6 +31,18 @@ def test_match_request_rejects_blank_skill():
         MatchRequest(skills=[""], location=(43.6, 1.44), radius_km=50.0)
 
 
+def test_match_request_rejects_too_many_skills():
+    # C2.2.3 — Borne anti-DoS : liste de skills non bornée = amplification CPU par candidat
+    with pytest.raises(ValidationError):
+        MatchRequest(skills=["fpv"] * 51, location=(43.6, 1.44), radius_km=50.0)
+
+
+def test_match_request_rejects_oversized_skill():
+    # C2.2.3 — Borne anti-DoS : longueur de chaîne bornée
+    with pytest.raises(ValidationError):
+        MatchRequest(skills=["x" * 65], location=(43.6, 1.44), radius_km=50.0)
+
+
 def test_match_request_rejects_negative_radius():
     with pytest.raises(ValidationError):
         MatchRequest(skills=["fpv"], location=(43.6, 1.44), radius_km=-10.0)

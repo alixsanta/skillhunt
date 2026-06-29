@@ -24,6 +24,9 @@ async def match(
     results: list[MatchResult] = []
     for profile in candidates:
         score = compute_composite_score(profile, request)
+        # TODO SH-13 : tant que score_location est un stub (1.0), le score plancher vaut 0.2
+        # pour tout candidat → ce filtre `> 0.0` ne retire personne. Le vrai filtrage de
+        # pertinence (rayon d'action + seuil) arrive avec la localisation PostGIS.
         if score > 0.0:
             results.append(
                 MatchResult(
