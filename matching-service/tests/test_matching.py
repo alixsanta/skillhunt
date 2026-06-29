@@ -83,7 +83,7 @@ def test_match_excludes_zero_score(client):
     app.dependency_overrides.clear()
     assert response.status_code == 200
     results = response.json()
-    # score = 0.5*0 + 0.3*0 + 0.2*1.0 = 0.2 → inclus car > 0
+    # distance_km défaut 0.0 → score_location(0,50)=1.0 ; score = 0.5*0 + 0.3*0 + 0.2*1.0 = 0.2 → inclus car > 0
     assert len(results) == 1
     assert results[0]["score"] == pytest.approx(0.2)
 
@@ -117,12 +117,14 @@ def test_match_exposes_real_distance(client):
 
 
 def test_match_tiebreak_by_distance_when_scores_equal(client):
-    # Même gear/skills → même score ; le plus proche doit passer devant
+    # Scores identiques (compute_composite_score forcé constant) → le départage
+    # se fait uniquement par distance croissante : le plus proche d'abord.
     near = FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5, distance_km=5.0)
     far = FreelancerProfile(freelance_id=FREELANCE_B, gear_categories=["DRONE"] * 5, distance_km=45.0)
     payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
     app.dependency_overrides[get_db] = _override_get_db
-    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=[far, near])):
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=[far, near])), \
+         patch("app.routers.matching.compute_composite_score", return_value=0.5):
         response = client.post("/match", json=payload)
     app.dependency_overrides.clear()
     results = response.json()
