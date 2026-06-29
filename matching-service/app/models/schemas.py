@@ -10,7 +10,6 @@ class HealthResponse(BaseModel):
 
 class MatchRequest(BaseModel):
     # C2.2.3 — Validation stricte des entrées (anti-injection, OWASP A03)
-    freelance_id: UUID
     skills: list[Annotated[str, Field(min_length=1)]] = Field(min_length=1)
     location: tuple[float, float]
     radius_km: float = Field(gt=0, le=500)

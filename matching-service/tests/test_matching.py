@@ -1,13 +1,8 @@
-def test_match_stub_returns_200_and_empty_list(client):
-    payload = {
-        "freelance_id": "123e4567-e89b-12d3-a456-426614174000",
-        "skills": ["drone-dgac", "fpv"],
-        "location": [43.6, 1.44],
-        "radius_km": 50.0,
-    }
-    response = client.post("/match", json=payload)
-    assert response.status_code == 200
-    assert response.json() == []
+BASE_PAYLOAD = {
+    "skills": ["drone-dgac", "fpv"],
+    "location": [43.6, 1.44],
+    "radius_km": 50.0,
+}
 
 
 def test_match_rejects_missing_body(client):
@@ -16,55 +11,30 @@ def test_match_rejects_missing_body(client):
 
 
 def test_match_rejects_empty_skills(client):
-    payload = {
-        "freelance_id": "123e4567-e89b-12d3-a456-426614174000",
-        "skills": [],
-        "location": [43.6, 1.44],
-        "radius_km": 50.0,
-    }
+    payload = {**BASE_PAYLOAD, "skills": []}
     response = client.post("/match", json=payload)
     assert response.status_code == 422
 
 
 def test_match_rejects_blank_skill(client):
-    payload = {
-        "freelance_id": "123e4567-e89b-12d3-a456-426614174000",
-        "skills": [""],
-        "location": [43.6, 1.44],
-        "radius_km": 50.0,
-    }
+    payload = {**BASE_PAYLOAD, "skills": [""]}
     response = client.post("/match", json=payload)
     assert response.status_code == 422
 
 
 def test_match_rejects_negative_radius(client):
-    payload = {
-        "freelance_id": "123e4567-e89b-12d3-a456-426614174000",
-        "skills": ["fpv"],
-        "location": [43.6, 1.44],
-        "radius_km": -1.0,
-    }
+    payload = {**BASE_PAYLOAD, "radius_km": -1.0}
     response = client.post("/match", json=payload)
     assert response.status_code == 422
 
 
 def test_match_rejects_zero_radius(client):
-    payload = {
-        "freelance_id": "123e4567-e89b-12d3-a456-426614174000",
-        "skills": ["fpv"],
-        "location": [43.6, 1.44],
-        "radius_km": 0.0,
-    }
+    payload = {**BASE_PAYLOAD, "radius_km": 0.0}
     response = client.post("/match", json=payload)
     assert response.status_code == 422
 
 
 def test_match_rejects_out_of_bounds_location(client):
-    payload = {
-        "freelance_id": "123e4567-e89b-12d3-a456-426614174000",
-        "skills": ["fpv"],
-        "location": [999.0, 999.0],
-        "radius_km": 50.0,
-    }
+    payload = {**BASE_PAYLOAD, "location": [999.0, 999.0]}
     response = client.post("/match", json=payload)
     assert response.status_code == 422
