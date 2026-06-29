@@ -75,8 +75,8 @@ entity "gear" as gear #E1F5EE {
   * serialNumber : varchar
   * category : enum
   * status : enum
-  specs : jsonb  /* 🔲 cible : specs hétérogènes */
-  gearCatalogId : uuid <<FK>>  /* 🔲 cible : → gear_catalog */
+  specs : jsonb <<cible>>
+  gearCatalogId : uuid <<FK>> <<cible>>
   * createdAt : timestamptz
   * freelanceId : uuid <<FK>>
 }
