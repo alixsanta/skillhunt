@@ -1,0 +1,18 @@
+UTILISATEUR: id, email, username, role, localisation
+MATERIEL: id, serialNumber, purchaseDate, condition, statut
+MODELE_MATERIEL: id, brand, model, category, officialSpecs
+CERTIFICATION: id, type, number, validUntil, statut
+COMPETENCE: id, code, label, category
+MISSION: id, useCaseId, rayon_km, statut, createdAt, localisation
+MEDIA: id, type, statut, createdAt
+MESSAGE: id, body, sentAt
+
+possède, 0N UTILISATEUR, 11 MATERIEL
+réfère, 0N MATERIEL, 11 MODELE_MATERIEL
+détient, 0N UTILISATEUR, 11 CERTIFICATION
+publie, 0N UTILISATEUR, 11 MISSION
+expose, 0N UTILISATEUR, 11 MEDIA
+échange, 0N UTILISATEUR, 11 MESSAGE
+maîtrise, 0N UTILISATEUR, 0N COMPETENCE: source
+requiert, 0N MISSION, 0N COMPETENCE
+atteste, 0N CERTIFICATION, 0N COMPETENCE
