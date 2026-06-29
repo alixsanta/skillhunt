@@ -12,29 +12,28 @@ router = APIRouter(tags=["Matching"])
 @router.post(
     "/match",
     response_model=list[MatchResult],
-    summary="Calcul des scores de matching multicritères (Skills + Matériel + Localisation stub)",
+    summary="Calcul des scores de matching multicritères (Skills + Matériel + Localisation PostGIS)",
 )
 async def match(
     request: MatchRequest,
     db: AsyncSession = Depends(get_db),
 ) -> list[MatchResult]:
-    # C2.2.2 — Injection de dépendances : get_candidates est mockable dans les tests
-    candidates = await get_candidates(db)
+    # C2.2.2 — Injection de dépendances : get_candidates est mockable dans les tests.
+    # PostGIS a déjà filtré les candidats hors rayon et calculé leur distance.
+    candidates = await get_candidates(db, request.location, request.radius_km)
 
     results: list[MatchResult] = []
     for profile in candidates:
         score = compute_composite_score(profile, request)
-        # TODO SH-13 : tant que score_location est un stub (1.0), le score plancher vaut 0.2
-        # pour tout candidat → ce filtre `> 0.0` ne retire personne. Le vrai filtrage de
-        # pertinence (rayon d'action + seuil) arrive avec la localisation PostGIS.
         if score > 0.0:
             results.append(
                 MatchResult(
                     freelance_id=profile.freelance_id,
                     score=round(score, 4),
-                    distance_km=0.0,  # stub jusqu'à SH-13 (PostGIS)
+                    distance_km=round(profile.distance_km, 2),
                 )
             )
 
-    results.sort(key=lambda r: r.score, reverse=True)
+    # Tri : score décroissant, puis distance croissante à score égal (le plus proche d'abord)
+    results.sort(key=lambda r: (-r.score, r.distance_km))
     return results

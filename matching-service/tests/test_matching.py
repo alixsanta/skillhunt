@@ -90,8 +90,8 @@ def test_match_excludes_zero_score(client):
 
 def test_match_results_sorted_by_score_desc(client):
     profiles = [
-        FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=[]),             # score faible
-        FreelancerProfile(freelance_id=FREELANCE_B, gear_categories=["DRONE"] * 5),  # score élevé
+        FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=[], distance_km=40.0),
+        FreelancerProfile(freelance_id=FREELANCE_B, gear_categories=["DRONE"] * 5, distance_km=5.0),
     ]
     payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
     app.dependency_overrides[get_db] = _override_get_db
@@ -103,6 +103,30 @@ def test_match_results_sorted_by_score_desc(client):
     assert len(results) == 2
     assert results[0]["score"] >= results[1]["score"]
     assert results[0]["freelance_id"] == str(FREELANCE_B)
+
+
+def test_match_exposes_real_distance(client):
+    profiles = [FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5, distance_km=12.34)]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()[0]["distance_km"] == pytest.approx(12.34)
+
+
+def test_match_tiebreak_by_distance_when_scores_equal(client):
+    # Même gear/skills → même score ; le plus proche doit passer devant
+    near = FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5, distance_km=5.0)
+    far = FreelancerProfile(freelance_id=FREELANCE_B, gear_categories=["DRONE"] * 5, distance_km=45.0)
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=[far, near])):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    results = response.json()
+    assert [r["freelance_id"] for r in results] == [str(FREELANCE_A), str(FREELANCE_B)]
 
 
 def test_match_returns_empty_list_when_no_freelances(client):
