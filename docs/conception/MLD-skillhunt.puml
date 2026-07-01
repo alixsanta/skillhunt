@@ -1,0 +1,108 @@
+@startuml MLD_SkillHunt
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+
+' ===== IMPLÉMENTÉ (PostgreSQL) =====
+entity "users" as users #E1F5EE {
+  * id : uuid <<PK>>
+  --
+  * email : varchar <<UK>>
+  * username : varchar
+  * passwordHash : varchar
+  * role : enum (FREELANCE|RECRUITER|ADMIN)
+  location : geography(Point,4326)
+  * createdAt : timestamptz
+}
+entity "gear" as gear #E1F5EE {
+  * id : uuid <<PK>>
+  --
+  * brand : varchar
+  * model : varchar
+  * serialNumber : varchar
+  * category : enum
+  * status : enum
+  specs : jsonb <<cible>>
+  gearCatalogId : uuid <<FK>> <<cible>>
+  * createdAt : timestamptz
+  * freelanceId : uuid <<FK>>
+}
+entity "user_certifications" as cert #E1F5EE {
+  * id : uuid <<PK>>
+  --
+  * type : enum
+  * number : varchar
+  * validUntil : date
+  * status : enum
+  s3Key : varchar
+  * mimeType : varchar
+  * uploadedAt : timestamptz
+  reviewedAt : timestamptz
+  purgedAt : timestamptz
+  * freelanceId : uuid <<FK>>
+}
+
+' ===== CIBLE (à implémenter) =====
+entity "gear_catalog" as gcat #F1EFE8 {
+  * id : uuid <<PK>>
+  --
+  * brand : varchar
+  * model : varchar <<UK>>
+  * category : enum
+  officialSpecs : jsonb
+}
+entity "skills" as skills #F1EFE8 {
+  * id : uuid <<PK>>
+  --
+  * code : varchar <<UK>>
+  * label : varchar
+  category : enum
+}
+entity "user_skills" as uskills #F1EFE8 {
+  * userId : uuid <<PK>> <<FK>>
+  * skillId : uuid <<PK>> <<FK>>
+  --
+  * source : enum (DECLARED|CERTIFIED)
+  certificationId : uuid <<FK>>
+}
+entity "missions" as missions #F1EFE8 {
+  * id : uuid <<PK>>
+  --
+  * recruiterId : uuid <<FK>>
+  useCaseId : varchar
+  * location : geography(Point,4326)
+  * radiusKm : numeric
+  * status : enum (OPEN|CLOSED)
+  * createdAt : timestamptz
+}
+entity "mission_skills" as mskills #F1EFE8 {
+  * missionId : uuid <<PK>> <<FK>>
+  * skillId : uuid <<PK>> <<FK>>
+}
+entity "media" as media #F1EFE8 {
+  * id : uuid <<PK>>
+  --
+  * freelanceId : uuid <<FK>>
+  * s3Key : varchar
+  * type : enum (VIDEO_4K|VIDEO_360|IMAGE)
+  * status : enum (PROCESSING|READY|FAILED)
+  * createdAt : timestamptz
+}
+
+' ===== Relations (crow's foot) =====
+users ||--o{ gear
+users ||--o{ cert
+users ||--o{ missions
+users ||--o{ media
+users ||--o{ uskills
+skills ||--o{ uskills
+cert ||--o{ uskills
+missions ||--o{ mskills
+skills ||--o{ mskills
+gcat ||--o{ gear
+
+legend right
+  vert  = implémenté (PostgreSQL)
+  gris  = cible / planifié
+endlegend
+@enduml
