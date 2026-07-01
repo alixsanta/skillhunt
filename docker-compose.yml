@@ -52,6 +52,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: skillhunt-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -60,9 +61,9 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - redis-data:/data
+      - skillhunt_redis:/data
 
 volumes:
   skillhunt_pgdata:
   skillhunt_localstack:
-  redis-data:
+  skillhunt_redis:
