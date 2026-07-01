@@ -139,3 +139,35 @@ def test_match_returns_empty_list_when_no_freelances(client):
     app.dependency_overrides.clear()
     assert response.status_code == 200
     assert response.json() == []
+
+
+# --- Tests du cache Redis autour de l'endpoint /match (C2.2.2) ---
+
+def test_match_returns_cache_hit_without_scoring(client):
+    # Un hit renvoie le cache tel quel, sans jamais appeler le scoring (get_candidates)
+    cached = [{"freelance_id": str(FREELANCE_A), "score": 0.8, "distance_km": 1.0}]
+    from app.models.schemas import MatchResult
+    hit = [MatchResult(**cached[0])]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_cached", new=AsyncMock(return_value=hit)), \
+         patch("app.routers.matching.get_candidates", new=AsyncMock()) as candidates:
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == cached
+    candidates.assert_not_called()  # scoring court-circuité par le cache
+
+
+def test_match_miss_computes_and_sets_cache(client):
+    # Un miss (cache = None) recalcule puis écrit le résultat dans le cache
+    profiles = [FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5)]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_cached", new=AsyncMock(return_value=None)), \
+         patch("app.routers.matching.set_cached", new=AsyncMock()) as setter, \
+         patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    setter.assert_awaited_once()  # le résultat recalculé est mis en cache
