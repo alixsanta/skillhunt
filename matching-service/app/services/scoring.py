@@ -1,4 +1,4 @@
-# C2.2.2 — Moteur de scoring multicritères (Skills + Matériel + Localisation stub) (SH-12)
+# C2.2.2 — Moteur de scoring multicritères (Skills + Matériel + Localisation) (SH-12/SH-13)
 from dataclasses import dataclass, field
 from uuid import UUID
 from app.models.schemas import MatchRequest
@@ -21,6 +21,7 @@ _GEAR_MAX_COUNT = 5
 class FreelancerProfile:
     freelance_id: UUID
     gear_categories: list[str] = field(default_factory=list)
+    distance_km: float = 0.0
 
 
 def score_skills(required_skills: list[str], gear_categories: list[str]) -> float:
@@ -40,14 +41,18 @@ def score_gear(gear_count: int) -> float:
     return min(1.0, gear_count / _GEAR_MAX_COUNT)
 
 
-def score_location(freelance_id: UUID, requester_location: tuple[float, float], radius_km: float) -> float:
-    """Stub — retourne 1.0 jusqu'à l'implémentation PostGIS (SH-13)."""
-    return 1.0
+def score_location(distance_km: float, radius_km: float) -> float:
+    """Score de proximité (SH-13) : décroissance linéaire, 1.0 au point exact, ~0 au bord du rayon.
+
+    La distance provient de PostGIS (ST_Distance) ; les candidats hors rayon sont déjà
+    exclus par ST_DWithin côté requête. Le clamp `max(0, …)` est une défense.
+    """
+    return max(0.0, 1.0 - distance_km / radius_km)
 
 
 def compute_composite_score(profile: FreelancerProfile, request: MatchRequest) -> float:
     """Score composite pondéré : 0.50 × skills + 0.30 × gear + 0.20 × location."""
     s = score_skills(request.skills, profile.gear_categories)
     g = score_gear(len(profile.gear_categories))
-    loc = score_location(profile.freelance_id, request.location, request.radius_km)
+    loc = score_location(profile.distance_km, request.radius_km)
     return _WEIGHTS["skills"] * s + _WEIGHTS["gear"] * g + _WEIGHTS["location"] * loc

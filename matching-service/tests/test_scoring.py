@@ -73,11 +73,23 @@ def test_score_gear_two_items():
     assert score_gear(2) == pytest.approx(0.4)
 
 
-# --- score_location ---
+# --- score_location (décroissance linéaire, SH-13) ---
 
-def test_score_location_is_stub_returning_one():
-    result = score_location(FREELANCE_ID, (43.6, 1.44), 50.0)
-    assert result == 1.0
+def test_score_location_same_point_is_one():
+    assert score_location(0.0, 50.0) == 1.0
+
+
+def test_score_location_half_radius():
+    assert score_location(25.0, 50.0) == pytest.approx(0.5)
+
+
+def test_score_location_at_radius_edge_is_zero():
+    assert score_location(50.0, 50.0) == pytest.approx(0.0)
+
+
+def test_score_location_beyond_radius_is_clamped_to_zero():
+    # Défense : ST_DWithin exclut déjà ces cas, mais le score ne doit jamais être négatif
+    assert score_location(80.0, 50.0) == 0.0
 
 
 # --- compute_composite_score ---

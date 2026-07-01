@@ -19,6 +19,21 @@ jobs:
     name: Validation de la Base de Code FastAPI
     runs-on: ubuntu-latest
 
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: skillhunt
+          POSTGRES_PASSWORD: skillhunt
+          POSTGRES_DB: skillhunt_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skillhunt"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       # Étape 1 : Récupérer le code source du dépôt global
       - name: 📥 Récupération du code source
@@ -60,6 +75,8 @@ jobs:
 
       # Étape 6 : Lancer les tests unitaires et de matching géospatial (Compétence C2.2.2 - Harnais de test)
       - name: 🧪 Exécution des tests unitaires et couverture (PyTest)
+        env:
+          DATABASE_URL: postgresql+asyncpg://skillhunt:skillhunt@localhost:5432/skillhunt_test
         run: |
           # Se déplace dans le répertoire de service pour charger le contexte d'exécution Python
           cd matching-service
