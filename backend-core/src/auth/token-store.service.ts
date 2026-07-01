@@ -31,6 +31,9 @@ export class TokenStore {
   }
 
   async revoke(jti: string): Promise<void> {
+    // On ne dispose que du jti : la clé primaire suffit à invalider le token.
+    // Le jti peut subsister dans le set d'index `user:{id}:jtis` jusqu'à son EXPIRE
+    // (entrée morte inoffensive : isValid ne lit que `refresh:{jti}`, jamais le set).
     await this.redis.del(`refresh:${jti}`);
   }
 
