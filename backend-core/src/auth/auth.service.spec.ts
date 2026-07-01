@@ -8,6 +8,32 @@ import { TokenStore } from './token-store.service';
 import { loadJwtKeys } from './keys';
 import { User } from '../users/user.entity';
 import { UserRole } from '../common/enums';
+import { REDIS_CLIENT } from '../common/redis/redis.module';
+
+/**
+ * Mock Redis avec état en mémoire : simule SET/GET/DEL de façon cohérente
+ * pour que les tests auth exercent vraiment la rotation et la révocation (C2.2.2).
+ */
+function makeStatefulRedisMock() {
+  const store = new Map<string, string>();
+  return {
+    set: jest.fn().mockImplementation((key: string, value: string) => {
+      store.set(key, value);
+      return Promise.resolve('OK');
+    }),
+    get: jest.fn().mockImplementation((key: string) => {
+      return Promise.resolve(store.get(key) ?? null);
+    }),
+    del: jest.fn().mockImplementation((...keys: string[]) => {
+      keys.forEach((k) => store.delete(k));
+      return Promise.resolve(keys.length);
+    }),
+    sadd: jest.fn().mockResolvedValue(1),
+    srem: jest.fn().mockResolvedValue(1),
+    smembers: jest.fn().mockResolvedValue([]),
+    expire: jest.fn().mockResolvedValue(1),
+  };
+}
 
 /**
  * Faux repository TypeORM en mémoire : permet de tester la logique d'AuthService
@@ -67,6 +93,7 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
         AuthService,
         TokenStore,
         { provide: getRepositoryToken(User), useClass: FakeUserRepository },
+        { provide: REDIS_CLIENT, useFactory: makeStatefulRedisMock },
       ],
     }).compile();
 
@@ -204,7 +231,7 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
     it('devrait rejeter un refresh token révoqué via logout', async () => {
       const tokens = await service.login({ email: credentials.email, password: credentials.password });
 
-      expect(service.logout(tokens.refreshToken)).toEqual({ success: true });
+      await expect(service.logout(tokens.refreshToken)).resolves.toEqual({ success: true });
       await expect(service.refresh(tokens.refreshToken)).rejects.toThrow(UnauthorizedException);
     });
 

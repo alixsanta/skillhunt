@@ -1,50 +1,48 @@
-import { Injectable } from '@nestjs/common';
-
-interface StoredToken {
-  userId: string;
-  expiresAt: number; // timestamp epoch (ms)
-}
+import { Inject, Injectable } from '@nestjs/common';
+import type Redis from 'ioredis';
+import { REDIS_CLIENT } from '../common/redis/redis.module';
 
 /**
- * Registre des refresh tokens valides, indexés par leur identifiant unique (jti).
+ * Registre des refresh tokens valides, persisté dans Redis (SH-14).
  *
- * Implémentation EN MÉMOIRE volontairement minimale — à migrer vers Redis (SH-14)
- * pour bénéficier de l'expiration native (TTL) et du partage entre instances.
- * L'interface publique (save/isValid/revoke/revokeAllForUser) est pensée Redis-ready.
+ * TTL natif Redis (plus de purge paresseuse) + partage entre instances.
+ * Clés : `refresh:{jti}` -> userId ; set secondaire `user:{userId}:jtis`
+ * pour la révocation globale (PCA en cas de compromission, dossier §4.4).
  */
 @Injectable()
 export class TokenStore {
-  private readonly store = new Map<string, StoredToken>();
+  constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
-  save(jti: string, userId: string, ttlSeconds: number): void {
-    this.store.set(jti, { userId, expiresAt: Date.now() + ttlSeconds * 1000 });
+  async save(jti: string, userId: string, ttlSeconds: number): Promise<void> {
+    await this.redis.set(`refresh:${jti}`, userId, 'EX', ttlSeconds);
+    await this.redis.sadd(`user:${userId}:jtis`, jti);
+    // Borne supérieure sur le set d'index pour éviter une fuite mémoire
+    await this.redis.expire(`user:${userId}:jtis`, ttlSeconds);
   }
 
-  isValid(jti: string, userId: string): boolean {
-    const entry = this.store.get(jti);
-    if (!entry) {
+  async isValid(jti: string, userId: string): Promise<boolean> {
+    try {
+      const stored = await this.redis.get(`refresh:${jti}`);
+      return stored !== null && stored === userId;
+    } catch {
+      // Fail-safe (C2.2.3) : un token non vérifiable est traité comme invalide
       return false;
     }
-    if (entry.expiresAt < Date.now()) {
-      this.store.delete(jti); // purge paresseuse des entrées expirées
-      return false;
-    }
-    return entry.userId === userId;
   }
 
-  revoke(jti: string): void {
-    this.store.delete(jti);
+  async revoke(jti: string): Promise<void> {
+    await this.redis.del(`refresh:${jti}`);
   }
 
   /**
    * Invalide tous les refresh tokens d'un utilisateur.
-   * Utilisé par le Plan de Continuité d'Activité en cas de compromission (cf. dossier §4.4).
+   * Utilisé par le Plan de Continuité d'Activité en cas de compromission (dossier §4.4).
    */
-  revokeAllForUser(userId: string): void {
-    for (const [jti, entry] of this.store.entries()) {
-      if (entry.userId === userId) {
-        this.store.delete(jti);
-      }
+  async revokeAllForUser(userId: string): Promise<void> {
+    const jtis = await this.redis.smembers(`user:${userId}:jtis`);
+    if (jtis.length > 0) {
+      await this.redis.del(...jtis.map((jti) => `refresh:${jti}`));
     }
+    await this.redis.del(`user:${userId}:jtis`);
   }
 }
