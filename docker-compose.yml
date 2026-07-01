@@ -1,6 +1,6 @@
 # Infrastructure de développement local — SkillHunt
-# Pour l'instant : PostgreSQL + PostGIS (SH-6) + LocalStack/S3 (SH-31). MongoDB, Redis et
-# les services applicatifs seront ajoutés lors de la dockerisation complète (SH-2).
+# PostgreSQL + PostGIS (SH-6) + LocalStack/S3 (SH-31) + Redis (SH-14).
+# MongoDB et les services applicatifs seront ajoutés lors de la dockerisation complète (SH-2).
 #
 # Démarrer :  docker compose up -d
 # Les identifiants sont volontairement ceux de DEV (à surcharger par .env en staging/prod).
@@ -49,6 +49,20 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: skillhunt-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis-data:/data
+
 volumes:
   skillhunt_pgdata:
   skillhunt_localstack:
+  redis-data:

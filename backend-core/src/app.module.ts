@@ -15,11 +15,15 @@ import { CertificationController } from './certifications/certification.controll
 import { StorageModule } from './storage/storage.module';
 import { TokenStore } from './auth/token-store.service';
 import { loadJwtKeys } from './auth/keys';
+import { RedisModule } from './common/redis/redis.module';
 
 @Module({
   imports: [
     // Chargement global des variables d'environnement (.env)
     ConfigModule.forRoot({ isGlobal: true }),
+
+    // Client Redis partagé (SH-14) — fourni globalement via le token REDIS_CLIENT (C2.2.3)
+    RedisModule,
 
     // Persistance réelle PostgreSQL + PostGIS via TypeORM (SH-6, remplace DbState en mémoire)
     TypeOrmModule.forRootAsync({
