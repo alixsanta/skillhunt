@@ -53,6 +53,17 @@ FREELANCE_A = UUID("aaaaaaaa-e89b-12d3-a456-426614174000")
 FREELANCE_B = UUID("bbbbbbbb-e89b-12d3-a456-426614174001")
 
 
+# C2.2.2 — Isolation : les tests unitaires de scoring ne doivent jamais dépendre d'un vrai
+# Redis. Sans ce patch, un Redis accessible (service CI, docker local) rend le cache actif
+# et le résultat du premier test est resservi aux suivants (même payload ⇒ même clé).
+# Les tests dédiés au cache (section C2.2.2 ci-dessous) le re-patchent explicitement.
+@pytest.fixture(autouse=True)
+def _neutralize_match_cache():
+    with patch("app.routers.matching.get_cached", new=AsyncMock(return_value=None)), \
+         patch("app.routers.matching.set_cached", new=AsyncMock()):
+        yield
+
+
 async def _override_get_db():
     yield None  # Session non utilisée — get_candidates est mocké
 
