@@ -46,6 +46,7 @@ async def consume_loop(stop_event: asyncio.Event) -> None:
                 GROUP, CONSUMER, {STREAM_KEY: ">"}, count=10, block=2000
             )
             if not response:
+                await asyncio.sleep(0)  # Cède l'event loop quand aucun message (C2.2.3)
                 continue
             for _stream, messages in response:
                 for message_id, fields in messages:
