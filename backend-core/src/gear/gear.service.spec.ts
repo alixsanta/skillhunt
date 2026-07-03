@@ -79,23 +79,20 @@ function q(overrides: Partial<QueryGearDto> = {}): QueryGearDto {
 describe('🎒 GearService (Armurerie — SH-9)', () => {
   let service: GearService;
   let users: FakeUserRepository;
-  // Référence au mock EventPublisherService injecté dans le module de test (C2.2.2)
-  let publisher: { publish: jest.Mock };
 
   beforeEach(async () => {
-    const publisherMock = { publish: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GearService,
         { provide: getRepositoryToken(Gear), useClass: FakeGearRepository },
         { provide: getRepositoryToken(User), useClass: FakeUserRepository },
-        { provide: EventPublisherService, useValue: publisherMock },
+        // Bus d'événements mocké : l'émission est testée dans le describe SH-14 dédié (C2.2.2)
+        { provide: EventPublisherService, useValue: { publish: jest.fn() } },
       ],
     }).compile();
 
     service = module.get<GearService>(GearService);
     users = module.get<FakeUserRepository>(getRepositoryToken(User));
-    publisher = publisherMock;
   });
 
   const freelance = (): User =>
