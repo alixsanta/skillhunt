@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from fastapi import FastAPI
@@ -6,6 +7,8 @@ from app.db.database import engine
 from app.db.redis import close_redis
 from app.services.event_consumer import consume_loop
 from app.routers import health, matching
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -16,9 +19,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        # C2.2.3 — arrêt propre : signale l'arrêt, attend la tâche, draine les pools
+        # C2.2.3 — arrêt propre : signale l'arrêt, attend la tâche, draine les pools.
+        # Dégradation gracieuse (D5) : si le consumer est mort (Redis indisponible au
+        # démarrage), on logue son exception sans interrompre le drainage des pools.
         stop_event.set()
-        await consumer_task
+        try:
+            await consumer_task
+        except Exception:
+            logger.exception("Consumer d'événements terminé en erreur")
         await close_redis()
         await engine.dispose()
 
