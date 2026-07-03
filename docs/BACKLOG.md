@@ -60,7 +60,7 @@
 | [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🟢 Terminé | 5 | C2.2.3 | R4 |
-| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats | 🔵 Backlog | 5 | C2.2.2 | R4 |
+| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *implémenté sur `feature/SH-14-bus-evenements-redis`, PR vers `develop` à ouvrir ; périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟠 En cours | 5 → ~8–13 | C2.2.2 | R4 |
 
 ## EP04 — Microservice Médias & Portfolio · *14 J/H* · 🎯 J3
 
@@ -120,6 +120,7 @@
 ## Prochaines actions suggérées
 
 1. **✅ EP02 complet** ; **✅ `SH-12`** et **✅ `SH-13`** terminés → le moteur de matching géospatial est complet.
-2. **Suivant :** `SH-14` (bus d'événements Redis + cache des résultats `/match`).
-3. **Nouveau (à rédiger) :** `SH-34` — position freelance obligatoire à l'onboarding (backend-core, CHECK conditionnel par rôle).
-4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+2. **🟠 `SH-14` implémenté** (bus d'événements Redis + cache `/match`, 16 commits, tests unitaires + intégration Redis réelle en CI) → **ouvrir la PR `feature/SH-14-bus-evenements-redis` → `develop`**. Estimation requalifiée : **5 SP → ~8–13 SP** (périmètre réel : 4 sous-chantiers A/B/C/D).
+3. **Suivant :** `SH-34` — position freelance obligatoire à l'onboarding (backend-core, CHECK conditionnel par rôle) — ticket à rédiger.
+4. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
+5. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
