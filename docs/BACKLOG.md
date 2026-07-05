@@ -62,7 +62,7 @@
 | [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🟢 Terminé | 5 | C2.2.3 | R4 |
-| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *implémenté sur `feature/SH-14-bus-evenements-redis`, PR vers `develop` à ouvrir ; périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟠 En cours | 5 → ~8–13 | C2.2.2 | R4 |
+| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis + cache résultats — *mergé dans `develop` (PR #15) ; 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné). Dette de durcissement : SH-35/SH-36 ; extension bus : SH-37* | 🟢 Terminé | ~8–13 | C2.2.2, C2.2.3 | R4 |
 | [SH-35](tickets/SH-35-durcissement-cache-consumer-redis.md) | Durcissement cache `/match` & consumer Redis (course d'invalidation, PEL, scaling) — dette relevée en revue SH-14 | 🟡 Prêt | 3 | C2.2.2, C2.2.3 | R4 |
 | [SH-37](tickets/SH-37-offres-publication-bus.md) | Offres/Missions : publication recruteur + événement `offer.published` (2ᵉ producteur du bus, scénario archi §2) — constat post-revue SH-14 | 🔵 Backlog | 8 | C2.2.3, C2.2.2, C2.4.1 | R4 |
 
@@ -124,8 +124,7 @@
 ## Prochaines actions suggérées
 
 1. **✅ EP02 complet** ; **✅ `SH-12`** et **✅ `SH-13`** terminés → le moteur de matching géospatial est complet.
-2. **🟠 `SH-14` implémenté** — PR [#15](https://github.com/alixsanta/skillhunt/pull/15) ouverte vers `develop` (CI verte, code review passée) → **merger après relecture**. Estimation requalifiée : **5 SP → ~8–13 SP** (périmètre réel : 4 sous-chantiers A/B/C/D).
-3. **Dette de revue SH-14 tracée :** `SH-35` (cache/consumer matching) et `SH-36` (TokenStore) — non bloquants, fenêtres bornées par le TTL 60 s.
-4. **Suivant :** 🟡 `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — **ticket rédigé, prêt à démarrer**.
+2. **✅ `SH-14` mergé** dans `develop` (PR #15, SCRUM-30 Terminé). Dette de revue tracée : `SH-35` (cache/consumer) + `SH-36` (TokenStore) ; extension du bus : `SH-37` (offres) — tous non bloquants.
+3. **🟠 En cours :** `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — branche `feature/SH-34-position-freelance-onboarding` créée.
 5. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
 6. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
