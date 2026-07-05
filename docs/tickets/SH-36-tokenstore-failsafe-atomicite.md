@@ -1,4 +1,4 @@
-**Titre du Ticket :** [SH-35] TokenStore Redis — cohérence du fail-safe et atomicité de l'écriture
+**Titre du Ticket :** [SH-36] TokenStore Redis — cohérence du fail-safe et atomicité de l'écriture
 **Type :** Bug (dette technique / sécurité)
 **Priorité :** Medium
 **Estimation :** 2 Story Points (Fibonacci)

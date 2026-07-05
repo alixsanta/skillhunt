@@ -1,4 +1,4 @@
-**Titre du Ticket :** [SH-33] Durcissement cache /match & consumer Redis — course d'invalidation, PEL, scaling
+**Titre du Ticket :** [SH-35] Durcissement cache /match & consumer Redis — course d'invalidation, PEL, scaling
 **Type :** Bug (dette technique / robustesse)
 **Priorité :** Medium
 **Estimation :** 3 Story Points (Fibonacci)
