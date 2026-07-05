@@ -6,6 +6,7 @@ import { Gear } from './gear.entity';
 import { User } from '../users/user.entity';
 import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
+import { EventPublisherService, DomainEventType } from '../common/events/event-publisher.service';
 
 // Résultat paginé générique de l'Armurerie
 export interface PaginatedGear {
@@ -22,6 +23,7 @@ export class GearService {
     private readonly gearRepo: Repository<Gear>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly events: EventPublisherService,
   ) {}
 
   /** Déclaration d'un équipement par un Freelance (statut initial : en attente de validation). */
@@ -75,7 +77,16 @@ export class GearService {
     }
 
     gear.status = decision;
-    return this.gearRepo.save(gear);
+    const saved = await this.gearRepo.save(gear);
+
+    // Émission best-effort : notifie le matching-service pour invalider son cache (SH-14)
+    const type =
+      decision === GearStatus.VALIDATED
+        ? DomainEventType.GEAR_VALIDATED
+        : DomainEventType.GEAR_REJECTED;
+    await this.events.publish(type, { gearId: saved.id, freelanceId: saved.freelanceId });
+
+    return saved;
   }
 
   /** Helper de pagination commun (tri par date de création décroissante). */

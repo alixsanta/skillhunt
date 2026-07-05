@@ -104,7 +104,7 @@ Le code actuel est un **squelette de démonstration**. Plusieurs briques sont de
 | Persistance (SQL) | ✅ **PostgreSQL + PostGIS réel** via **TypeORM** (entités `User`/`Gear`, migrations, index GiST) — *fait, SH-6* | — |
 | Persistance (NoSQL) | pas encore branchée | MongoDB (chat/logs) — à venir |
 | Hash mot de passe | ✅ **Argon2id réel** (`@node-rs/argon2`) — *fait, SH-7* | — |
-| JWT | ✅ **RS256** + refresh tokens avec rotation — *fait, SH-7* | refresh store à migrer en Redis (SH-14) |
+| JWT | ✅ **RS256** + refresh tokens avec rotation, refresh store **Redis** (TTL natif) — *fait, SH-7 & SH-14* | — |
 | Guard JWT | ✅ vérification cryptographique réelle de la signature — *fait, SH-7* | — |
 | matching-service | dossier vide | Projet FastAPI + `requirements.txt` + `tests/` |
 

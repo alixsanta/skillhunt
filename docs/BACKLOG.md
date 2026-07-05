@@ -52,6 +52,8 @@
 | [SH-9](tickets/SH-9-armurerie-backend.md) | Armurerie (Gear Locker) : déclaration matériel + filtres + workflow validation | 🟢 Terminé | 5 | C2.2.3 | R10 |
 | [SH-31](tickets/SH-31-storage-abstraction.md) | Abstraction de stockage objet (`StorageService` + adaptateur S3 + LocalStack) — prérequis SH-10, réutilisé SH-17 | 🟢 Terminé | 3 | C2.1.2, C2.2.3 | R8 |
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
+| [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
+| [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟡 Prêt | 3 | C2.2.3, C2.2.2 | R4 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
@@ -60,7 +62,9 @@
 | [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🟢 Terminé | 5 | C2.2.3 | R4 |
-| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats | 🔵 Backlog | 5 | C2.2.2 | R4 |
+| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *implémenté sur `feature/SH-14-bus-evenements-redis`, PR vers `develop` à ouvrir ; périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟠 En cours | 5 → ~8–13 | C2.2.2 | R4 |
+| [SH-35](tickets/SH-35-durcissement-cache-consumer-redis.md) | Durcissement cache `/match` & consumer Redis (course d'invalidation, PEL, scaling) — dette relevée en revue SH-14 | 🟡 Prêt | 3 | C2.2.2, C2.2.3 | R4 |
+| [SH-37](tickets/SH-37-offres-publication-bus.md) | Offres/Missions : publication recruteur + événement `offer.published` (2ᵉ producteur du bus, scénario archi §2) — constat post-revue SH-14 | 🔵 Backlog | 8 | C2.2.3, C2.2.2, C2.4.1 | R4 |
 
 ## EP04 — Microservice Médias & Portfolio · *14 J/H* · 🎯 J3
 
@@ -120,6 +124,8 @@
 ## Prochaines actions suggérées
 
 1. **✅ EP02 complet** ; **✅ `SH-12`** et **✅ `SH-13`** terminés → le moteur de matching géospatial est complet.
-2. **Suivant :** `SH-14` (bus d'événements Redis + cache des résultats `/match`).
-3. **Nouveau (à rédiger) :** `SH-34` — position freelance obligatoire à l'onboarding (backend-core, CHECK conditionnel par rôle).
-4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+2. **🟠 `SH-14` implémenté** — PR [#15](https://github.com/alixsanta/skillhunt/pull/15) ouverte vers `develop` (CI verte, code review passée) → **merger après relecture**. Estimation requalifiée : **5 SP → ~8–13 SP** (périmètre réel : 4 sous-chantiers A/B/C/D).
+3. **Dette de revue SH-14 tracée :** `SH-35` (cache/consumer matching) et `SH-36` (TokenStore) — non bloquants, fenêtres bornées par le TTL 60 s.
+4. **Suivant :** 🟡 `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — **ticket rédigé, prêt à démarrer**.
+5. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
+6. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).

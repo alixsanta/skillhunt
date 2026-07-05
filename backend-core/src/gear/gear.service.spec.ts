@@ -7,6 +7,7 @@ import { Gear } from './gear.entity';
 import { User } from '../users/user.entity';
 import { UserRole, GearStatus, GearCategory } from '../common/enums';
 import { QueryGearDto } from './dto/query-gear.dto';
+import { EventPublisherService, DomainEventType } from '../common/events/event-publisher.service';
 
 /** Faux repository User en mémoire, avec un helper de seed. */
 class FakeUserRepository {
@@ -85,6 +86,8 @@ describe('🎒 GearService (Armurerie — SH-9)', () => {
         GearService,
         { provide: getRepositoryToken(Gear), useClass: FakeGearRepository },
         { provide: getRepositoryToken(User), useClass: FakeUserRepository },
+        // Bus d'événements mocké : l'émission est testée dans le describe SH-14 dédié (C2.2.2)
+        { provide: EventPublisherService, useValue: { publish: jest.fn() } },
       ],
     }).compile();
 
@@ -209,5 +212,46 @@ describe('🎒 GearService (Armurerie — SH-9)', () => {
 
   it('refuse (404) la review d\'un équipement inexistant', async () => {
     await expect(service.reviewGear('inexistant', GearStatus.VALIDATED)).rejects.toThrow(NotFoundException);
+  });
+
+  // --- Émission d'événements de domaine (bus Redis — SH-14) — C2.2.2 ---
+  describe('émission d\'événements sur le bus (SH-14)', () => {
+    let svc: GearService;
+    let gearRepo: { findOne: jest.Mock; save: jest.Mock };
+    let pub: { publish: jest.Mock };
+
+    beforeEach(async () => {
+      gearRepo = { findOne: jest.fn(), save: jest.fn() };
+      pub = { publish: jest.fn() };
+      const mod: TestingModule = await Test.createTestingModule({
+        providers: [
+          GearService,
+          { provide: getRepositoryToken(Gear), useValue: gearRepo },
+          { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
+          { provide: EventPublisherService, useValue: pub },
+        ],
+      }).compile();
+      svc = mod.get<GearService>(GearService);
+    });
+
+    it('reviewGear(VALIDATED) émet un événement gear.validated', async () => {
+      gearRepo.findOne.mockResolvedValue({ id: 'g1', freelanceId: 'f1', status: GearStatus.PENDING });
+      gearRepo.save.mockResolvedValue({ id: 'g1', freelanceId: 'f1', status: GearStatus.VALIDATED });
+      await svc.reviewGear('g1', GearStatus.VALIDATED);
+      expect(pub.publish).toHaveBeenCalledWith(
+        DomainEventType.GEAR_VALIDATED,
+        { gearId: 'g1', freelanceId: 'f1' },
+      );
+    });
+
+    it('reviewGear(REJECTED) émet un événement gear.rejected', async () => {
+      gearRepo.findOne.mockResolvedValue({ id: 'g2', freelanceId: 'f2', status: GearStatus.PENDING });
+      gearRepo.save.mockResolvedValue({ id: 'g2', freelanceId: 'f2', status: GearStatus.REJECTED });
+      await svc.reviewGear('g2', GearStatus.REJECTED);
+      expect(pub.publish).toHaveBeenCalledWith(
+        DomainEventType.GEAR_REJECTED,
+        { gearId: 'g2', freelanceId: 'f2' },
+      );
+    });
   });
 });

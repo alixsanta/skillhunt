@@ -89,13 +89,13 @@ export class AuthService {
     if (
       payload.type !== 'refresh' ||
       !payload.jti ||
-      !this.tokenStore.isValid(payload.jti, payload.userId)
+      !(await this.tokenStore.isValid(payload.jti, payload.userId))
     ) {
       throw new UnauthorizedException('Refresh token révoqué ou inconnu');
     }
 
     // Rotation : l'ancien jeton ne pourra plus être réutilisé
-    this.tokenStore.revoke(payload.jti);
+    await this.tokenStore.revoke(payload.jti);
 
     const user = await this.usersRepo.findOne({ where: { id: payload.userId } });
     if (!user) {
@@ -105,11 +105,11 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  logout(refreshToken: string): { success: boolean } {
+  async logout(refreshToken: string): Promise<{ success: boolean }> {
     try {
       const payload = this.jwt.verify(refreshToken) as JwtPayload & { jti?: string };
       if (payload.jti) {
-        this.tokenStore.revoke(payload.jti);
+        await this.tokenStore.revoke(payload.jti);
       }
     } catch {
       // Logout idempotent : un token déjà invalide n'est pas une erreur
@@ -117,7 +117,7 @@ export class AuthService {
     return { success: true };
   }
 
-  private issueTokens(user: User): TokenPair {
+  private async issueTokens(user: User): Promise<TokenPair> {
     const payload: JwtPayload = { userId: user.id, email: user.email, role: user.role };
 
     const accessToken = this.jwt.sign(
@@ -130,7 +130,7 @@ export class AuthService {
       { ...payload, type: 'refresh' },
       { expiresIn: REFRESH_TTL_SECONDS, jwtid: jti },
     );
-    this.tokenStore.save(jti, user.id, REFRESH_TTL_SECONDS);
+    await this.tokenStore.save(jti, user.id, REFRESH_TTL_SECONDS);
 
     return { accessToken, refreshToken };
   }
