@@ -61,14 +61,18 @@
     * Identité et rôle jamais dérivés d'un `{id}` client — cf. CLAUDE.md §8.
 * **Base (PostgreSQL) — garde-fou (défense en profondeur) :**
     * Migration TypeORM ajoutant `CHECK (role <> 'FREELANCE' OR location IS NOT NULL)` sur `users`.
-    * ⚠️ **Reprise des données existantes (Scénario 5) :** décider entre (a) backfill d'une position par défaut/temporaire + flag « à compléter », ou (b) contrainte `NOT VALID` puis validation différée après complétion. Tracer la décision dans la migration.
+    * ✅ **Reprise des données existantes (Scénario 5) — décision (D4, spec 2026-07-06) :**
+      **aucune reprise**. Pas de prod (projet académique), bases dev/CI reconstruites par
+      migrations → contrainte appliquée directement en VALID. Base dev locale contenant des
+      freelances de test sans position → `docker compose down -v` + re-migrer (documenté
+      dans la migration). Le dilemme backfill vs `NOT VALID` est clos.
 * **Cohérence :** conserver `users.location` en `GEOGRAPHY(Point,4326)` (pas de changement de type) ; seule la nullabilité devient conditionnelle.
 * **Aucune requête brute** : passer par le repository TypeORM ; la contrainte vit dans une migration versionnée.
 
 ### 5. Definition of Done (DoD)
-- [ ] DTO : validation conditionnelle de `location` par rôle (freelance obligatoire) + tests unitaires (passant/rejet/rôle non concerné).
-- [ ] Migration TypeORM : `CHECK` conditionnel + stratégie de reprise des données existantes documentée et testée (la migration s'applique sans casse).
-- [ ] **Tests d'étanchéité** : un recruteur reste créable sans position ; un freelance sans position est refusé aux deux niveaux (API + base).
+- [x] DTO : validation conditionnelle de `location` par rôle (freelance obligatoire) + tests unitaires (passant/rejet/rôle non concerné).
+- [x] Migration TypeORM : `CHECK` conditionnel + stratégie de reprise des données existantes documentée et testée (la migration s'applique sans casse).
+- [x] **Tests d'étanchéité** : un recruteur reste créable sans position ; un freelance sans position est refusé aux deux niveaux (API + base).
 - [ ] CI verte (lint + audit + tests + build) ; Swagger à jour (schéma d'enregistrement, C2.4.1).
-- [ ] Aucun secret en dur ; messages utilisateur en français.
+- [x] Aucun secret en dur ; messages utilisateur en français.
 - [ ] `CLAUDE.md` §5 / backlog mis à jour si la nullabilité de `location` y est décrite.

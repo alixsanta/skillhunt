@@ -53,7 +53,7 @@
 | [SH-31](tickets/SH-31-storage-abstraction.md) | Abstraction de stockage objet (`StorageService` + adaptateur S3 + LocalStack) — prérequis SH-10, réutilisé SH-17 | 🟢 Terminé | 3 | C2.1.2, C2.2.3 | R8 |
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 | [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
-| [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟡 Prêt | 3 | C2.2.3, C2.2.2 | R4 |
+| [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟠 En cours | 3 | C2.2.3, C2.2.2 | R4 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
