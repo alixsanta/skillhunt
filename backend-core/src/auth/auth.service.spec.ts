@@ -166,6 +166,36 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
       const user = await service.register(dto);
       expect(user.role).toBe(UserRole.RECRUITER);
     });
+
+    it('devrait persister la position d\'un freelance en GeoJSON Point [lon, lat] (SH-34)', async () => {
+      const dto = {
+        email: 'geo.pilote@skillhunt.io',
+        username: 'GeoPilote',
+        password: 'Password123!',
+        role: UserRole.FREELANCE,
+        location: { latitude: 43.6045, longitude: 1.4442 },
+      };
+
+      await service.register(dto);
+
+      const stored = repo.all().find((u) => u.email === dto.email);
+      // Ordre GeoJSON : [longitude, latitude] — l'inversion est le piège à verrouiller (C2.2.2)
+      expect(stored!.location).toEqual({ type: 'Point', coordinates: [1.4442, 43.6045] });
+    });
+
+    it('devrait laisser la position à null pour un recruteur sans position (SH-34)', async () => {
+      const dto = {
+        email: 'recruteur.sans.geo@skillhunt.io',
+        username: 'RecruteurSansGeo',
+        password: 'Password123!',
+        role: UserRole.RECRUITER,
+      };
+
+      await service.register(dto);
+
+      const stored = repo.all().find((u) => u.email === dto.email);
+      expect(stored!.location).toBeNull();
+    });
   });
 
   // --- LOGIN ---
