@@ -72,4 +72,18 @@ describe('RegisterDto — position conditionnelle par rôle (SH-34)', () => {
     });
     expect(errors).toContain('location');
   });
+
+  it('coordonnées en chaînes numériques : coercées en nombres (jamais de string persistée)', async () => {
+    const dto = plainToInstance(RegisterDto, {
+      ...BASE,
+      role: UserRole.FREELANCE,
+      location: { latitude: '43.6045', longitude: '1.4442' },
+    });
+    const errors = await validate(dto);
+    expect(errors).toEqual([]);
+    // La coercition @Type(() => Number) garantit des number natifs pour la conversion GeoJSON (C2.2.3)
+    expect(typeof dto.location!.latitude).toBe('number');
+    expect(typeof dto.location!.longitude).toBe('number');
+    expect(dto.location!.latitude).toBeCloseTo(43.6045);
+  });
 });

@@ -386,7 +386,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ## Vérification finale (avant PR)
 
 - [ ] `cd backend-core && npm run lint && npm run test && npm run build` — tout vert.
-- [ ] Migration vérifiée au moins une fois sur un vrai Postgres (Task 3 Step 2) — INSERT freelance sans position rejeté par le CHECK.
+- [x] Migration vérifiée au moins une fois sur un vrai Postgres (Task 3 Step 2) — INSERT freelance sans position rejeté par le CHECK. Doublement prouvée par la revue finale : chemin d'écriture réel `save()` → `geography(Point,4326)` exercé contre `skillhunt-postgres` (port 5433), relecture `ST_AsText`/`ST_SRID` conforme (`POINT(1.4442 43.6045)`, SRID 4326).
 - [ ] Swagger : `LocationDto` visible dans le schéma de `POST /api/v1/auth/register` (`npm run start:dev` + http://localhost:3001/api/docs — contrôle visuel rapide).
 - [ ] Ouvrir la PR **vers `develop`** (jamais `main`), corps : décisions D1–D6, scénarios Gherkin couverts, compétences C2.2.3/C2.2.2/C2.4.1.
 - [ ] Après merge : SH-34 → 🟢 au backlog, SCRUM-52 → Terminé (transition `41`).

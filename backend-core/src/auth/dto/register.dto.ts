@@ -17,10 +17,15 @@ export const SELF_ASSIGNABLE_ROLES: UserRole[] = [UserRole.FREELANCE, UserRole.R
  */
 export class LocationDto {
   @ApiProperty({ example: 43.6045, description: 'Latitude en degrés décimaux (WGS84, entre -90 et 90)' })
+  // Coercition explicite en number : le ValidationPipe global n'a PAS enableImplicitConversion,
+  // donc sans @Type() une string numérique ("43.6045") passerait @IsLatitude et serait
+  // persistée telle quelle dans le GeoJSON → corruption silencieuse de la colonne geography (C2.2.3).
+  @Type(() => Number)
   @IsLatitude({ message: 'La latitude doit être comprise entre -90 et 90' })
   latitude!: number;
 
   @ApiProperty({ example: 1.4442, description: 'Longitude en degrés décimaux (WGS84, entre -180 et 180)' })
+  @Type(() => Number)
   @IsLongitude({ message: 'La longitude doit être comprise entre -180 et 180' })
   longitude!: number;
 }
