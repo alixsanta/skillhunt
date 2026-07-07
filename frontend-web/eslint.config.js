@@ -20,4 +20,14 @@ export default tseslint.config(
       globals: globals.browser,
     },
   },
+  {
+    // Composants générés par la CLI shadcn/ui : ils exportent volontairement
+    // le composant ET son helper de variantes (cva) dans le même fichier.
+    // On ne modifie pas ces fichiers à la main, donc la contrainte react-refresh
+    // (un seul export de composant par fichier) ne s'applique pas ici (SH-19).
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 );

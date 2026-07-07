@@ -7,4 +7,9 @@ describe('App', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /skillhunt/i })).toBeInTheDocument();
   });
+
+  it('rend un bouton de démonstration shadcn/ui', () => {
+    render(<App />);
+    expect(screen.getByRole('button', { name: /commencer/i })).toBeInTheDocument();
+  });
 });
