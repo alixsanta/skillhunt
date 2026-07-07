@@ -79,7 +79,7 @@
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
-| [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🔵 Backlog | 5 | C2.1.2 | — |
+| [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🟢 Terminé | 5 | C2.1.2 | — |
 | [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, gestion du token, 2FA comptes pro) | 🔵 Backlog | 5 | C2.2.3 | — |
 | [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (cartes, loadout, progression, badges) | 🔵 Backlog | 8 | C2.4.1 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching | 🔵 Backlog | 5 | C2.4.1 | R4 |

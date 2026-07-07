@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    /* Miroir de l'alias '@' déclaré dans tsconfig.app.json : certains outils
+       (CLI shadcn/ui) lisent ce tsconfig racine sans suivre "references" (SH-19). */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
