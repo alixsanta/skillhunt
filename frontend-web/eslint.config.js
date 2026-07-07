@@ -6,7 +6,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'coverage/**'] },
+  // `src/api/schema.d.ts` est généré (openapi-typescript) et ne doit jamais être édité
+  // à la main : on l'exclut du lint pour qu'une régénération ne casse pas la CI (SH-19).
+  { ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'src/api/schema.d.ts'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
