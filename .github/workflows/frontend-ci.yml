@@ -1,0 +1,47 @@
+name: SkillHunt - CI Frontend Web
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'frontend-web/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'frontend-web/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  validation-frontend:
+    name: Validation du Frontend Web React
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-web
+
+    steps:
+      - name: 📥 Récupération du code source
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend-web/package-lock.json'
+
+      - name: 📦 Installation propre des dépendances (ci)
+        run: npm ci
+
+      - name: 🛡️ Audit de sécurité des dépendances NPM
+        run: npm audit --audit-level=high
+
+      - name: 🔍 Analyse statique du code (Lint)
+        run: npm run lint
+
+      - name: 🧪 Exécution des tests automatisés
+        run: npm run test
+
+      - name: 🏗️ Validation de la compilation (Build)
+        run: npm run build

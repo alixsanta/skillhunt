@@ -1,32 +1,20 @@
-# React + TypeScript + Vite
+# frontend-web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Web App React de SkillHunt — Lot 1.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Vite · React 18 · TypeScript strict · React Router · Tailwind CSS + shadcn/ui + Lucide · TanStack Query + Axios · Vitest + React Testing Library · ESLint (flat config) + Prettier.
 
-## React Compiler
+## Commandes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci           # installation reproductible des dépendances
+npm run dev      # dev (Vite, hot reload) → http://localhost:5173
+npm run lint     # ESLint
+npm run test     # Vitest
+npm run build    # compilation TypeScript + build de production (dist/)
+npm run gen:api  # régénère src/api/schema.d.ts depuis le Swagger du backend (backend-core sur :3001)
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Voir `frontend-web/CLAUDE.md` pour les conventions détaillées de ce service.
