@@ -3,11 +3,11 @@
 > Contexte local. Hérite du `CLAUDE.md` racine — ici on ne décrit que les conventions **spécifiques au frontend web**.
 
 ## Rôle du service
-Web App **responsive Mobile-First** de SkillHunt (Lot 1). React 18 · TypeScript strict · Vite · port **5173**.
+Web App **responsive Mobile-First** de SkillHunt (Lot 1). React 19 · TypeScript strict · Vite · port **5173**.
 Consomme l'API `backend-core` (NestJS, port 3001) et, à terme, le `matching-service`.
 
 ## Stack
-Vite · React 18 · React Router · Tailwind CSS + shadcn/ui + Lucide · TanStack Query + Axios · Vitest + React Testing Library · ESLint (flat config) + Prettier.
+Vite · React 19 · React Router · Tailwind CSS + shadcn/ui + Lucide · TanStack Query + Axios · Vitest + React Testing Library · ESLint (flat config) + Prettier.
 
 ## Organisation (pattern à respecter)
 Organisation **par feature**, miroir du backend :

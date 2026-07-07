@@ -4,5 +4,8 @@ import axios from 'axios';
 // seront branchés ici lors du parcours d'authentification (SH-20).
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3001',
+  // TODO sécurité (SH-20) : withCredentials exige un CORS backend à origine explicite —
+  // origin: '*' (backend-core/src/main.ts) sera rejeté par le navigateur sur requête
+  // credentialed ; restreindre l'origine avant le premier appel authentifié.
   withCredentials: true,
 });

@@ -4,7 +4,7 @@ Web App React de SkillHunt — Lot 1.
 
 ## Stack
 
-Vite · React 18 · TypeScript strict · React Router · Tailwind CSS + shadcn/ui + Lucide · TanStack Query + Axios · Vitest + React Testing Library · ESLint (flat config) + Prettier.
+Vite · React 19 · TypeScript strict · React Router · Tailwind CSS + shadcn/ui + Lucide · TanStack Query + Axios · Vitest + React Testing Library · ESLint (flat config) + Prettier.
 
 ## Commandes
 

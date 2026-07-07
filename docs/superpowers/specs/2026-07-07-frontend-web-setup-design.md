@@ -13,7 +13,7 @@ Le backend-core (NestJS) est fonctionnel sur trois modules réels : Auth (regist
 | Sujet | Décision |
 |---|---|
 | Emplacement | `frontend-web/`, service standalone (pas de workspace npm racine), sibling de `backend-core/` et `matching-service/` |
-| Bundler / framework | Vite + React 18 + TypeScript strict |
+| Bundler / framework | Vite + React 19 + TypeScript strict |
 | Routing | React Router |
 | Design system | Tailwind CSS + shadcn/ui (composants Radix accessibles, copiés dans le repo) + Lucide (icônes) |
 | Data fetching | TanStack Query + Axios (instance avec intercepteurs, base pour la gestion future du refresh JWT) |
