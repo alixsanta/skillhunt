@@ -1,0 +1,4 @@
+# Types générés depuis le Swagger backend (npm run gen:api) — ne pas formater (SH-38).
+src/api/schema.d.ts
+# Lockfile géré par npm — sa mise en forme lui appartient (SH-38).
+package-lock.json
