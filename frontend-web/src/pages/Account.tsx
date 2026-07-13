@@ -9,8 +9,17 @@ export default function Account() {
   const navigate = useNavigate();
 
   async function handleLogout() {
-    await logout();
-    navigate('/login', { replace: true });
+    try {
+      await logout();
+    } catch {
+      // Révocation serveur en échec (réseau coupé, backend indisponible) : sans intérêt pour
+      // l'utilisateur, la session locale est de toute façon déjà purgée par AuthProvider.
+      // On avale l'erreur ici : `onClick` n'attend pas cette promesse, donc si on la laissait
+      // remonter elle deviendrait un rejet de promesse non géré (Account.tsx, SH-20 post-revue).
+    } finally {
+      // Redirige toujours vers /login, y compris quand la révocation côté serveur a échoué.
+      navigate('/login', { replace: true });
+    }
   }
 
   return (
