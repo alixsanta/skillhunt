@@ -37,9 +37,17 @@ Cardinalité Merise lue côté entité = (min, max) participations d'une occurre
 | **maîtrise** | UTILISATEUR (freelance) | (0,n) | COMPÉTENCE | (0,n) | 🔲 |
 | **requiert** | MISSION | (0,n) | COMPÉTENCE | (0,n) | 🔲 |
 | **atteste** | CERTIFICATION | (0,n) | COMPÉTENCE | (0,n) | 🔲 |
+| **réfère** | MATÉRIEL | (1,1) | MODÈLE_MATÉRIEL | (0,n) | 🔲 |
 
 - **UTILISATEUR** porte un `rôle` (FREELANCE / RECRUITER / ADMIN) — spécialisation conceptuelle
   réalisée par un attribut (table unique côté MLD), pas par héritage de tables.
+- **réfère** : c'est **MATÉRIEL** qui est côté (1,1), donc qui **porte la clé étrangère**
+  (`gear.gearCatalogId → gear_catalog.id`) — même règle de dérivation que `possède`
+  (MATÉRIEL (1,1) → `gear.freelanceId`).
+- **atteste** (N:N) ne se réifie **pas** en table de jonction dédiée : elle est **absorbée** dans
+  `user_skills.certificationId` (FK nullable, `source = CERTIFIED`). Simplification assumée — une
+  compétence attestée est toujours rattachée au freelance qui la détient, la table `user_skills`
+  suffit donc à porter les deux liens. À ne pas lire comme une erreur de dérivation Merise.
 - **COMPÉTENCE (skills)** devient le **hub** du modèle cible : un freelance la **maîtrise**
   (déclarée ou attestée), une mission la **requiert**, une certification l'**atteste**. Les trois
   associations N:N se réifient en tables de liaison (`user_skills`, `mission_skills`).
@@ -95,8 +103,30 @@ erDiagram
     }
 ```
 
-Index notables : `users.email` (unique), `users.location` (GiST spatial), `gear.status`,
+Index notables : `users.email` (unique), `users.role`, `users.location` (GiST spatial), `gear.status`,
 `gear.category`, `gear.freelanceId`, `user_certifications.status`, `user_certifications.freelanceId`.
+
+> 🔐 **Chiffrement au repos — état réel et écart assumé** (règle `CLAUDE.md` §8.6 : « données sensibles
+> chiffrées AES-256 au repos »).
+>
+> | Donnée | Sensibilité | État actuel |
+> |---|---|---|
+> | `users.passwordHash` | — | **Argon2id** (hachage, non réversible — pas concerné par le chiffrement) ✅ |
+> | Fichier de certification (S3) | Élevée (pièce officielle) | **AES-256** côté S3 (SSE) + Signed URL courte + purge des PII du PDF ✅ |
+> | `user_certifications.number` | **Élevée** (n° de brevet DGAC — identifiant officiel, réutilisable pour usurpation) | ⚠️ **`varchar` en clair** — non chiffré au niveau colonne |
+> | `users.location` | **Moyenne** (géolocalisation précise du domicile d'un freelance) | ⚠️ `GEOGRAPHY(Point)` **en clair** — non chiffré au niveau colonne |
+>
+> **Écart assumé et tracé.** Ces deux colonnes ne sont **pas chiffrées au niveau applicatif** : elles
+> doivent rester **interrogeables** (déduplication anti-fraude sur `{type, number}` — risque R2 ; requêtes
+> spatiales GiST `ST_DWithin` pour le matching géographique — SH-13). Un chiffrement de colonne les rendrait
+> inexploitables pour ces deux usages, qui sont au cœur du produit.
+>
+> **Mesure compensatoire retenue** : chiffrement **au niveau du volume** (chiffrement au repos de l'instance
+> PostgreSQL managée — AWS RDS `StorageEncrypted`, KMS), qui couvre l'ensemble des colonnes sans casser
+> l'indexation. À **acter explicitement à la mise en production** (SH-30) ; à défaut, l'écart reste ouvert.
+>
+> *(Une alternative existe pour `number` : ne stocker qu'un **hash** du numéro pour la déduplication et
+> chiffrer la valeur en clair — à évaluer si la valeur brute n'a pas besoin d'être réaffichée.)*
 
 > 🔲 **Évolutions cibles sur `gear`** (cf. §3) :
 > - **`specs JSONB`** (indexable GIN) pour les attributs hétérogènes par catégorie (autonomie d'un
