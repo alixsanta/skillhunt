@@ -8,7 +8,7 @@ function fakeJwt(payload: Record<string, unknown>): string {
 }
 
 describe('decodeAccessToken', () => {
-  it('extrait l\'identité du payload', () => {
+  it("extrait l'identité du payload", () => {
     const token = fakeJwt({
       userId: 'u-1',
       email: 'pilote@skillhunt.io',

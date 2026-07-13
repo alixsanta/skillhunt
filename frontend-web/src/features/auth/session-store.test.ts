@@ -11,7 +11,7 @@ const token = fakeJwt({ userId: 'u-1', email: 'a@skillhunt.io', role: 'RECRUITER
 describe('sessionStore', () => {
   afterEach(() => sessionStore.clear());
 
-  it('mémorise le token et l\'identité décodée', () => {
+  it("mémorise le token et l'identité décodée", () => {
     sessionStore.setSession(token);
 
     expect(sessionStore.getAccessToken()).toBe(token);
@@ -36,7 +36,7 @@ describe('sessionStore', () => {
   });
 
   // Exigence non négociable de SH-20 : le token ne doit JAMAIS être persisté.
-  it('n\'écrit RIEN dans localStorage ni sessionStorage', () => {
+  it("n'écrit RIEN dans localStorage ni sessionStorage", () => {
     sessionStore.setSession(token);
 
     expect(localStorage.length).toBe(0);
