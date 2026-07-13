@@ -66,6 +66,12 @@
 - [ ] `GET /use-cases` + `POST /match/by-use-case` (réutilise le scoring SH-12 sans le modifier).
 - [ ] **Test de l'invariant de cohérence** catalogue ⊆ `CATEGORY_SKILL_MAP`.
 - [ ] Tests : résolution, `resolved_criteria`, tri des résultats, `use_case_id` inconnu → 400, payload invalide → 422.
+- [ ] **Tests RBAC d'étanchéité** — ⚠️ **N/A à ce jour, et c'est une dette assumée, pas un oubli.** Le
+      `matching-service` n'expose **aucune authentification** : ni `POST /match` (SH-12, mergé), ni le nouvel
+      endpoint de ce ticket ne portent de `Depends`/JWT. L'auth et le RBAC sont **délégués à l'API Gateway**
+      (`CLAUDE.md` §2), qui **n'existe pas encore** (`SH-5`, 🔵 Backlog). Tant que la Gateway n'est pas en
+      place, **tout appelant réseau peut interroger le scoring**. À retester ici dès `SH-5` livré
+      (traçabilité RNCP C2.2.2).
 - [ ] CI verte : flake8 + bandit + pytest.
 - [ ] Swagger / OpenAPI à jour (`summary`, `response_model`, `tags`) — C2.4.1.
 - [ ] Aucun secret en dur.

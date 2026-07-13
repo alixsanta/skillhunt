@@ -86,7 +86,7 @@ USE_CASE_CATALOG: dict[str, UseCase]
 | id | label | skills | catégories |
 |---|---|---|---|
 | `ROOF_INSPECTION` | Inspection de toiture | `drone-dgac`, `telepilote` | DRONE, SENSOR |
-| `REAL_ESTATE_VIDEO` | Tournage / visite immobilière | `drone-dgac`, `fpv` | DRONE, CAMERA_360 |
+| `REAL_ESTATE_VIDEO` | Tournage / visite immobilière | `drone-dgac`, `fpv` | DRONE |
 | `SITE_MAPPING` | Cartographie de chantier | `drone-dgac`, `uas` | DRONE, SENSOR |
 | `INDUSTRIAL_ROBOTICS` | Automatisation / robotique industrielle | `robotics`, `automation` | ROBOTICS |
 | `VR_360_TOUR` | Visite virtuelle 360° | `camera-360`, `operateur-360` | CAMERA_360 |
