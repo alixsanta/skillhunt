@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -83,6 +84,33 @@ describe('AuthProvider (SH-20)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
 
     expect(await screen.findByText('Connecté : pilote@skillhunt.io')).toBeInTheDocument();
+  });
+
+  it("ne déclenche qu'un seul refresh sous StrictMode (pas de double rotation qui se révoque, SH-20)", async () => {
+    let refreshCalls = 0;
+
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), () => {
+        refreshCalls += 1;
+        return HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' });
+      }),
+    );
+
+    // <StrictMode> double monte/démonte l'effet de restauration en dev : sans passer
+    // par refreshOnce(), l'AuthProvider lancerait deux rotations concurrentes du cookie,
+    // le backend révoquerait la première et l'utilisateur retomberait déconnecté.
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText('Connecté : pilote@skillhunt.io')).toBeInTheDocument();
+
+    // Laisse le temps à un éventuel second appel concurrent de partir avant d'asserter.
+    await waitFor(() => expect(refreshCalls).toBe(1));
   });
 
   it('purge la session au logout et appelle le backend (révocation Redis)', async () => {

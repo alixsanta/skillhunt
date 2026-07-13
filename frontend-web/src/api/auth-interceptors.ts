@@ -18,7 +18,10 @@ interface RefreshResponse {
 // l'utilisateur se retrouve déconnecté sans raison. On partage donc UNE seule promesse.
 let refreshPromise: Promise<string> | null = null;
 
-function refreshOnce(): Promise<string> {
+// Exportée : AuthProvider (restauration de session) doit passer par CETTE promesse
+// partagée plutôt que par un appel direct — sinon le double montage StrictMode déclenche
+// deux rotations concurrentes du même cookie (SH-20).
+export function refreshOnce(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = apiClient
       // Body vide : le refresh token voyage dans le cookie httpOnly (SH-20).

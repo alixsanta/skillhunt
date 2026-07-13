@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { apiClient } from '@/api/client';
-import { installAuthInterceptors } from '@/api/auth-interceptors';
+import { installAuthInterceptors, refreshOnce } from '@/api/auth-interceptors';
 import { sessionStore } from './session-store';
 import { AuthContext, type AuthContextValue, type RegisterInput } from './useAuth';
 
@@ -28,28 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Restauration de session : l'access token n'a pas survécu au rechargement (mémoire),
   // mais le cookie de refresh, lui, est toujours là. On tente donc un refresh silencieux.
   useEffect(() => {
-    let cancelled = false;
-
-    apiClient
-      .post<TokenPair>('/api/v1/auth/refresh', {})
-      .then((response) => {
-        if (!cancelled) {
-          sessionStore.setSession(response.data.accessToken);
-        }
-      })
-      .catch(() => {
-        // Pas de cookie, ou refresh expiré/révoqué : simple visiteur non connecté.
-        sessionStore.clear();
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setStatus('ready');
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    // Passe par la promesse partagée : sous StrictMode, le double montage réutilise
+    // le refresh en vol au lieu de lancer une 2e rotation qui révoquerait la 1re (SH-20).
+    refreshOnce()
+      .catch(() => sessionStore.clear())
+      .finally(() => setStatus('ready'));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
