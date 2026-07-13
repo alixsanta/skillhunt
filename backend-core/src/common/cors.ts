@@ -26,5 +26,14 @@ export function resolveCorsOrigins(rawValue?: string): string[] {
     );
   }
 
+  // Une valeur ne contenant que des séparateurs (ex. ",", " , ") passe le test `raw` non
+  // vide mais produit une liste vide après filtrage : `enableCors({ origin: [] })` bloquerait
+  // alors TOUTES les origines sans rien signaler. Fail fast plutôt qu'un blocage silencieux.
+  if (origins.length === 0) {
+    throw new Error(
+      'CORS_ORIGIN ne contient aucune origine valide après filtrage : vérifier la variable d\'environnement.',
+    );
+  }
+
   return origins;
 }

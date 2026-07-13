@@ -55,6 +55,50 @@ describe('AuthController — transport du refresh token (SH-20)', () => {
     expect(body).toEqual({ accessToken: 'access-1', refreshToken: 'refresh-1' });
   });
 
+  // I2 (revue finale SH-20) : `secure` dépend de NODE_ENV, qui n'était documenté nulle part.
+  // On verrouille ici le comportement pour les deux environnements + le TTL du cookie.
+  describe('attribut `secure` et `maxAge` du cookie (dépendent de NODE_ENV)', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it('pose `secure: false` hors production', async () => {
+      process.env.NODE_ENV = 'development';
+      authService.login.mockResolvedValue({ accessToken: 'access-1', refreshToken: 'refresh-1' });
+      const res = makeResponse();
+
+      await controller.login({ email: 'a@b.io', password: 'motdepasse8' }, res);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        REFRESH_COOKIE_NAME,
+        'refresh-1',
+        expect.objectContaining({
+          secure: false,
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        }),
+      );
+    });
+
+    it('pose `secure: true` en production (jamais de refresh token en clair)', async () => {
+      process.env.NODE_ENV = 'production';
+      authService.login.mockResolvedValue({ accessToken: 'access-1', refreshToken: 'refresh-1' });
+      const res = makeResponse();
+
+      await controller.login({ email: 'a@b.io', password: 'motdepasse8' }, res);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        REFRESH_COOKIE_NAME,
+        'refresh-1',
+        expect.objectContaining({
+          secure: true,
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        }),
+      );
+    });
+  });
+
   it('refresh lit le token depuis le COOKIE quand le body est vide (parcours web)', async () => {
     authService.refresh.mockResolvedValue({ accessToken: 'access-2', refreshToken: 'refresh-2' });
     const res = makeResponse();

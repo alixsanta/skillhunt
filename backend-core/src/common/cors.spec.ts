@@ -18,4 +18,12 @@ describe('resolveCorsOrigins', () => {
   it('refuse le joker "*"', () => {
     expect(() => resolveCorsOrigins('*')).toThrow(/joker/i);
   });
+
+  // M2 (revue finale SH-20) : une valeur qui ne contient que des séparateurs (",", " , ")
+  // n'est pas vide au sens de `raw`, mais produit une liste vide après filtrage. Sans garde-fou,
+  // enableCors({ origin: [] }) bloquerait TOUTES les origines sans le signaler (silencieux).
+  it('refuse une valeur qui ne contient que des séparateurs (liste vide après filtrage)', () => {
+    expect(() => resolveCorsOrigins(',')).toThrow(/aucune origine/i);
+    expect(() => resolveCorsOrigins(' , , ')).toThrow(/aucune origine/i);
+  });
 });
