@@ -54,6 +54,7 @@
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 | [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
 | [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟡 Prêt | 3 | C2.2.3, C2.2.2 | R4 |
+| [SH-39](tickets/SH-39-gear-consultation-recruteur.md) | Armurerie : consultation du casier d'un freelance par un recruteur (`GET /gear/freelance/:id`, filtré `VALIDATED`, sans `serialNumber`) — dépendance du design SH-21b | 🟡 Prêt | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
 | [SH-40](tickets/SH-40-2fa-comptes-pro.md) | 2FA comptes pro (TOTP, secret chiffré AES-256, codes de secours) — sortie du périmètre SH-20 | 🔵 Backlog | 5 | C2.2.3, C2.2.2 | R7 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
@@ -63,7 +64,7 @@
 | [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🟢 Terminé | 5 | C2.2.3 | R4 |
-| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *implémenté sur `feature/SH-14-bus-evenements-redis`, PR vers `develop` à ouvrir ; périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟠 En cours | 5 → ~8–13 | C2.2.2 | R4 |
+| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟢 Terminé | 5 → ~8–13 | C2.2.2 | R4 |
 | [SH-35](tickets/SH-35-durcissement-cache-consumer-redis.md) | Durcissement cache `/match` & consumer Redis (course d'invalidation, PEL, scaling) — dette relevée en revue SH-14 | 🟡 Prêt | 3 | C2.2.2, C2.2.3 | R4 |
 | [SH-37](tickets/SH-37-offres-publication-bus.md) | Offres/Missions : publication recruteur + événement `offer.published` (2ᵉ producteur du bus, scénario archi §2) — constat post-revue SH-14 | 🔵 Backlog | 8 | C2.2.3, C2.2.2, C2.4.1 | R4 |
 
@@ -81,9 +82,9 @@
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
 | [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🟢 Terminé | 5 | C2.1.2 | — |
-| [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟠 En cours | 2 | C2.1.2, C2.2.2 | — |
-| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, gestion du token, refresh cookie `httpOnly`, CORS) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3 | — |
-| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (cartes, loadout, progression, badges) | 🔵 Backlog | 8 | C2.4.1 | R10 |
+| [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟢 Terminé | 2 | C2.1.2, C2.2.2 | — |
+| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, access token en mémoire, refresh en cookie `httpOnly`, CORS à origines explicites) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3, C2.2.2 | — |
+| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; découpage 21a (vue privée, **débloquée par SH-20**) / 21b (vue publique, dép. SH-39) / 21c (loadout+badges, à cadrer)* | 🔵 Backlog | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching | 🔵 Backlog | 5 | C2.4.1 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie Mapbox (visualisation géographique des experts) | 🔵 Backlog | 5 | C2.4.1 | — |
 | [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket / WSS, partage de fichiers) | 🔵 Backlog | 8 | C2.2.3 | R5, R9 |
@@ -125,10 +126,12 @@
 
 ## Prochaines actions suggérées
 
-1. **✅ EP02 complet** ; **✅ `SH-12`** et **✅ `SH-13`** terminés → le moteur de matching géospatial est complet.
-2. **🟠 `SH-14` implémenté** — PR [#15](https://github.com/alixsanta/skillhunt/pull/15) ouverte vers `develop` (CI verte, code review passée) → **merger après relecture**. Estimation requalifiée : **5 SP → ~8–13 SP** (périmètre réel : 4 sous-chantiers A/B/C/D).
-3. **Dette de revue SH-14 tracée :** `SH-35` (cache/consumer matching) et `SH-36` (TokenStore) — non bloquants, fenêtres bornées par le TTL 60 s.
-4. **Suivant :** 🟡 `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — **ticket rédigé, prêt à démarrer**.
-5. **✅ `SH-20` livré** (parcours auth web : access token en mémoire, refresh cookie `httpOnly`, CORS à origines explicites) → **`SH-21a` (Armurerie, vue privée) est débloqué**, suite logique côté front (la 2FA comptes pro annoncée dans SH-20 en est sortie, tracée dans `SH-40`, 🔵 Backlog).
-6. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
+1. **✅ EP02 & EP03 livrés** : auth/RBAC, Armurerie backend, certifications, moteur de scoring géospatial et **bus d'événements Redis** (`SH-14`, PR [#15](https://github.com/alixsanta/skillhunt/pull/15) mergée).
+2. **✅ Front amorcé** : `SH-19` (scaffold React), `SH-38` (dette post-revue) puis **`SH-20` (parcours d'authentification web)** — access token en mémoire, refresh token en cookie `httpOnly`, CORS à origines explicites.
+3. **Dette de revue tracée** (non bloquante) : `SH-35` (cache/consumer matching), `SH-36` (TokenStore) — fenêtres bornées par le TTL 60 s.
+4. **Armurerie front : design validé** ([spec](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md)) :
+   - ✅ **`SH-21a` (grille d'inventaire, vue privée) est DÉBLOQUÉE** — `SH-20` fournit désormais le JWT qu'exige `GET /gear/me`. **C'est la suite logique.**
+   - 🟡 **`SH-39` (endpoint recruteur)** — reste bloquant pour la **vue publique** (`SH-21b`) uniquement ; ticket rédigé, prêt à démarrer.
+5. **Chemin recommandé :** `SH-21a` → `SH-39` → `SH-21b` (vue publique).
+6. **Autres pistes prêtes :** 🟡 `SH-34` (position freelance à l'onboarding), 🔵 `SH-40` (2FA comptes pro, sortie du périmètre SH-20), puis **EP04 (média)** avec `SH-15` (scaffolding `media-service`).
 7. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
