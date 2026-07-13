@@ -65,6 +65,7 @@
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🟢 Terminé | 5 | C2.2.3 | R4 |
 | [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟢 Terminé | 5 → ~8–13 | C2.2.2 | R4 |
+| [SH-33](tickets/SH-33-resolveur-besoin-criteres.md) | Résolveur besoin→critères : catalogue de cas d'usage (recruteur non-expert B2C) — *dépend de SH-12* | 🟡 Prêt | 5 | C2.2.2, C2.2.3, C2.4.1 | R4, R10 |
 | [SH-35](tickets/SH-35-durcissement-cache-consumer-redis.md) | Durcissement cache `/match` & consumer Redis (course d'invalidation, PEL, scaling) — dette relevée en revue SH-14 | 🟡 Prêt | 3 | C2.2.2, C2.2.3 | R4 |
 | [SH-37](tickets/SH-37-offres-publication-bus.md) | Offres/Missions : publication recruteur + événement `offer.published` (2ᵉ producteur du bus, scénario archi §2) — constat post-revue SH-14 | 🔵 Backlog | 8 | C2.2.3, C2.2.2, C2.4.1 | R4 |
 
