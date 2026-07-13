@@ -55,6 +55,7 @@
 | [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
 | [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟡 Prêt | 3 | C2.2.3, C2.2.2 | R4 |
 | [SH-39](tickets/SH-39-gear-consultation-recruteur.md) | Armurerie : consultation du casier d'un freelance par un recruteur (`GET /gear/freelance/:id`, filtré `VALIDATED`, sans `serialNumber`) — dépendance du design SH-21b | 🟡 Prêt | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
+| [SH-40](tickets/SH-40-2fa-comptes-pro.md) | 2FA comptes pro (TOTP, secret chiffré AES-256, codes de secours) — sortie du périmètre SH-20 | 🔵 Backlog | 5 | C2.2.3, C2.2.2 | R7 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
@@ -82,8 +83,8 @@
 |---|---|---|---|---|---|
 | [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🟢 Terminé | 5 | C2.1.2 | — |
 | [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟢 Terminé | 2 | C2.1.2, C2.2.2 | — |
-| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, gestion du token, 2FA comptes pro) + TODO CORS laissé en SH-19 — *bloquant pour SH-21a* | 🔵 Backlog | 5 | C2.2.3 | — |
-| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; découpage 21a (vue privée, dép. SH-20) / 21b (vue publique, dép. SH-39) / 21c (loadout+badges, à cadrer)* | 🔵 Backlog | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
+| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, access token en mémoire, refresh en cookie `httpOnly`, CORS à origines explicites) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3, C2.2.2 | — |
+| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; découpage 21a (vue privée, **débloquée par SH-20**) / 21b (vue publique, dép. SH-39) / 21c (loadout+badges, à cadrer)* | 🔵 Backlog | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching | 🔵 Backlog | 5 | C2.4.1 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie Mapbox (visualisation géographique des experts) | 🔵 Backlog | 5 | C2.4.1 | — |
 | [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket / WSS, partage de fichiers) | 🔵 Backlog | 8 | C2.2.3 | R5, R9 |
@@ -126,11 +127,11 @@
 ## Prochaines actions suggérées
 
 1. **✅ EP02 & EP03 livrés** : auth/RBAC, Armurerie backend, certifications, moteur de scoring géospatial et **bus d'événements Redis** (`SH-14`, PR [#15](https://github.com/alixsanta/skillhunt/pull/15) mergée).
-2. **✅ Front amorcé** : `SH-19` (scaffold React) puis `SH-38` (dette post-revue, PR [#17](https://github.com/alixsanta/skillhunt/pull/17) mergée) → la CI frontend est verte et le socle est propre.
+2. **✅ Front amorcé** : `SH-19` (scaffold React), `SH-38` (dette post-revue) puis **`SH-20` (parcours d'authentification web)** — access token en mémoire, refresh token en cookie `httpOnly`, CORS à origines explicites.
 3. **Dette de revue tracée** (non bloquante) : `SH-35` (cache/consumer matching), `SH-36` (TokenStore) — fenêtres bornées par le TTL 60 s.
-4. **Armurerie front : design validé** ([spec](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md)) → deux dépendances à lever avant `SH-21a` :
-   - 🔵 **`SH-20` (Auth Web)** — **bloquant** : `GET /gear/me` exige un JWT ; sans écran de connexion ni injection du token (ni CORS), la vue privée ne peut pas être branchée sur l'API réelle.
-   - 🟡 **`SH-39` (endpoint recruteur)** — bloquant pour la **vue publique** (`SH-21b`) uniquement ; ticket rédigé, prêt à démarrer.
-5. **Chemin recommandé :** `SH-20` → `SH-21a` (grille d'inventaire, vue privée) → `SH-39` → `SH-21b` (vue publique).
-6. **Autres pistes prêtes :** 🟡 `SH-34` (position freelance à l'onboarding), puis **EP04 (média)** avec `SH-15` (scaffolding `media-service`).
+4. **Armurerie front : design validé** ([spec](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md)) :
+   - ✅ **`SH-21a` (grille d'inventaire, vue privée) est DÉBLOQUÉE** — `SH-20` fournit désormais le JWT qu'exige `GET /gear/me`. **C'est la suite logique.**
+   - 🟡 **`SH-39` (endpoint recruteur)** — reste bloquant pour la **vue publique** (`SH-21b`) uniquement ; ticket rédigé, prêt à démarrer.
+5. **Chemin recommandé :** `SH-21a` → `SH-39` → `SH-21b` (vue publique).
+6. **Autres pistes prêtes :** 🟡 `SH-34` (position freelance à l'onboarding), 🔵 `SH-40` (2FA comptes pro, sortie du périmètre SH-20), puis **EP04 (média)** avec `SH-15` (scaffolding `media-service`).
 7. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).

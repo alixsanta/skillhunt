@@ -30,7 +30,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Authentification et obtention d'un couple de tokens (access + refresh) */
+        /** Authentification : access token dans le body, refresh token en cookie httpOnly */
         post: operations["AuthController_login"];
         delete?: never;
         options?: never;
@@ -47,7 +47,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotation du refresh token et émission d'un nouveau couple de tokens */
+        /** Rotation du refresh token (lu depuis le cookie, ou le body pour le mobile) */
         post: operations["AuthController_refresh"];
         delete?: never;
         options?: never;
@@ -64,7 +64,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Déconnexion : révocation du refresh token */
+        /** Déconnexion : révocation du refresh token (Redis) et expiration du cookie */
         post: operations["AuthController_logout"];
         delete?: never;
         options?: never;
@@ -259,8 +259,8 @@ export interface components {
             password: string;
         };
         RefreshDto: {
-            /** @description Refresh token (JWT) obtenu lors du login */
-            refreshToken: string;
+            /** @description Refresh token (JWT). Inutile pour le web : le cookie httpOnly fait foi. */
+            refreshToken?: string;
         };
         AddGearDto: {
             /**
@@ -351,7 +351,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Jetons JWT RS256 émis. */
+            /** @description Jetons JWT RS256 émis ; cookie `sh_refresh` déposé. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -373,8 +373,15 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Nouveau couple de tokens émis ; l'ancien refresh token est révoqué. */
+            /** @description Nouveau couple émis ; l'ancien refresh token est révoqué. */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Refresh token absent, invalide, expiré ou révoqué. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

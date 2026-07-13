@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional } from 'class-validator';
 import { UserRole } from '../../common/enums';
 
 // Rôles auto-attribuables à l'inscription publique. ADMIN est volontairement EXCLU :
@@ -42,8 +42,11 @@ export class LoginDto {
 }
 
 export class RefreshDto {
-  @ApiProperty({ description: 'Refresh token (JWT) obtenu lors du login' })
+  // Optionnel depuis SH-20 : le web transmet le refresh token par cookie httpOnly.
+  // Le body reste supporté pour le mobile (Lot 2), où le cookie est inadapté.
+  @ApiPropertyOptional({ description: 'Refresh token (JWT). Inutile pour le web : le cookie httpOnly fait foi.' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Le refresh token est obligatoire' })
-  refreshToken!: string;
+  @IsNotEmpty({ message: 'Le refresh token ne peut pas être vide' })
+  refreshToken?: string;
 }

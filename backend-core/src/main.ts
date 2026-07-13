@@ -2,13 +2,22 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+// Import en `* as` : le projet compile en CommonJS SANS `esModuleInterop` (seul
+// `allowSyntheticDefaultImports` est actif). Un `import cookieParser from ...` compile
+// donc sans erreur, mais émet un `.default` inexistant à l'exécution — le serveur
+// refusait de démarrer (« cookie_parser_1.default is not a function »), SH-20.
+import * as cookieParser from 'cookie-parser';
+import { resolveCorsOrigins } from './common/cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Activation de CORS sécurisé pour notre architecture découplée
+  // Lecture du cookie de refresh (httpOnly) déposé au login (SH-20)
+  app.use(cookieParser());
+
+  // CORS à origines EXPLICITES : '*' + credentials est rejeté par le navigateur (C2.2.3)
   app.enableCors({
-    origin: '*', // En production, à restreindre impérativement (ex: app.skillhunt.io)
+    origin: resolveCorsOrigins(process.env.CORS_ORIGIN),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

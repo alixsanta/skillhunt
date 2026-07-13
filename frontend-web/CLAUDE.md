@@ -31,6 +31,8 @@ Organisation **par feature**, miroir du backend :
 - **Tests** : Vitest + React Testing Library. Pour les **composants UI** : tester du point de vue utilisateur (rôles/labels accessibles), pas les détails d'implémentation. Les modules d'**infrastructure** sans surface rôle/label (client Axios, providers, table de routes…) se testent sur leur **contrat/état** (SH-38).
 - **Formatage** : Prettier est vérifié en CI (`npm run format:check`) ; lancer `npm run format` avant de commiter (SH-38).
 - **Accessibilité** : viser WCAG (audit CI formalisé en SH-27) ; préférer les composants shadcn/ui (Radix) accessibles par défaut.
+- **Auth (SH-20)** : l'access token vit **en mémoire** (`features/auth/session-store.ts`), le refresh token dans un **cookie `httpOnly`** posé par le backend. **Ne jamais écrire un token dans `localStorage`/`sessionStorage`.** Les appels authentifiés passent par `apiClient`, dont les intercepteurs injectent le bearer et rafraîchissent le token (refresh _single-flight_ + rejeu) — ne pas les court-circuiter.
+- **Tests réseau** : MSW (`src/test/server.ts`). `onUnhandledRequest: 'error'` — tout appel HTTP non simulé fait échouer le test.
 
 ## Commandes
 
