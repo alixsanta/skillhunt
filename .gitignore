@@ -58,3 +58,6 @@ htmlcov/
 # --- Divers ---
 /private/
 *.log
+
+# --- Compagnon visuel brainstorming (mockups éphémères de session) ---
+.superpowers/brainstorm/
