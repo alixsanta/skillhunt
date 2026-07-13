@@ -2,13 +2,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
+import { resolveCorsOrigins } from './common/cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Activation de CORS sécurisé pour notre architecture découplée
+  // Lecture du cookie de refresh (httpOnly) déposé au login (SH-20)
+  app.use(cookieParser());
+
+  // CORS à origines EXPLICITES : '*' + credentials est rejeté par le navigateur (C2.2.3)
   app.enableCors({
-    origin: '*', // En production, à restreindre impérativement (ex: app.skillhunt.io)
+    origin: resolveCorsOrigins(process.env.CORS_ORIGIN),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
