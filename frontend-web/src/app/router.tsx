@@ -1,11 +1,5 @@
-import { createBrowserRouter, type RouteObject } from 'react-router-dom';
-import Home from '@/pages/Home';
-import NotFound from '@/pages/NotFound';
+import { createBrowserRouter } from 'react-router-dom';
+import { routes } from './routes';
 
-// Table de routes (SH-19). Les routes métier (auth, armurerie…) s'ajouteront ici.
-export const routes: RouteObject[] = [
-  { path: '/', element: <Home /> },
-  { path: '*', element: <NotFound /> },
-];
-
+// Router applicatif (browser history) — seul effet de bord assumé, monté par App (SH-38).
 export const router = createBrowserRouter(routes);

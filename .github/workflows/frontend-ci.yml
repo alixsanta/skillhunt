@@ -40,6 +40,9 @@ jobs:
       - name: 🔍 Analyse statique du code (Lint)
         run: npm run lint
 
+      - name: 🎨 Vérification du formatage (Prettier)
+        run: npm run format:check
+
       - name: 🧪 Exécution des tests automatisés
         run: npm run test
 
