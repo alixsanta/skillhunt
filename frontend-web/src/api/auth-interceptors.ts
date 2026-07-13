@@ -60,7 +60,19 @@ export function installAuthInterceptors(): void {
       const config = error.config as RetriableConfig | undefined;
 
       const isRefreshCall = config?.url === REFRESH_ENDPOINT;
-      if (error.response?.status !== 401 || !config || config._retried || isRefreshCall) {
+
+      // Sans session active, un 401 est légitime (login refusé, ressource protégée consultée
+      // en anonyme) : tenter une rotation n'aurait aucun sens et, pire, écraserait l'erreur
+      // d'origine — l'écran de connexion ne pourrait plus distinguer « identifiants incorrects ».
+      const hasSession = sessionStore.getAccessToken() !== null;
+
+      if (
+        error.response?.status !== 401 ||
+        !config ||
+        config._retried ||
+        isRefreshCall ||
+        !hasSession
+      ) {
         return Promise.reject(error);
       }
 

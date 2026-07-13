@@ -130,4 +130,46 @@ describe("intercepteurs d'authentification (SH-20)", () => {
 
     expect(refreshCalls).toBe(1); // pas de rappel récursif
   });
+
+  it("un 401 sur /auth/login SANS session active ne déclenche aucun refresh (erreur d'origine préservée)", async () => {
+    let refreshCalls = 0;
+
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), () => {
+        refreshCalls += 1;
+        return HttpResponse.json({ accessToken: NEW_TOKEN });
+      }),
+      http.post(url('/api/v1/auth/login'), () =>
+        HttpResponse.json({ message: 'Identifiants incorrects' }, { status: 401 }),
+      ),
+    );
+
+    await expect(
+      apiClient.post('/api/v1/auth/login', { email: 'a@skillhunt.io', password: 'mauvais' }),
+    ).rejects.toMatchObject({ response: { status: 401 } });
+
+    expect(refreshCalls).toBe(0); // aucune rotation : pas de session à rafraîchir
+  });
+
+  it('ne rejoue jamais deux fois : un 401 sur le rejeu remonte sans reboucler', async () => {
+    sessionStore.setSession(OLD_TOKEN);
+    let attempts = 0;
+    let refreshCalls = 0;
+
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), () => {
+        refreshCalls += 1;
+        return HttpResponse.json({ accessToken: NEW_TOKEN });
+      }),
+      // Rejeté même avec le NOUVEAU token (jeton révoqué côté serveur).
+      http.get(url('/api/v1/gear/me'), () => {
+        attempts += 1;
+        return new HttpResponse(null, { status: 401 });
+      }),
+    );
+
+    await expect(apiClient.get('/api/v1/gear/me')).rejects.toBeDefined();
+    expect(attempts).toBe(2); // appel initial + UN rejeu, pas davantage
+    expect(refreshCalls).toBe(1);
+  });
 });
