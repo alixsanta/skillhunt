@@ -16,7 +16,12 @@
 - [x] **Faisabilité Technique :** `@nestjs/testing` permet de booter l'application ; React Testing Library accepte un wrapper `<StrictMode>`.
 - [x] **Estimé :** 3 SP.
 
-### 1. Les deux bugs qui motivent ce ticket
+### 1. User Story
+**En tant que** développeur mainteneur de SkillHunt,
+**Je veux** qu'au moins un test exécute le **vrai chemin de démarrage** de chaque application (bootstrap NestJS côté backend, double montage `StrictMode` côté front),
+**Afin qu'** une CI verte **signifie réellement que l'application démarre et que la session tient** — et non simplement que les unités testées se comportent bien isolément.
+
+### 1 bis. Les deux bugs qui motivent ce ticket
 
 **Bug 1 — le backend ne démarrait pas** *(corrigé en `a748fa3`)*
 `main.ts` faisait `import cookieParser from 'cookie-parser'`. Le projet compile en **CommonJS** avec
@@ -56,7 +61,8 @@ handler MSW répondait 200 à *tous* les refresh — un backend qui rotationne n
 **Scénario 3 : Le backend qui rotationne est simulé**
 * **GIVEN** un handler MSW de `/auth/refresh` qui **révoque l'ancien jeton** (2ᵉ appel du même cookie → 401),
   reproduisant le comportement réel du backend
-* **THEN** les tests de session restent verts — et rougissent si une rotation concurrente réapparaît.
+* **WHEN** la suite de tests d'authentification s'exécute
+* **THEN** les tests restent verts — et **rougissent** si une rotation concurrente réapparaît.
 
 ### 4. Spécifications Techniques
 

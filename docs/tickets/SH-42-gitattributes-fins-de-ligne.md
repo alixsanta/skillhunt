@@ -15,7 +15,12 @@
 - [x] **Faisabilité Technique :** un fichier `.gitattributes` à la racine + une renormalisation unique.
 - [x] **Estimé :** 1 SP.
 
-### 1. Le problème
+### 1. User Story
+**En tant que** développeur travaillant sous Windows,
+**Je veux** que `npm run format:check` donne **le même verdict en local et en CI**,
+**Afin de** pouvoir lui faire confiance — aujourd'hui il échoue sur des fichiers corrects, donc on apprend à ignorer son échec, et un vrai défaut passe.
+
+### 1 bis. Le problème
 
 Le dépôt n'a **pas de `.gitattributes`**. Sur Windows, Git applique `core.autocrlf=true` : les fichiers sont
 donc **extraits en CRLF** dans le répertoire de travail. Or **Prettier attend des LF** (`endOfLine: "lf"`,
@@ -44,12 +49,14 @@ CI (Linux, extraction en LF) les valide. Deux effets pervers, tous deux constat�
 * **AND** elle n'échoue **que** sur de vrais défauts de formatage.
 
 **Scénario 2 : `npm run format` ne touche que ce qu'il doit**
-* **WHEN** je lance `npm run format` après avoir modifié **un** fichier
+* **GIVEN** un dépôt propre où **un seul** fichier a été modifié
+* **WHEN** je lance `npm run format`
 * **THEN** `git status` ne montre **que ce fichier** (plus de diffs fantômes de fins de ligne).
 
 **Scénario 3 : Cohérence entre plateformes**
 * **GIVEN** un fichier créé sous Windows et un fichier créé sous Linux
-* **THEN** les deux sont stockés en **LF** dans l'index Git.
+* **WHEN** ils sont ajoutés à l'index
+* **THEN** les deux y sont stockés en **LF**.
 
 ### 4. Spécifications Techniques
 
@@ -75,9 +82,12 @@ git add --renormalize .
 git commit -m "chore: renormalisation des fins de ligne (LF)"
 ```
 
-⚠️ **Ce commit touchera beaucoup de fichiers** (fins de ligne uniquement, aucun changement de contenu). À faire
-**quand aucune branche de feature n'est en cours**, pour éviter des conflits pénibles — sinon les rebases des
-branches ouvertes deviendront douloureux.
+⚠️ **Ce commit touchera beaucoup de fichiers** (fins de ligne uniquement, aucun changement de contenu). Il doit
+être passé **quand aucune branche de travail n'est ouverte**, sinon tout rebase en cours devient douloureux.
+
+> ✅ **La fenêtre est ouverte maintenant.** Vérifié au moment de la rédaction :
+> `git branch -r --no-merged develop` ne renvoie **aucune** branche de travail en cours (hors celle de ce
+> ticket). C'est le bon moment pour le faire — avant de démarrer `SH-21a`.
 
 ### 5. Definition of Done (DoD)
 - [ ] `.gitattributes` créé à la racine.
@@ -85,5 +95,4 @@ branches ouvertes deviendront douloureux.
 - [ ] `npm run format:check` **passe en local sous Windows** sur un dépôt propre.
 - [ ] `npm run format` sur un fichier modifié ne produit **aucun** diff fantôme.
 - [ ] CI verte (backend + frontend).
-- [ ] `frontend-web/CLAUDE.md` : retirer la mise en garde sur le faux positif CRLF, devenue obsolète.
 - [ ] `docs/BACKLOG.md` mis à jour.
