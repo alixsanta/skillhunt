@@ -54,6 +54,7 @@
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 | [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
 | [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟡 Prêt | 3 | C2.2.3, C2.2.2 | R4 |
+| [SH-40](tickets/SH-40-2fa-comptes-pro.md) | 2FA comptes pro (TOTP, secret chiffré AES-256, codes de secours) — sortie du périmètre SH-20 | 🔵 Backlog | 5 | C2.2.3, C2.2.2 | R7 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
@@ -81,7 +82,7 @@
 |---|---|---|---|---|---|
 | [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🟢 Terminé | 5 | C2.1.2 | — |
 | [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟠 En cours | 2 | C2.1.2, C2.2.2 | — |
-| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, gestion du token, 2FA comptes pro) | 🔵 Backlog | 5 | C2.2.3 | — |
+| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, gestion du token, refresh cookie `httpOnly`, CORS) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3 | — |
 | [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (cartes, loadout, progression, badges) | 🔵 Backlog | 8 | C2.4.1 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching | 🔵 Backlog | 5 | C2.4.1 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie Mapbox (visualisation géographique des experts) | 🔵 Backlog | 5 | C2.4.1 | — |
@@ -128,5 +129,6 @@
 2. **🟠 `SH-14` implémenté** — PR [#15](https://github.com/alixsanta/skillhunt/pull/15) ouverte vers `develop` (CI verte, code review passée) → **merger après relecture**. Estimation requalifiée : **5 SP → ~8–13 SP** (périmètre réel : 4 sous-chantiers A/B/C/D).
 3. **Dette de revue SH-14 tracée :** `SH-35` (cache/consumer matching) et `SH-36` (TokenStore) — non bloquants, fenêtres bornées par le TTL 60 s.
 4. **Suivant :** 🟡 `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — **ticket rédigé, prêt à démarrer**.
-5. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
-6. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+5. **✅ `SH-20` livré** (parcours auth web : access token en mémoire, refresh cookie `httpOnly`, CORS à origines explicites) → **`SH-21a` (Armurerie, vue privée) est débloqué**, suite logique côté front (la 2FA comptes pro annoncée dans SH-20 en est sortie, tracée dans `SH-40`, 🔵 Backlog).
+6. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
+7. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
