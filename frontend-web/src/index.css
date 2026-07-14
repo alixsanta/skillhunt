@@ -119,6 +119,25 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Palette « HUD tactique » de l'Armurerie (SH-21a), transcrite de la spec de design
+   docs/superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md §3.
+   Règles portées par ces tokens :
+   - le vert est RÉSERVÉ au sens « validé / CTA / live » — il ne code jamais une catégorie ;
+   - la pastille d'icône est neutre et identique pour TOUTES les catégories (la catégorie se
+     lit dans l'icône, jamais dans une couleur). */
+@theme {
+  --color-hud-bg: #0a0e14; /* fond d'écran */
+  --color-hud-card: #111820; /* fond de fiche */
+  --color-hud-border: #1e2732; /* bordure de fiche */
+  --color-hud-pill: #152232; /* pastille d'icône (neutre) */
+  --color-hud-pill-border: #21384f;
+  --color-hud-icon: #4f9eff;
+  --color-hud-positive: #2ee6a8; /* VALIDATED / CTA / live */
+  --color-hud-pending: #f59e0b; /* PENDING */
+  --color-hud-rejected: #f43f5e; /* REJECTED */
+  --color-hud-muted: #7b8794; /* texte secondaire, labels meta */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
