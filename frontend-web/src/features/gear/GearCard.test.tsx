@@ -44,7 +44,11 @@ describe('GearCard — fiche équipement (SH-21a)', () => {
   );
 
   it("n'affiche jamais le numéro de série (donnée sensible)", () => {
-    renderCard(makeGear());
-    expect(screen.queryByText(/SN-123456789/)).not.toBeInTheDocument();
+    // La valeur cherchée est DÉRIVÉE de la fixture, jamais recopiée : une assertion sur un
+    // littéral se périmerait en silence le jour où la fixture change (le test continuerait
+    // de passer alors même que la fiche afficherait le numéro de série).
+    const gear = makeGear();
+    renderCard(gear);
+    expect(screen.queryByText(gear.serialNumber)).not.toBeInTheDocument();
   });
 });
