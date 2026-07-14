@@ -285,6 +285,66 @@ export interface components {
              */
             serialNumber: string;
         };
+        GearResponseDto: {
+            /**
+             * Format: uuid
+             * @example 3f1b2c9e-6d54-4a1b-9d0e-7c2f5a8b1234
+             */
+            id: string;
+            /**
+             * @description Marque de l'équipement
+             * @example DJI
+             */
+            brand: string;
+            /**
+             * @description Modèle exact
+             * @example Mavic 3 Enterprise
+             */
+            model: string;
+            /**
+             * @description Numéro de série — donnée sensible : renvoyée uniquement au propriétaire du casier, jamais dans une vue publique (SH-39)
+             * @example SN-123456789
+             */
+            serialNumber: string;
+            /**
+             * @example DRONE
+             * @enum {string}
+             */
+            category: "DRONE" | "CAMERA_360" | "ROBOTICS" | "SENSOR" | "OTHER";
+            /**
+             * @example PENDING
+             * @enum {string}
+             */
+            status: "PENDING" | "VALIDATED" | "REJECTED";
+            /**
+             * Format: date-time
+             * @example 2026-07-14T09:12:33.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: uuid
+             * @description Propriétaire (Freelance) — déduit du token, jamais d'un identifiant client
+             */
+            freelanceId: string;
+        };
+        PaginatedGearDto: {
+            items: components["schemas"]["GearResponseDto"][];
+            /**
+             * @description Nombre total d'équipements correspondant au filtre appliqué
+             * @example 12
+             */
+            total: number;
+            /**
+             * @description Page courante (1-indexée)
+             * @example 1
+             */
+            page: number;
+            /**
+             * @description Taille de page appliquée
+             * @example 20
+             */
+            limit: number;
+        };
         ReviewGearDto: {
             /**
              * @description Décision de validation : VALIDATED ou REJECTED
@@ -424,11 +484,14 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Équipement déclaré, en attente de validation */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GearResponseDto"];
+                };
             };
             /** @description Token JWT manquant, invalide ou expiré (401) */
             401: {
@@ -464,11 +527,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Page du casier du Freelance authentifié */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PaginatedGearDto"];
+                };
             };
             /** @description Token JWT manquant, invalide ou expiré (401) */
             401: {
@@ -504,11 +570,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Page des équipements en attente de validation */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PaginatedGearDto"];
+                };
             };
             /** @description Token JWT manquant, invalide ou expiré (401) */
             401: {
@@ -541,11 +610,14 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Équipement après décision (VALIDATED ou REJECTED) */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["GearResponseDto"];
+                };
             };
             /** @description Token JWT manquant, invalide ou expiré (401) */
             401: {
