@@ -8,6 +8,13 @@ describe('GearProgress — part de matériel validé (SH-21a)', () => {
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25');
   });
 
+  it('arrondit le pourcentage au plus proche (et non vers le bas)', () => {
+    // 5/8 = 62,5 % : le seul cas qui distingue Math.round (63) de Math.floor (62). Sans lui,
+    // le test précédent (3/12 = 25 % pile) passerait avec n'importe quel mode d'arrondi.
+    render(<GearProgress validated={5} total={8} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '63');
+  });
+
   it('ne divise pas par zéro quand le casier est vide', () => {
     render(<GearProgress validated={0} total={0} />);
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');

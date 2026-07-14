@@ -11,5 +11,9 @@ describe('GearEmptyState — casier vide (SH-21a)', () => {
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(1);
     expect(buttons[0]).toHaveAccessibleName('+ Ajouter mon premier équipement');
+    // Le CTA est DÉSACTIVÉ tant que l'écran de déclaration n'existe pas (hors périmètre
+    // SH-21a) : sans cette assertion, la perte du `disabled` rendrait le bouton cliquable
+    // vers une route inexistante sans qu'aucun test ne rougisse.
+    expect(buttons[0]).toBeDisabled();
   });
 });
