@@ -1,3 +1,7 @@
+/// <reference types="node" />
+// Les types Node sont scopés à ce fichier de test (via la triple-slash directive
+// ci-dessus) plutôt qu'ajoutés à `tsconfig.app.json` : le code applicatif ne doit
+// jamais dépendre des types Node (il tourne dans le navigateur).
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { CATEGORY_META, GEAR_CATEGORIES, GEAR_STATUSES, STATUS_META } from './gear-meta';
@@ -12,6 +16,12 @@ describe("Métadonnées de l'Armurerie (SH-21a)", () => {
       // le typage `LucideIcon` garantit déjà qu'il s'agit d'une icône valide.
       expect(CATEGORY_META[category].Icon).toBeTruthy();
     }
+    // Chaque catégorie doit avoir SA PROPRE icône : la catégorie se distingue par
+    // l'icône (jamais par une couleur, cf. commentaire de gear-meta.ts) — deux
+    // catégories partageant la même icône seraient indiscernables à l'écran.
+    expect(new Set(GEAR_CATEGORIES.map((c) => CATEGORY_META[c].Icon)).size).toBe(
+      GEAR_CATEGORIES.length,
+    );
   });
 
   it('couvre tous les statuts, chacun avec un libellé TEXTE (jamais la couleur seule — R6)', () => {
