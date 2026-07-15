@@ -17,7 +17,7 @@
 ### 0. Definition of Ready (DoR)
 - [x] **Valeur Claire :** sans écran de saisie, le casier ne peut pas se remplir → la donnée de matching reste vide (R10).
 - [x] **Specs Complètes :** contrat backend `POST /api/v1/gear` connu (SH-9) ; composants de thème et types réutilisés de SH-21a.
-- [ ] **UX/UI Validé :** maquette du formulaire à cadrer (réutilise la palette HUD de SH-21a).
+- [x] **UX/UI Validé :** formulaire vertical simple calqué sur les pages Auth (SH-20), palette HUD de SH-21a.
 - [x] **Faisabilité Technique :** dépendances levées (auth SH-20, thème + types + `useMyGear` de SH-21a).
 - [x] **Estimé :** 3 SP.
 
@@ -54,10 +54,10 @@
 * **Tests (Vitest + RTL + MSW) :** succès de création + rafraîchissement du casier, validation client sans appel réseau, gestion d'un 400 backend.
 
 ### 5. Definition of Done (DoD)
-- [ ] Écran de déclaration branché sur `POST /api/v1/gear` via `apiClient`.
-- [ ] Validation client (champs requis, enum de catégorie) prouvée sans appel réseau.
-- [ ] Casier rafraîchi après création (invalidation de `['gear','me']`).
-- [ ] CTA « + Ajouter … » de SH-21a activés.
-- [ ] Aucune couleur en dur ; `schema.d.ts` non édité à la main.
-- [ ] Tests Vitest + RTL passants ; CI frontend verte (lint + `format:check` + tests + build).
-- [ ] `docs/BACKLOG.md` mis à jour.
+- [x] Écran de déclaration branché sur `POST /api/v1/gear` via `apiClient` (`useCreateGear`, page `/mon-armurerie/ajouter`).
+- [x] Validation client (champs requis, enum de catégorie, n° de série ≥ 5) prouvée sans appel réseau (MSW `onUnhandledRequest: 'error'`).
+- [x] Casier rafraîchi après création (invalidation de `['gear','me']`, testée comportementalement).
+- [x] CTA « + Ajouter … » de SH-21a activés (liens vers `/mon-armurerie/ajouter`).
+- [x] Aucune couleur en dur ; `schema.d.ts` non édité à la main (`AddGearDto` déjà généré).
+- [x] Tests Vitest + RTL passants (79 tests, 21 fichiers) ; lint + `format` + build OK en local.
+- [x] `docs/BACKLOG.md` mis à jour.
