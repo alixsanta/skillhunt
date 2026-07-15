@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
 import { DEFAULT_API_URL } from '@/api/client';
@@ -49,8 +50,11 @@ function renderPage() {
   // `findByRole('alert')` sur le test du 500. On force donc aussi `retryDelay: 0` pour que
   // les réessais soient instantanés (mirroring de useMyGear.test.tsx).
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
+  // MemoryRouter : le CTA « + Ajouter du matériel » est un lien react-router depuis SH-43.
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
   );
   return render(<Armurerie />, { wrapper });
 }
@@ -93,6 +97,15 @@ describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Tous' }));
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('propose un CTA actif vers la déclaration de matériel (SH-43)', async () => {
+    server.use(respondWith(LOCKER));
+    renderPage();
+
+    expect(await screen.findByText('3 équipements')).toBeInTheDocument();
+    const cta = screen.getByRole('link', { name: '+ Ajouter du matériel' });
+    expect(cta).toHaveAttribute('href', '/mon-armurerie/ajouter');
   });
 
   it("affiche l'état vide quand le casier ne contient aucun équipement", async () => {

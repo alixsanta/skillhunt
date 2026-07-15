@@ -1,23 +1,17 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { GearEmptyState } from './GearEmptyState';
 
-describe('GearEmptyState — casier vide (SH-21a)', () => {
-  it("affiche le message d'arsenal vide, l'impact sur le matching et un CTA unique", () => {
-    render(<GearEmptyState />);
+describe('GearEmptyState — casier vide (SH-21a, CTA activé en SH-43)', () => {
+  it("affiche le message d'arsenal vide, l'impact sur le matching et un CTA vers la déclaration", () => {
+    render(<GearEmptyState />, { wrapper: MemoryRouter });
 
     expect(screen.getByRole('heading', { name: 'Ton arsenal est vide' })).toBeInTheDocument();
     expect(screen.getByText(/matching/i)).toBeInTheDocument();
 
-    const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toHaveAccessibleName('+ Ajouter mon premier équipement');
-    // Le CTA est DÉSACTIVÉ tant que l'écran de déclaration n'existe pas (hors périmètre
-    // SH-21a) : sans cette assertion, la perte du `disabled` rendrait le bouton cliquable
-    // vers une route inexistante sans qu'aucun test ne rougisse.
-    expect(buttons[0]).toBeDisabled();
-    // L'explication du « pourquoi désactivé » doit être un texte VISIBLE (et non un `title`,
-    // invisible au clavier/lecteur d'écran car un bouton désactivé sort du Tab order) — revue
-    // a11y SH-21a.
-    expect(screen.getByText(/écran de déclaration à venir/i)).toBeInTheDocument();
+    // Le CTA est désormais un LIEN actif vers l'écran de déclaration (SH-43) : s'il redevenait
+    // un bouton désactivé ou pointait ailleurs, ce test rougit.
+    const cta = screen.getByRole('link', { name: '+ Ajouter mon premier équipement' });
+    expect(cta).toHaveAttribute('href', '/mon-armurerie/ajouter');
   });
 });
