@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_META } from './gear-meta';
 import type { GearCategory } from './types';
@@ -15,11 +16,14 @@ interface GearCategoryChipsProps {
  * clavier et annoncés par les lecteurs d'écran via `aria-pressed` (R6).
  */
 export function GearCategoryChips({ categories, selected, onSelect }: GearCategoryChipsProps) {
+  // Le libellé de l'état sélectionné passe par `aria-pressed` (lecteurs d'écran) ET par un repère
+  // VISUEL non-coloré — l'icône ✓ + la graisse — pour ne pas reposer sur la seule couleur
+  // (WCAG 1.4.1 : un daltonien doit distinguer la chip active sans percevoir la teinte).
   const chipClass = (active: boolean) =>
     cn(
-      'rounded-full border px-3 py-1 text-xs tracking-widest uppercase transition-colors',
+      'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs tracking-widest uppercase transition-colors',
       active
-        ? 'border-hud-positive text-hud-positive bg-hud-pill'
+        ? 'border-hud-positive text-hud-positive bg-hud-pill font-semibold'
         : 'border-hud-border text-hud-muted hover:text-white',
     );
 
@@ -31,6 +35,7 @@ export function GearCategoryChips({ categories, selected, onSelect }: GearCatego
         onClick={() => onSelect(null)}
         className={chipClass(selected === null)}
       >
+        {selected === null && <Check aria-hidden="true" className="size-3" />}
         Tous
       </button>
 
@@ -42,6 +47,7 @@ export function GearCategoryChips({ categories, selected, onSelect }: GearCatego
           onClick={() => onSelect(category)}
           className={chipClass(selected === category)}
         >
+          {selected === category && <Check aria-hidden="true" className="size-3" />}
           {CATEGORY_META[category].label}
         </button>
       ))}

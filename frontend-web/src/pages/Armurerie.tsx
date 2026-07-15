@@ -85,14 +85,18 @@ export default function Armurerie() {
               </p>
             )}
 
-            {/* CTA désactivé : l'écran de déclaration de matériel est hors périmètre SH-21a. */}
-            <Button
-              disabled
-              title="Écran de déclaration de matériel à venir"
-              className="self-start"
-            >
-              + Ajouter du matériel
-            </Button>
+            {/* CTA désactivé : l'écran de déclaration de matériel est hors périmètre SH-21a (SH-43).
+                L'explication est un texte VISIBLE relié par `aria-describedby` — un `title` seul est
+                invisible au clavier et aux lecteurs d'écran (un `<button disabled>` sort du Tab
+                order), défaut relevé en revue a11y SH-21a. */}
+            <div className="flex flex-col items-start gap-1">
+              <Button disabled aria-describedby="add-gear-hint">
+                + Ajouter du matériel
+              </Button>
+              <p id="add-gear-hint" className="text-hud-muted text-xs">
+                Écran de déclaration à venir (SH-43).
+              </p>
+            </div>
           </>
         )}
       </div>

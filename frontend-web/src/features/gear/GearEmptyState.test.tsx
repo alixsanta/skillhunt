@@ -15,5 +15,9 @@ describe('GearEmptyState — casier vide (SH-21a)', () => {
     // SH-21a) : sans cette assertion, la perte du `disabled` rendrait le bouton cliquable
     // vers une route inexistante sans qu'aucun test ne rougisse.
     expect(buttons[0]).toBeDisabled();
+    // L'explication du « pourquoi désactivé » doit être un texte VISIBLE (et non un `title`,
+    // invisible au clavier/lecteur d'écran car un bouton désactivé sort du Tab order) — revue
+    // a11y SH-21a.
+    expect(screen.getByText(/écran de déclaration à venir/i)).toBeInTheDocument();
   });
 });

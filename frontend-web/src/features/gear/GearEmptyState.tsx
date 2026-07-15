@@ -17,9 +17,17 @@ export function GearEmptyState() {
         Déclare ton matériel : chaque équipement validé renforce ta crédibilité et améliore ta
         pertinence dans le matching des missions.
       </p>
-      <Button disabled title="Écran de déclaration de matériel à venir">
-        + Ajouter mon premier équipement
-      </Button>
+      {/* CTA désactivé : écran de déclaration hors périmètre SH-21a (SH-43). L'explication est un
+          texte VISIBLE relié par `aria-describedby` — un `title` seul est invisible au clavier et
+          aux lecteurs d'écran (bouton désactivé = hors Tab order). Revue a11y SH-21a. */}
+      <div className="flex flex-col items-center gap-1">
+        <Button disabled aria-describedby="add-first-gear-hint">
+          + Ajouter mon premier équipement
+        </Button>
+        <p id="add-first-gear-hint" className="text-hud-muted text-xs">
+          Écran de déclaration à venir (SH-43).
+        </p>
+      </div>
     </section>
   );
 }
