@@ -37,12 +37,17 @@ Principes repris de l'identité existante :
 | Usage | Couleur |
 |---|---|
 | Fond d'écran | `#0a0e14` |
-| Fond de carte / fiche | `#111820` (bordure `#1e2732`) |
+| Fond de carte / fiche | `#111820` (bordure `#5c6e88`) |
 | Pastille icône équipement (neutre, toutes catégories) | fond `#152232`, bordure `#21384f`, icône `#4f9eff` |
 | Signal positif (validé / CTA / live) | `#2ee6a8` |
 | Statut « en attente » | `#f59e0b` (cohérent avec l'indicateur « away » déjà utilisé sur les avatars) |
 | Statut « rejeté » | `#f43f5e` (cas non couvert par les maquettes existantes, introduit ici) |
 | Texte secondaire / labels meta | `#7b8794` |
+
+> **Révision 2026-07-15 (accessibilité) :** la bordure de carte/chip est passée de `#1e2732`
+> (≈1,28:1 sur le fond — bordures imperceptibles) à **`#5c6e88`** (≈3,7:1 sur le fond, ≈3,4:1 sur la
+> carte), pour satisfaire **WCAG 1.4.11 (contraste des éléments non-texte, min 3:1)**. Constat de la
+> relecture accessibilité de SH-21a. Le reste de la palette est inchangé.
 
 ### Composant "fiche équipement" — catégorie et statut
 

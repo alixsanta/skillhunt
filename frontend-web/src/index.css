@@ -128,7 +128,7 @@
 @theme {
   --color-hud-bg: #0a0e14; /* fond d'écran */
   --color-hud-card: #111820; /* fond de fiche */
-  --color-hud-border: #1e2732; /* bordure de fiche */
+  --color-hud-border: #5c6e88; /* bordure de fiche/chip — ≥3:1 vs fond ET carte (WCAG 1.4.11) */
   --color-hud-pill: #152232; /* pastille d'icône (neutre) */
   --color-hud-pill-border: #21384f;
   --color-hud-icon: #4f9eff;

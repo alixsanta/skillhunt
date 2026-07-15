@@ -23,7 +23,7 @@
 - **Tokens de couleur :** la palette de la spec (§3) vit dans le thème Tailwind (`src/index.css`). **Aucune couleur hexadécimale codée en dur** dans un composant — un test le vérifie automatiquement (tâche 2).
 - **Accessibilité (R6) :** le statut ne repose **jamais** sur la couleur seule ; le libellé texte (« VALIDÉ » / « ATTENTE » / « REJETÉ ») accompagne toujours la pastille colorée. Chips filtrantes = vrais `<button>` (navigables au clavier).
 - **Sécurité :** `serialNumber` n'est **jamais affiché** dans l'interface (donnée sensible ; cf. SH-39). Aucun token en `localStorage`/`sessionStorage`.
-- **Palette (spec §3), valeurs exactes :** fond `#0a0e14` · carte `#111820` (bordure `#1e2732`) · pastille icône `#152232` (bordure `#21384f`, icône `#4f9eff`) · validé/CTA `#2ee6a8` · attente `#f59e0b` · rejeté `#f43f5e` · texte secondaire `#7b8794`.
+- **Palette (spec §3), valeurs exactes :** fond `#0a0e14` · carte `#111820` (bordure `#5c6e88` — révisée 2026-07-15 depuis `#1e2732` pour WCAG 1.4.11, cf. spec §3) · pastille icône `#152232` (bordure `#21384f`, icône `#4f9eff`) · validé/CTA `#2ee6a8` · attente `#f59e0b` · rejeté `#f43f5e` · texte secondaire `#7b8794`.
 - **Catégorie = icône, jamais couleur.** La pastille d'icône est **neutre et identique pour toutes les catégories**.
 - **Formatage :** dans `frontend-web/`, lancer **`npm run format`** avant chaque commit (Prettier est bloquant en CI ; `singleQuote: true`, `printWidth: 100` — une chaîne contenant une apostrophe s'écrit donc entre guillemets doubles : `"l'arsenal"`, jamais `'l\'arsenal'`).
 - **Commits :** Conventional Commits avec scope — `feat(SH-21a/frontend): …`, `feat(SH-21a/backend): …`, `test(SH-21a/frontend): …`.
