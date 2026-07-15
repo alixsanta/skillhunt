@@ -69,6 +69,7 @@
     * **`serialNumber` n'est JAMAIS exposé** sur cette route : c'est une donnée sensible (identification/traçabilité d'un bien, exploitable en cas de vol) qui n'a **aucune valeur** pour la décision du recruteur — la marque, le modèle et la catégorie suffisent. Implémenter via une **projection explicite** (`select` TypeORM ou mapper vers un `PublicGearDto`), **pas** en supprimant le champ après coup.
     * Filtre `status = VALIDATED` **appliqué côté service**, non dérivé d'une entrée client.
     * Aucune requête brute (ORM uniquement).
+    * **Défense en profondeur (constat revue sécurité SH-21a) :** `GearController` renvoie aujourd'hui des **entités TypeORM brutes** (le `GearResponseDto` de SH-21a n'est que *documentaire*, aucun filtrage de champ à l'exécution). Sûr tant qu'aucune relation n'est chargée, mais un futur `relations: ['freelance']` sérialiserait tout le `User` (dont `passwordHash`, non `@Exclude`) dans la réponse. La projection/`PublicGearDto` explicite de cette route ferme ce risque **pour la vue recruteur** ; envisager un `ClassSerializerInterceptor` + `@Exclude()` sur `User.passwordHash` (ou un mapping DTO systématique) pour le fermer partout — voir aussi la note ci-dessus.
 * **Swagger (C2.4.1) :** `@ApiOperation`, `@ApiOkResponse` (schéma `PublicGearDto` paginé), `@ApiNotFoundResponse`, `@ApiForbiddenResponse`. Le contrôleur porte déjà `@ApiBearerAuth`.
 * **Front :** consommé par la vue publique de l'Armurerie (SH-21b). Le type TS est régénéré depuis l'OpenAPI (`npm run gen:api` dans `frontend-web/`).
 

@@ -26,7 +26,10 @@ import {
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
 } from '@nestjs/swagger';
+import { GearResponseDto, PaginatedGearDto } from './dto/gear-response.dto';
 import { UserRole } from '../common/enums';
 
 @ApiTags('🎒 Armurerie (Gear Locker)')
@@ -41,6 +44,7 @@ export class GearController {
   @Post()
   @Roles(UserRole.FREELANCE)
   @ApiOperation({ summary: 'Déclarer un équipement dans son casier (Freelance)' })
+  @ApiCreatedResponse({ type: GearResponseDto, description: 'Équipement déclaré, en attente de validation' })
   addGear(@CurrentUser() user: JwtPayload, @Body() dto: AddGearDto) {
     // Identité issue du token : aucun {id} client n'est accepté (anti-usurpation, OWASP)
     return this.gearService.addGearToLocker(user.userId, dto);
@@ -49,6 +53,7 @@ export class GearController {
   @Get('me')
   @Roles(UserRole.FREELANCE)
   @ApiOperation({ summary: 'Lister son propre matériel (filtres + pagination)' })
+  @ApiOkResponse({ type: PaginatedGearDto, description: 'Page du casier du Freelance authentifié' })
   getMyGear(@CurrentUser() user: JwtPayload, @Query() query: QueryGearDto) {
     // Un Freelance ne peut interroger que SON casier (étanchéité garantie par l'id du token)
     return this.gearService.getFreelanceGear(user.userId, query);
@@ -57,6 +62,7 @@ export class GearController {
   @Get('pending')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'File de validation : matériel en attente (Admin)' })
+  @ApiOkResponse({ type: PaginatedGearDto, description: 'Page des équipements en attente de validation' })
   getPending(@Query() query: QueryGearDto) {
     return this.gearService.listPendingForValidation(query);
   }
@@ -64,6 +70,7 @@ export class GearController {
   @Patch(':id/review')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Valider ou rejeter un équipement (Admin)' })
+  @ApiOkResponse({ type: GearResponseDto, description: 'Équipement après décision (VALIDATED ou REJECTED)' })
   review(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewGearDto) {
     return this.gearService.reviewGear(id, dto.decision);
   }

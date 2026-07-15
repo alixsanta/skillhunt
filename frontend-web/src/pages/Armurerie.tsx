@@ -1,0 +1,105 @@
+import { useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { GearCategoryChips } from '@/features/gear/GearCategoryChips';
+import { GearEmptyState } from '@/features/gear/GearEmptyState';
+import { GearGrid } from '@/features/gear/GearGrid';
+import { GearProgress } from '@/features/gear/GearProgress';
+import { GEAR_CATEGORIES } from '@/features/gear/gear-meta';
+import type { GearCategory } from '@/features/gear/types';
+import { useMyGear } from '@/features/gear/useMyGear';
+
+/**
+ * Vue privée de l'Armurerie (SH-21a) — le freelance voit TOUS ses équipements, quel que soit
+ * leur statut de validation : c'est précisément l'information qu'il vient chercher (spec §5.1).
+ *
+ * Le filtre par catégorie s'applique en mémoire sur le casier déjà chargé (cf. useMyGear).
+ */
+export default function Armurerie() {
+  const { data, isPending, isError, error, refetch } = useMyGear();
+  const [category, setCategory] = useState<GearCategory | null>(null);
+
+  const items = useMemo(() => data?.items ?? [], [data]);
+
+  // Chips : uniquement les catégories réellement présentes dans le casier (spec §5.1),
+  // dans l'ordre d'affichage stable de GEAR_CATEGORIES.
+  const presentCategories = useMemo(
+    () => GEAR_CATEGORIES.filter((c) => items.some((gear) => gear.category === c)),
+    [items],
+  );
+
+  const visibleItems = useMemo(
+    () => (category === null ? items : items.filter((gear) => gear.category === category)),
+    [items, category],
+  );
+
+  const validatedCount = items.filter((gear) => gear.status === 'VALIDATED').length;
+  const total = data?.total ?? 0;
+
+  return (
+    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
+      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-widest text-white uppercase">Mon Armurerie</h1>
+          {!isPending && !isError && (
+            <p className="text-hud-muted text-sm">{`${total} équipement${total > 1 ? 's' : ''}`}</p>
+          )}
+        </header>
+
+        {isPending && (
+          <p role="status" className="text-hud-muted">
+            Chargement de ton armurerie…
+          </p>
+        )}
+
+        {isError &&
+          // 403 : le backend réserve GET /gear/me au rôle FREELANCE (RBAC). Réessayer n'y
+          // changerait rien — on explique au lieu de proposer une action inutile.
+          (error?.response?.status === 403 ? (
+            <p role="alert" className="text-hud-pending">
+              Cette page est réservée aux freelances.
+            </p>
+          ) : (
+            <div className="flex flex-col items-start gap-3">
+              <p role="alert" className="text-hud-rejected">
+                Impossible de charger ton armurerie.
+              </p>
+              <Button onClick={() => void refetch()}>Réessayer</Button>
+            </div>
+          ))}
+
+        {!isPending && !isError && items.length === 0 && <GearEmptyState />}
+
+        {!isPending && !isError && items.length > 0 && (
+          <>
+            <GearProgress validated={validatedCount} total={items.length} />
+            <GearCategoryChips
+              categories={presentCategories}
+              selected={category}
+              onSelect={setCategory}
+            />
+            <GearGrid items={visibleItems} />
+
+            {total > items.length && (
+              <p className="text-hud-muted text-xs">
+                Affichage des {items.length} équipements les plus récents.
+              </p>
+            )}
+
+            {/* CTA désactivé : l'écran de déclaration de matériel est hors périmètre SH-21a (SH-43).
+                L'explication est un texte VISIBLE relié par `aria-describedby` — un `title` seul est
+                invisible au clavier et aux lecteurs d'écran (un `<button disabled>` sort du Tab
+                order), défaut relevé en revue a11y SH-21a. */}
+            <div className="flex flex-col items-start gap-1">
+              <Button disabled aria-describedby="add-gear-hint">
+                + Ajouter du matériel
+              </Button>
+              <p id="add-gear-hint" className="text-hud-muted text-xs">
+                Écran de déclaration à venir (SH-43).
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}

@@ -74,28 +74,30 @@
     * `src/features/gear/` : composants (`GearCard`, `GearGrid`, `GearStatusBadge`, `GearCategoryChips`, `GearProgress`, `GearEmptyState`) + hooks TanStack Query (`useMyGear`).
     * `src/pages/` : une page par route (« Mon Armurerie »), branchée dans `src/app/routes.tsx`.
     * **API** : passer par `apiClient` (`@/api/client`) exclusivement ; types issus de `src/api/schema.d.ts` (**générés** — `npm run gen:api`, ne pas éditer à la main).
-    * **Filtrage/pagination** : le backend expose déjà `category`, `status`, `page`, `limit` sur `GET /gear/me`. Décider par écrit : filtre **côté serveur** (requête par chip) **ou côté client** (une seule requête, filtre en mémoire) — la barre de progression a de toute façon besoin du **total tous statuts**.
+    * **Filtrage/pagination — décision actée (SH-21a)** : **filtrage côté client.** Le casier est chargé en **une seule requête** (`GET /api/v1/gear/me?limit=100`, plafond du backend) et les chips filtrent **en mémoire**. Raisons : (a) la barre de progression a de toute façon besoin du **total tous statuts**, donc la donnée complète doit être en mémoire ; (b) re-requêter à chaque chip ferait N appels réseau pour une donnée déjà chargée ; (c) un casier de freelance dépasse rarement 100 équipements. Si `total > items.length`, la page l'indique explicitement (la pagination au-delà de 100 relève d'une itération ultérieure).
     * **Design tokens** : la palette de la spec (§3) est ajoutée comme thème Tailwind, **pas** en couleurs codées en dur dans les composants.
 * **Accessibilité (R6) :** contrastes vérifiés sur fond sombre ; le statut **ne doit pas reposer sur la couleur seule** (le libellé texte « VALIDÉ »/« ATTENTE »/« REJETÉ » accompagne toujours la pastille) ; chips filtrantes navigables au clavier.
 * **Tests (Vitest + RTL) :** tester du point de vue utilisateur (rôles/labels accessibles) — rendu des 3 statuts, filtrage, état vide, état d'erreur.
 
 ### 5. Dépendances à lever (⚠️ avant de démarrer)
-1. **SH-20 — Parcours Auth Web (bloquant pour la vue privée).** `GET /api/v1/gear/me` exige un JWT et déduit l'identité du token. Tant que le front n'a ni écran de connexion ni stockage/injection du token, **la vue privée ne peut pas être branchée sur l'API réelle**. À cela s'ajoute le **TODO CORS** laissé en SH-19, à traiter dans SH-20.
-   → *Options : (a) faire SH-20 d'abord [recommandé] ; (b) développer SH-21a contre une API mockée (MSW) et câbler l'auth ensuite — livre l'UI mais pas la tranche verticale.*
+1. ~~**SH-20 — Parcours Auth Web (bloquant pour la vue privée).**~~ ✅ **Levée** (SH-20 🟢 Terminé) : `GET /api/v1/gear/me` reçoit désormais le JWT injecté par `apiClient`, et le TODO CORS de SH-19 a été résorbé. SH-21a est branchée sur l'API réelle (option (a) retenue).
 2. **SH-39 — endpoint recruteur (bloquant pour la vue publique).** `GET /api/v1/gear/freelance/:id` n'existe pas encore.
 3. **Sources de marque non versionnées.** Palette et principes transcrits depuis des maquettes Visily et un logo réalisés hors dépôt → les verser sous `docs/design/brand/` pour disposer d'une source de vérité unique.
 
 ### 6. Découpage proposé
-- **SH-21a — Grille d'inventaire, vue privée** (~5 SP) : thème/tokens, `GearCard`, grille responsive, chips, progression, état vide, états chargement/erreur, tests. *Dépend de SH-20.*
+- **SH-21a — Grille d'inventaire, vue privée** (~5 SP) : thème/tokens, `GearCard`, grille responsive, chips, progression, état vide, états chargement/erreur, tests. *Dépend de SH-20.* — 🟢 **Livrée le 2026-07-15** (branche `feature/SH-21a-armurerie-grille-inventaire`, PR à venir). Le CTA « + Ajouter du matériel » est volontairement **désactivé** : l'écran de déclaration (`POST /api/v1/gear`) est hors périmètre 21a → suivi en **SH-43**.
 - **SH-21b — Vue publique recruteur** (~2 SP) : réutilise les composants, filtre `VALIDATED`, pas de CTA. *Dépend de SH-39.*
 - **SH-21c — Loadout, progression/XP, badges** (à cadrer) : **hors périmètre de la spec de design actuelle**, nécessite un cadrage produit dédié (et probablement de nouveaux champs backend).
 
 ### 7. Definition of Done (DoD)
-- [ ] Composants conformes à la spec de design (palette en tokens, fiche horizontale, badges de statut).
-- [ ] Responsive vérifié : 1 colonne < 1024px, 2 colonnes ≥ 1024px.
-- [ ] États vide / chargement / erreur couverts et testés.
-- [ ] Tests Vitest + RTL passants (rendu des statuts, filtrage, état vide, erreur).
-- [ ] Statut jamais porté par la **couleur seule** (accessibilité, R6).
-- [ ] Aucun appel API hors `apiClient` ; `schema.d.ts` régénéré, non édité à la main.
-- [ ] CI frontend verte (lint + `format:check` + tests + build).
-- [ ] `docs/BACKLOG.md` mis à jour.
+
+> **SH-21a (vue privée) — satisfaite.** La vue publique recruteur (SH-21b, dép. SH-39) et le loadout/badges (SH-21c) restent hors périmètre.
+
+- [x] Composants conformes à la spec de design (palette en tokens `--color-hud-*`, fiche horizontale, badges de statut).
+- [x] Responsive vérifié : 1 colonne < 1024px, 2 colonnes ≥ 1024px (`GearGrid` : `grid-cols-1 lg:grid-cols-2`).
+- [x] États vide / chargement / erreur (+ 403 RBAC) couverts et testés (`Armurerie.test.tsx`).
+- [x] Tests Vitest + RTL passants (rendu des statuts, filtrage, état vide, erreur).
+- [x] Statut jamais porté par la **couleur seule** (accessibilité, R6) — libellé texte + garde de test.
+- [x] Aucun appel API hors `apiClient` (hook `useMyGear`) ; `schema.d.ts` régénéré via `gen:api`, non édité à la main.
+- [x] CI frontend verte (lint + `format:check` + tests + build).
+- [x] `docs/BACKLOG.md` mis à jour.

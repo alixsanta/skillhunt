@@ -33,6 +33,7 @@ Organisation **par feature**, miroir du backend :
 - **Accessibilité** : viser WCAG (audit CI formalisé en SH-27) ; préférer les composants shadcn/ui (Radix) accessibles par défaut.
 - **Auth (SH-20)** : l'access token vit **en mémoire** (`features/auth/session-store.ts`), le refresh token dans un **cookie `httpOnly`** posé par le backend. **Ne jamais écrire un token dans `localStorage`/`sessionStorage`.** Les appels authentifiés passent par `apiClient`, dont les intercepteurs injectent le bearer et rafraîchissent le token (refresh _single-flight_ + rejeu) — ne pas les court-circuiter.
 - **Tests réseau** : MSW (`src/test/server.ts`). `onUnhandledRequest: 'error'` — tout appel HTTP non simulé fait échouer le test.
+- **Armurerie (SH-21a)** : la palette « HUD tactique » vit dans les tokens Tailwind de `src/index.css` (`--color-hud-*`). **Aucune couleur hexadécimale dans un composant** — un test (`features/gear/gear-meta.test.ts`) le vérifie. La catégorie de matériel se lit dans l'**icône** (pastille neutre), jamais dans une couleur ; le statut porte toujours un **libellé texte** en plus de la pastille colorée (R6).
 
 ## Commandes
 

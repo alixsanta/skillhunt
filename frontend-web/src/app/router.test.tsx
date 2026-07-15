@@ -35,4 +35,9 @@ describe('router', () => {
     renderAt('/route-inexistante');
     expect(await screen.findByRole('heading', { name: /404/i })).toBeInTheDocument();
   });
+
+  it('redirige un visiteur non connecté de /mon-armurerie vers /login', async () => {
+    renderAt('/mon-armurerie');
+    expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
+  });
 });

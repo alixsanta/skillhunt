@@ -3,6 +3,7 @@ import Home from '@/pages/Home';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Account from '@/pages/Account';
+import Armurerie from '@/pages/Armurerie';
 import NotFound from '@/pages/NotFound';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 
@@ -17,6 +18,14 @@ export const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <Account />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/mon-armurerie',
+    element: (
+      <ProtectedRoute>
+        <Armurerie />
       </ProtectedRoute>
     ),
   },

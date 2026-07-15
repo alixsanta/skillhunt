@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -27,7 +27,14 @@ export default function Account() {
       <h1 className="text-2xl font-bold">Mon compte</h1>
       <p>{user?.email}</p>
       <p className="text-muted-foreground text-sm tracking-widest uppercase">{user?.role}</p>
-      <Button onClick={handleLogout}>Se déconnecter</Button>
+      <div className="flex gap-3">
+        <Button asChild>
+          <Link to="/mon-armurerie">Mon Armurerie</Link>
+        </Button>
+        <Button variant="outline" onClick={handleLogout}>
+          Se déconnecter
+        </Button>
+      </div>
     </main>
   );
 }
