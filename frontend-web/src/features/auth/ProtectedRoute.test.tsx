@@ -1,7 +1,9 @@
+import { StrictMode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
+import { rotatingRefreshHandler } from '@/test/auth-handlers';
 import { DEFAULT_API_URL } from '@/api/client';
 import { AuthProvider } from './AuthProvider';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -15,23 +17,27 @@ function fakeJwt(payload: Record<string, unknown>): string {
 const TOKEN = fakeJwt({ userId: 'u-1', email: 'pilote@skillhunt.io', role: 'FREELANCE' });
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
+// <StrictMode> généralisé (SH-41) : le double montage des effets est le runtime réel
+// de `npm run dev` — c'est lui qui avait révélé la double rotation du cookie (SH-20).
 function renderAt(path: string) {
   return render(
-    <AuthProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/login" element={<p>Écran de connexion</p>} />
-          <Route
-            path="/mon-compte"
-            element={
-              <ProtectedRoute>
-                <p>Contenu protégé</p>
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </MemoryRouter>
-    </AuthProvider>,
+    <StrictMode>
+      <AuthProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/login" element={<p>Écran de connexion</p>} />
+            <Route
+              path="/mon-compte"
+              element={
+                <ProtectedRoute>
+                  <p>Contenu protégé</p>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </StrictMode>,
   );
 }
 
@@ -49,12 +55,9 @@ describe('ProtectedRoute (SH-20)', () => {
     expect(screen.queryByText('Contenu protégé')).not.toBeInTheDocument();
   });
 
-  it('laisse passer un utilisateur authentifié', async () => {
-    server.use(
-      http.post(url('/api/v1/auth/refresh'), () =>
-        HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
-      ),
-    );
+  it('laisse passer un utilisateur authentifié (backend qui rotationne simulé, SH-41)', async () => {
+    const refresh = rotatingRefreshHandler(TOKEN);
+    server.use(refresh.handler);
 
     renderAt('/mon-compte');
 
