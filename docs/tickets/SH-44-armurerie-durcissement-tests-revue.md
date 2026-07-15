@@ -41,6 +41,30 @@
    → un commentaire d'une ligne suffit pour prévenir une mauvaise lecture future. La vraie pagination
    au-delà de 100 est une itération ultérieure.
 
+### Findings des relectures ciblées (2026-07-15)
+
+Relectures sécurité / accessibilité / correction de la PR #22. **Déjà corrigés et mergés** (donc
+hors périmètre de ce ticket, listés pour mémoire) : repère non-coloré des chips actives (1.4.1),
+explication visible du CTA désactivé, exhaustivité `GEAR_CATEGORIES`/`GEAR_STATUSES`, **contraste des
+bordures HUD `#1e2732` → `#5c6e88` (1.4.11)**. Restent, déférés ici :
+
+7. **`GearProgress` ne borne pas ses entrées.** Sûr aujourd'hui (`Armurerie` passe toujours
+   `validatedCount ≤ items.length`), mais réutilisé avec `validated > total`, `aria-valuenow`
+   dépasserait 100 (ARIA invalide) et la barre déborderait. → `Math.min(100, Math.max(0, …))`.
+8. **Un 401 tombe dans la branche d'erreur générique avec « Réessayer ».** Sur session expirée, les
+   intercepteurs ont déjà tenté le refresh ; réessayer est futile. Inoffensif (le 4xx n'est pas
+   réessayé), mais le bouton invite à une action sans effet. → distinguer 401 (ou masquer Réessayer).
+
+**Candidats plutôt pour SH-27 (audit a11y en CI)** — relevés ici pour ne pas les perdre :
+- **4.1.3** : le filtrage par catégorie n'est pas annoncé aux lecteurs d'écran (pas de région
+  `aria-live`, et le compteur d'en-tête reste le total non filtré). → région polie « N équipements affichés ».
+- **aria-valuetext** sur `GearProgress` pour une annonce plus riche (`{validated} sur {total}…`).
+- **Contraste `text-hud-muted` (#7b8794) sur carte (#111820) ≈ 4,9:1** : passe 4.5:1 de justesse — à
+  mesurer précisément (axe/Lighthouse) plutôt qu'à l'estimation manuelle.
+- **`prefers-reduced-motion`** : les `transition-*` (chips, boutons) mériteraient un override global.
+
 ### Definition of Done
 - [ ] Items 1, 2, 4, 5, 6 traités (rapides) ; item 3 traité ou requalifié dans un ticket d'intégration.
+- [ ] Items 7, 8 traités (bornage `GearProgress`, gestion du 401).
+- [ ] Items « candidats SH-27 » traités ici OU explicitement portés dans SH-27.
 - [ ] Tests Vitest/Jest passants ; CI verte (lint + `format:check` + tests + build).
