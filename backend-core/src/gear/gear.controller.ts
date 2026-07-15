@@ -12,6 +12,7 @@ import {
 import { GearService } from './gear.service';
 import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
+import { PublicQueryGearDto } from './dto/public-query-gear.dto';
 import { ReviewGearDto } from './dto/review-gear.dto';
 import {
   JwtAuthGuard,
@@ -26,10 +27,11 @@ import {
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiCreatedResponse,
 } from '@nestjs/swagger';
-import { GearResponseDto, PaginatedGearDto } from './dto/gear-response.dto';
+import { GearResponseDto, PaginatedGearDto, PaginatedPublicGearDto } from './dto/gear-response.dto';
 import { UserRole } from '../common/enums';
 
 @ApiTags('🎒 Armurerie (Gear Locker)')
@@ -57,6 +59,22 @@ export class GearController {
   getMyGear(@CurrentUser() user: JwtPayload, @Query() query: QueryGearDto) {
     // Un Freelance ne peut interroger que SON casier (étanchéité garantie par l'id du token)
     return this.gearService.getFreelanceGear(user.userId, query);
+  }
+
+  @Get('freelance/:freelanceId')
+  @Roles(UserRole.RECRUITER)
+  @ApiOperation({ summary: 'Consulter le matériel VALIDÉ d\'un freelance (Recruteur)' })
+  @ApiOkResponse({
+    type: PaginatedPublicGearDto,
+    description: 'Matériel validé uniquement, sans donnée sensible (jamais de serialNumber)',
+  })
+  @ApiNotFoundResponse({ description: 'Profil Freelance introuvable (404)' })
+  getPublicFreelanceGear(
+    @Param('freelanceId', ParseUUIDPipe) freelanceId: string,
+    @Query() query: PublicQueryGearDto,
+  ) {
+    // Le statut VALIDATED est imposé par le service ; le DTO public n'accepte pas ?status= (C2.2.3)
+    return this.gearService.getPublicFreelanceGear(freelanceId, query);
   }
 
   @Get('pending')

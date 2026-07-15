@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { GearCategory, GearStatus } from '../../common/enums';
 
 /**
@@ -37,6 +37,33 @@ export class GearResponseDto {
     description: 'Propriétaire (Freelance) — déduit du token, jamais d\'un identifiant client',
   })
   freelanceId!: string;
+}
+
+/**
+ * Équipement tel qu'exposé à un RECRUTEUR (vue publique, SH-39) — minimisation (CLAUDE.md §8) :
+ * ni `serialNumber` (donnée sensible anti-vol/assurance, sans valeur pour la décision de
+ * contact), ni `freelanceId` (redondant : c'est le paramètre de la route).
+ * Dérivé par OmitType : un champ ajouté à `GearResponseDto` doit être exclu ICI explicitement
+ * ou il sera exposé — les tests de contrat verrouillent la liste exacte.
+ */
+export class PublicGearDto extends OmitType(GearResponseDto, [
+  'serialNumber',
+  'freelanceId',
+] as const) {}
+
+/** Page de la vue publique (miroir de `PaginatedPublicGear`, gear.service.ts). */
+export class PaginatedPublicGearDto {
+  @ApiProperty({ type: [PublicGearDto] })
+  items!: PublicGearDto[];
+
+  @ApiProperty({ example: 12, description: 'Nombre total d\'équipements validés du freelance' })
+  total!: number;
+
+  @ApiProperty({ example: 1, description: 'Page courante (1-indexée)' })
+  page!: number;
+
+  @ApiProperty({ example: 20, description: 'Taille de page appliquée' })
+  limit!: number;
 }
 
 /** Page de résultats de l'Armurerie (miroir de `PaginatedGear`, gear.service.ts). */

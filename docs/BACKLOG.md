@@ -54,7 +54,7 @@
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 | [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
 | [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟡 Prêt | 3 | C2.2.3, C2.2.2 | R4 |
-| [SH-39](tickets/SH-39-gear-consultation-recruteur.md) | Armurerie : consultation du casier d'un freelance par un recruteur (`GET /gear/freelance/:id`, filtré `VALIDATED`, sans `serialNumber`) — dépendance du design SH-21b | 🟡 Prêt | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
+| [SH-39](tickets/SH-39-gear-consultation-recruteur.md) | Armurerie : consultation du casier d'un freelance par un recruteur (`GET /gear/freelance/:id`, filtré `VALIDATED`, sans `serialNumber`) — débloque SH-21b | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
 | [SH-40](tickets/SH-40-2fa-comptes-pro.md) | 2FA comptes pro (TOTP, secret chiffré AES-256, codes de secours) — sortie du périmètre SH-20 | 🔵 Backlog | 5 | C2.2.3, C2.2.2 | R7 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3

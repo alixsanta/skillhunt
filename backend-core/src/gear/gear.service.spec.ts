@@ -214,6 +214,74 @@ describe('🎒 GearService (Armurerie — SH-9)', () => {
     await expect(service.reviewGear('inexistant', GearStatus.VALIDATED)).rejects.toThrow(NotFoundException);
   });
 
+  // --- Consultation publique par un recruteur (SH-39) — C2.2.3 ---
+  describe('consultation publique du casier par un recruteur (SH-39)', () => {
+    it('ne renvoie QUE le matériel VALIDATED du freelance ciblé', async () => {
+      const a = freelance();
+      const validated = await service.addGearToLocker(a.id, { ...dto, serialNumber: 'SN-OK' });
+      await service.addGearToLocker(a.id, { ...dto, serialNumber: 'SN-PENDING' });
+      const rejected = await service.addGearToLocker(a.id, { ...dto, serialNumber: 'SN-KO' });
+      await service.reviewGear(validated.id, GearStatus.VALIDATED);
+      await service.reviewGear(rejected.id, GearStatus.REJECTED);
+
+      const result = await service.getPublicFreelanceGear(a.id, q());
+
+      expect(result.total).toBe(1);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].id).toBe(validated.id);
+      expect(result.items[0].status).toBe(GearStatus.VALIDATED);
+    });
+
+    it('n\'expose JAMAIS serialNumber ni freelanceId (minimisation, CLAUDE.md §8)', async () => {
+      const a = freelance();
+      const g = await service.addGearToLocker(a.id, { ...dto, serialNumber: 'SN-SECRET' });
+      await service.reviewGear(g.id, GearStatus.VALIDATED);
+
+      const result = await service.getPublicFreelanceGear(a.id, q());
+
+      expect(result.items).toHaveLength(1);
+      // Projection par allowlist : on vérifie les clés EXACTES, pas seulement l'absence
+      // du champ sensible — un champ ajouté par inadvertance ferait rougir ce test.
+      expect(Object.keys(result.items[0]).sort()).toEqual(
+        ['brand', 'category', 'createdAt', 'id', 'model', 'status'].sort(),
+      );
+    });
+
+    it('refuse (404) une cible inconnue ou qui n\'est pas un freelance', async () => {
+      const recruiter = users.seed({ email: 'r@x.io', username: 'R', passwordHash: 'h', role: UserRole.RECRUITER });
+
+      await expect(service.getPublicFreelanceGear(randomUUID(), q())).rejects.toThrow(NotFoundException);
+      // Pas d'énumération du rôle des comptes : un recruteur ciblé répond 404, pas 403
+      await expect(service.getPublicFreelanceGear(recruiter.id, q())).rejects.toThrow(NotFoundException);
+    });
+
+    it('renvoie 200 + liste vide quand le freelance n\'a rien de validé (pas un 404)', async () => {
+      const a = freelance();
+      await service.addGearToLocker(a.id, { ...dto, serialNumber: 'SN-PENDING' });
+
+      const result = await service.getPublicFreelanceGear(a.id, q());
+
+      expect(result.total).toBe(0);
+      expect(result.items).toEqual([]);
+    });
+
+    it('filtre par catégorie sans jamais élargir le statut', async () => {
+      const a = freelance();
+      const drone = await service.addGearToLocker(a.id, { ...dto, category: GearCategory.DRONE, serialNumber: 'SN-D' });
+      const sensor = await service.addGearToLocker(a.id, { ...dto, category: GearCategory.SENSOR, serialNumber: 'SN-S' });
+      await service.reviewGear(drone.id, GearStatus.VALIDATED);
+      await service.reviewGear(sensor.id, GearStatus.VALIDATED);
+      // Un DRONE non validé ne doit pas apparaître, même avec le bon filtre catégorie
+      await service.addGearToLocker(a.id, { ...dto, category: GearCategory.DRONE, serialNumber: 'SN-P' });
+
+      const drones = await service.getPublicFreelanceGear(a.id, q({ category: GearCategory.DRONE }));
+
+      expect(drones.total).toBe(1);
+      expect(drones.items[0].category).toBe(GearCategory.DRONE);
+      expect(drones.items[0].status).toBe(GearStatus.VALIDATED);
+    });
+  });
+
   // --- Émission d'événements de domaine (bus Redis — SH-14) — C2.2.2 ---
   describe('émission d\'événements sur le bus (SH-14)', () => {
     let svc: GearService;
