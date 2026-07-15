@@ -9,8 +9,11 @@ import { useMyGear } from './useMyGear';
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
 function wrapper({ children }: { children: ReactNode }) {
-  // `retry: false` : sans cela, TanStack Query réessaierait 3 fois avant d'exposer l'erreur.
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // `useMyGear` définit sa PROPRE politique de retry (pas de retry sur 4xx, 3 essais sur
+  // 5xx/réseau), qui prime sur les options du client — un `retry: false` ici serait ignoré.
+  // On force donc seulement `retryDelay: 0` pour que les réessais d'un 500 soient instantanés
+  // et n'allongent pas le test.
+  const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 0 } } });
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }
 
@@ -55,5 +58,28 @@ describe('useMyGear — chargement du casier (SH-21a)', () => {
     const { result } = renderHook(() => useMyGear(), { wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+
+  it('ne réessaie jamais une erreur 4xx (403 — RECRUITER sur une route réservée FREELANCE)', async () => {
+    let callCount = 0;
+    server.use(
+      http.get(url('/api/v1/gear/me'), () => {
+        callCount += 1;
+        return new HttpResponse(null, { status: 403 });
+      }),
+    );
+
+    // Ce test utilise son PROPRE QueryClient aux réglages par défaut (retry actif, 3 essais) :
+    // si un 403 était compté plus d'une fois, ce serait la preuve que le hook a réessayé. Prouve
+    // donc que c'est bien `useMyGear` qui refuse d'insister sur un 4xx, pas la config du test.
+    function retryWrapper({ children }: { children: ReactNode }) {
+      const client = new QueryClient();
+      return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    }
+
+    const { result } = renderHook(() => useMyGear(), { wrapper: retryWrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(callCount).toBe(1);
   });
 });

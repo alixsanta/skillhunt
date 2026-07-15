@@ -25,5 +25,17 @@ export function useMyGear() {
       });
       return data;
     },
+    // Ne jamais réessayer une erreur 4xx (SH-21a) : un 403 (RECRUITER sur une route
+    // `@Roles(FREELANCE)`) ou un 401 (session expirée, déjà géré par les intercepteurs
+    // d'`apiClient`) est une réponse définitive du serveur, pas un aléa réseau — la retenter
+    // ne fait que retarder l'affichage du message d'erreur pour rien. Seuls les échecs
+    // serveur/réseau (5xx, timeout, pas de réponse) méritent les 3 tentatives par défaut.
+    retry: (failureCount, error) => {
+      const status = error.response?.status;
+      if (status !== undefined && status >= 400 && status < 500) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 }
