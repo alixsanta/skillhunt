@@ -80,10 +80,10 @@ handler MSW répondait 200 à *tous* les refresh — un backend qui rotationne n
 * **CI :** ces tests entrent dans les suites existantes ; aucun nouveau job.
 
 ### 5. Definition of Done (DoD)
-- [ ] Smoke test de bootstrap backend : l'app s'instancie avec **la même configuration que `main.ts`**.
-- [ ] Le test **échoue** si l'on rétablit l'import fautif de `cookie-parser` (vérifié par mutation).
-- [ ] Tests d'intégration front d'auth rendus sous `<StrictMode>`.
-- [ ] Handler MSW simulant un backend qui **rotationne** (2ᵉ usage du même refresh → 401).
-- [ ] Le test **échoue** si l'on rétablit l'appel direct à `/auth/refresh` (vérifié par mutation).
-- [ ] CI verte (2 services) ; aucun test rendu instable (*flaky*).
-- [ ] `docs/BACKLOG.md` mis à jour.
+- [x] Smoke test de bootstrap backend : `configureApp()` extraite de `main.ts` (chemin UNIQUE test/prod), exercée par de vrais appels HTTP sur port éphémère (`app.setup.spec.ts`) ; bootstrap complet de l'`AppModule` en test d'intégration opt-in (`BOOTSTRAP_SMOKE=1`, convention `token-store.integration.spec.ts`).
+- [x] Le test **échoue** si l'on rétablit l'import fautif de `cookie-parser` — vérifié par mutation (4 tests rouges, puis revert).
+- [x] Tests d'intégration front d'auth rendus sous `<StrictMode>` (AuthProvider, ProtectedRoute, router).
+- [x] Handler MSW `rotatingRefreshHandler` simulant un backend qui **rotationne** (2ᵉ usage du même refresh → 401), utilisé par les tests de restauration de session.
+- [x] Le test **échoue** si l'on rétablit l'appel direct à `/auth/refresh` — vérifié par mutation (4 tests rouges, puis revert).
+- [x] Suites locales vertes des 2 services (84 backend + 68 frontend), aucun test instable observé ; CI à confirmer sur la PR.
+- [x] `docs/BACKLOG.md` mis à jour.
