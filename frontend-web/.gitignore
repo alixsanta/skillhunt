@@ -15,6 +15,10 @@ dist-ssr
 # Secrets locaux (voir .env.example)
 .env
 
+# Rapports Lighthouse CI (SH-27) — publiés en artefact CI, jamais versionnés
+.lighthouseci
+lighthouse-report
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

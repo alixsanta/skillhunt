@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "gen:api": "openapi-typescript http://localhost:3001/api/docs-json -o src/api/schema.d.ts"
+    "gen:api": "openapi-typescript http://localhost:3001/api/docs-json -o src/api/schema.d.ts",
+    "audit:a11y": "lhci autorun"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@lhci/cli": "^0.15.1",
     "@tailwindcss/vite": "^4.3.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -55,6 +57,8 @@
   "overrides": {
     "openapi-typescript": {
       "typescript": "$typescript"
-    }
+    },
+    "tmp": "^0.2.6",
+    "uuid": "^11.1.1"
   }
 }
