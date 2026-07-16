@@ -65,6 +65,84 @@ services:
     volumes:
       - skillhunt_redis:/data
 
+  # ------------------------------------------------------------------
+  # Services applicatifs (SH-2) — profil "app" : `docker compose --profile app up -d --build`.
+  # Sans profil, seule l'INFRA démarre (workflow dev inchangé : npm run start:dev, uvicorn).
+  # Environnements (12-factor) : mêmes images, seule la config (env vars) change —
+  # les valeurs ci-dessous sont celles de DEV, à surcharger en staging/prod.
+  # ------------------------------------------------------------------
+
+  backend-core:
+    build: ./backend-core
+    container_name: skillhunt-backend
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      # Réseau Docker interne : noms de services, ports INTERNES (5432/6379)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-skillhunt}
+      DB_PASSWORD: ${DB_PASSWORD:-skillhunt}
+      DB_NAME: ${DB_NAME:-skillhunt}
+      REDIS_URL: redis://redis:6379
+      MATCHING_SERVICE_URL: http://matching-service:8000
+      # Le front conteneurisé (FRONTEND_PORT, 8080 par défaut) ET le dev Vite (5173)
+      # sont des origines légitimes ; surchargable si 8080 est occupé sur l'hôte.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080,http://localhost:5173}
+      AWS_REGION: ${AWS_REGION:-eu-west-3}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-skillhunt-media}
+      AWS_S3_ENDPOINT: http://localstack:4566
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      # Schéma versionné par migrations : appliquées au boot en dev/staging (cf. entrypoint)
+      RUN_MIGRATIONS: "true"
+      # JWT_PRIVATE_KEY/JWT_PUBLIC_KEY : absents en dev => paire éphémère (warning au boot).
+      # En staging/prod : injectés par le gestionnaire de secrets, JAMAIS commités (§8).
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
+  matching-service:
+    build: ./matching-service
+    container_name: skillhunt-matching
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USERNAME:-skillhunt}:${DB_PASSWORD:-skillhunt}@postgres:5432/${DB_NAME:-skillhunt}
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_CORE_URL: http://backend-core:3001
+    # AUCUN port hôte (archi §2) : service interne, seul le proxy backend-core (SH-22)
+    # l'atteint via le réseau Docker privé — le navigateur ne peut pas le contourner.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend-web:
+    build:
+      context: ./frontend-web
+      args:
+        # Cuite dans le bundle au build (contrainte Vite) : l'URL vue DEPUIS LE NAVIGATEUR
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    container_name: skillhunt-frontend
+    profiles: ["app"]
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      - backend-core
+
 volumes:
   skillhunt_pgdata:
   skillhunt_localstack:

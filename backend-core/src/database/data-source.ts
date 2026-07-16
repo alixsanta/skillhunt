@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { join } from 'path';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Gear } from '../gear/gear.entity';
@@ -18,7 +19,9 @@ export function buildDataSourceOptions(): DataSourceOptions {
     password: process.env.DB_PASSWORD ?? 'skillhunt',
     database: process.env.DB_NAME ?? 'skillhunt',
     entities: [User, Gear, Certification],
-    migrations: ['src/database/migrations/*.ts'],
+    // Relatif à __dirname (et .{ts,js}) : la CLI fonctionne depuis src/ (ts-node, dev)
+    // COMME depuis dist/ (conteneur, SH-2) — un littéral 'src/…/*.ts' casse une fois compilé.
+    migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
     // Jamais de synchronisation automatique : le schéma est versionné par les migrations (anti-perte de données)
     synchronize: false,
     logging: process.env.DB_LOGGING === 'true',
