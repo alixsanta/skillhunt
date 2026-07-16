@@ -242,6 +242,23 @@ export interface paths {
         patch: operations["CertificationController_review"];
         trace?: never;
     };
+    "/api/v1/matching/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rechercher des freelances par matching multicritères (Recruteur) */
+        post: operations["MatchingController_search"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -433,6 +450,53 @@ export interface components {
              * @example 2027-12-31
              */
             validUntil?: string;
+        };
+        SearchMatchDto: {
+            /**
+             * @description Compétences recherchées (1 à 50, chacune de 1 à 64 caractères)
+             * @example [
+             *       "pilotage drone",
+             *       "thermographie"
+             *     ]
+             */
+            skills: string[];
+            /**
+             * @description Latitude du lieu de mission
+             * @example 43.6045
+             */
+            lat: number;
+            /**
+             * @description Longitude du lieu de mission
+             * @example 1.4442
+             */
+            lon: number;
+            /**
+             * @description Rayon d'action en kilomètres (0 < r ≤ 500)
+             * @example 50
+             */
+            radiusKm: number;
+        };
+        MatchResultDto: {
+            /**
+             * Format: uuid
+             * @example 3f1b2c9e-6d54-4a1b-9d0e-7c2f5a8b1234
+             */
+            freelanceId: string;
+            /**
+             * @description Username du freelance — null si le compte a disparu entre-temps
+             * @example pilote-pro
+             */
+            username: string | null;
+            /**
+             * @description Score de matching (0..1)
+             * @example 0.92
+             */
+            score: number;
+            /**
+             * @description Distance au lieu de mission (km)
+             * @example 12.5
+             */
+            distanceKm: number;
         };
     };
     responses: never;
@@ -941,6 +1005,51 @@ export interface operations {
             };
             /** @description Rôle insuffisant ou accès à une ressource d'autrui (403) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MatchingController_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchMatchDto"];
+            };
+        };
+        responses: {
+            /** @description Résultats triés (score décroissant, distance croissante), enrichis du username */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchResultDto"][];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant pour cette ressource (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Matching-service indisponible (502) */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };
