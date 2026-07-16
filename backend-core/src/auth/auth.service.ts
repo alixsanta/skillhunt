@@ -50,6 +50,11 @@ export class AuthService {
       username: dto.username,
       role: dto.role,
       passwordHash,
+      // SH-34 — position saisie à l'inscription (obligatoire pour un FREELANCE, cf. RegisterDto).
+      // ⚠️ Ordre GeoJSON = [longitude, latitude], inverse de l'ordre usuel lat/lon (C2.2.3).
+      location: dto.location
+        ? { type: 'Point' as const, coordinates: [dto.location.longitude, dto.location.latitude] }
+        : null,
     });
 
     const saved = await this.usersRepo.save(user);

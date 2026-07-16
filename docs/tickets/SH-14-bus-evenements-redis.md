@@ -108,4 +108,4 @@ Un **seul** serveur Redis, partitionné logiquement par préfixe : `refresh:*` (
 - [x] Aucun secret en dur : `REDIS_URL` via variables d'environnement des deux services.
 - [x] Lint (ESLint + flake8), audit sécurité et build OK dans les 2 CI.
 - [x] Dette « TokenStore en mémoire » levée (tag SH-14 de `token-store.service.ts` et CLAUDE.md §5).
-- [ ] Code review + PR `feature/SH-14-bus-evenements-redis` → `develop` mergée.
+- [x] Code review (high effort) passée — 6 findings tracés en SH-35/SH-36 (non bloquants) — et PR #15 `feature/SH-14-bus-evenements-redis` → `develop` **mergée** (2026-07-05).

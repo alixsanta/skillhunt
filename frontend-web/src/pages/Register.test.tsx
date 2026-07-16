@@ -82,6 +82,55 @@ describe("Écran d'inscription (SH-20)", () => {
     expect(sessionStore.getAccessToken()).toBeNull();
   });
 
+  it('envoie la position de la ville choisie pour un FREELANCE (SH-34)', async () => {
+    let receivedBody: unknown = null;
+    server.use(
+      http.post(url('/api/v1/auth/register'), async ({ request }) => {
+        receivedBody = await request.json();
+        return new HttpResponse(null, { status: 201 });
+      }),
+      http.post(url('/api/v1/auth/login'), () =>
+        HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
+      ),
+    );
+
+    renderRegister();
+    // Rôle par défaut : FREELANCE → le champ ville est visible et obligatoire
+    await userEvent.selectOptions(await screen.findByLabelText("Ville d'activité"), 'Toulouse');
+    await fillForm();
+
+    await screen.findByText('nouvelle@skillhunt.io');
+    expect(receivedBody).toMatchObject({
+      role: 'FREELANCE',
+      // Champs latitude/longitude EXPLICITES (pas de tableau) : le piège d'ordre
+      // GeoJSON [lon, lat] est neutralisé à la frontière API (SH-34).
+      location: { latitude: 43.6045, longitude: 1.4442 },
+    });
+  });
+
+  it("masque le champ ville pour un RECRUTEUR et n'envoie aucune position (SH-34)", async () => {
+    let receivedBody: unknown = null;
+    server.use(
+      http.post(url('/api/v1/auth/register'), async ({ request }) => {
+        receivedBody = await request.json();
+        return new HttpResponse(null, { status: 201 });
+      }),
+      http.post(url('/api/v1/auth/login'), () =>
+        HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
+      ),
+    );
+
+    renderRegister();
+    await userEvent.selectOptions(await screen.findByLabelText('Je suis'), 'RECRUITER');
+
+    expect(screen.queryByLabelText("Ville d'activité")).not.toBeInTheDocument();
+
+    await fillForm();
+    await screen.findByText('nouvelle@skillhunt.io');
+    expect(receivedBody).not.toHaveProperty('location');
+    expect(receivedBody).toMatchObject({ role: 'RECRUITER' });
+  });
+
   it('refuse un mot de passe trop court sans appeler le backend', async () => {
     // Aucun handler /register : si le formulaire appelait le backend, MSW ferait échouer le test.
     renderRegister();

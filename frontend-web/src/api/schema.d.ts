@@ -263,6 +263,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        LocationDto: {
+            /**
+             * @description Latitude en degrés décimaux (WGS84, entre -90 et 90)
+             * @example 43.6045
+             */
+            latitude: number;
+            /**
+             * @description Longitude en degrés décimaux (WGS84, entre -180 et 180)
+             * @example 1.4442
+             */
+            longitude: number;
+        };
         RegisterDto: {
             /**
              * @description Email unique de l'utilisateur
@@ -285,6 +297,8 @@ export interface components {
              * @enum {string}
              */
             role: "FREELANCE" | "RECRUITER";
+            /** @description Position géographique. OBLIGATOIRE pour un FREELANCE (sinon invisible du matching par rayon, SH-13) ; optionnelle pour un RECRUITER. */
+            location?: components["schemas"]["LocationDto"];
         };
         LoginDto: {
             /** @example pilote.expert@skillhunt.io */

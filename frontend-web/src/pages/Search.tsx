@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { CITIES } from '@/features/matching/cities';
+import { CITIES } from '@/lib/cities';
 import type { MatchResult } from '@/features/matching/types';
 import { useMatchSearch } from '@/features/matching/useMatchSearch';
 

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/features/auth/useAuth';
+import { useAuth, type RegisterInput } from '@/features/auth/useAuth';
+import { CITIES } from '@/lib/cities';
 
 // ADMIN est volontairement absent : il n'est pas auto-attribuable (cf. SELF_ASSIGNABLE_ROLES backend).
 const ROLES = [
@@ -17,6 +18,7 @@ export default function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'FREELANCE' | 'RECRUITER'>('FREELANCE');
+  const [cityName, setCityName] = useState(CITIES[0].name);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,10 +31,18 @@ export default function Register() {
       return;
     }
 
+    const input: RegisterInput = { email, username, password, role };
+    if (role === 'FREELANCE') {
+      // Position obligatoire pour un freelance (SH-34) : sans elle, il serait invisible
+      // du matching par rayon. Champs latitude/longitude explicites, jamais [lon, lat].
+      const city = CITIES.find((c) => c.name === cityName) ?? CITIES[0];
+      input.location = { latitude: city.lat, longitude: city.lon };
+    }
+
     setSubmitting(true);
     try {
       // `register` enchaîne automatiquement le login : l'utilisateur arrive connecté.
-      await register({ email, username, password, role });
+      await register(input);
       navigate('/mon-compte', { replace: true });
     } catch {
       setError('Inscription impossible. Cet email est peut-être déjà utilisé.');
@@ -98,6 +108,29 @@ export default function Register() {
             ))}
           </select>
         </div>
+
+        {role === 'FREELANCE' && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="city">Ville d'activité</label>
+            <select
+              id="city"
+              value={cityName}
+              onChange={(event) => setCityName(event.target.value)}
+              aria-describedby="city-hint"
+              className="rounded-md border px-3 py-2"
+            >
+              {CITIES.map((city) => (
+                <option key={city.name} value={city.name}>
+                  {city.name}
+                </option>
+              ))}
+            </select>
+            <p id="city-hint" className="text-muted-foreground text-xs">
+              Ta position sert au matching par rayon d'action : sans elle, les recruteurs ne peuvent
+              pas te trouver.
+            </p>
+          </div>
+        )}
 
         {error && (
           <p id="register-error" role="alert" className="text-sm text-red-500">
