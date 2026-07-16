@@ -1,16 +1,37 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
-import { GearStatus, UserRole } from '../common/enums';
+import { GearCategory, GearStatus, UserRole } from '../common/enums';
 import { Gear } from './gear.entity';
 import { User } from '../users/user.entity';
 import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
+import { PublicQueryGearDto } from './dto/public-query-gear.dto';
 import { EventPublisherService, DomainEventType } from '../common/events/event-publisher.service';
 
 // Résultat paginé générique de l'Armurerie
 export interface PaginatedGear {
   items: Gear[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/**
+ * Équipement vu par un RECRUTEUR (SH-39) : projection par ALLOWLIST — jamais de
+ * `serialNumber` (donnée sensible) ni de `freelanceId` (redondant avec la route).
+ */
+export interface PublicGearView {
+  id: string;
+  brand: string;
+  model: string;
+  category: GearCategory;
+  status: GearStatus;
+  createdAt: Date;
+}
+
+export interface PaginatedPublicGear {
+  items: PublicGearView[];
   total: number;
   page: number;
   limit: number;
@@ -55,6 +76,42 @@ export class GearService {
       where.status = query.status;
     }
     return this.paginate(where, query);
+  }
+
+  /**
+   * Vue publique du casier pour un RECRUTEUR (SH-39) : matériel VALIDATED uniquement,
+   * projeté sans donnée sensible. Le statut est imposé ICI, jamais dérivé du client (C2.2.3).
+   */
+  async getPublicFreelanceGear(
+    freelanceId: string,
+    query: PublicQueryGearDto,
+  ): Promise<PaginatedPublicGear> {
+    const target = await this.usersRepo.findOne({ where: { id: freelanceId } });
+    // 404 uniforme (cible inconnue OU non-freelance) : pas d'énumération du rôle des comptes
+    if (!target || target.role !== UserRole.FREELANCE) {
+      throw new NotFoundException('Profil Freelance introuvable');
+    }
+
+    const where: FindOptionsWhere<Gear> = { freelanceId, status: GearStatus.VALIDATED };
+    if (query.category) {
+      where.category = query.category;
+    }
+    const { items, total, page, limit } = await this.paginate(where, query);
+
+    // Minimisation (CLAUDE.md §8) : projection par ALLOWLIST, pas de suppression après coup —
+    // un champ ajouté à l'entité Gear ne peut PAS fuiter ici par inadvertance.
+    return { items: items.map(GearService.toPublicGearView), total, page, limit };
+  }
+
+  private static toPublicGearView(gear: Gear): PublicGearView {
+    return {
+      id: gear.id,
+      brand: gear.brand,
+      model: gear.model,
+      category: gear.category,
+      status: gear.status,
+      createdAt: gear.createdAt,
+    };
   }
 
   /** File de validation admin : équipements en attente (PENDING), tous freelances confondus. */

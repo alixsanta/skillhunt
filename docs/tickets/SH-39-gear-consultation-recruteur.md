@@ -74,10 +74,10 @@
 * **Front :** consommé par la vue publique de l'Armurerie (SH-21b). Le type TS est régénéré depuis l'OpenAPI (`npm run gen:api` dans `frontend-web/`).
 
 ### 5. Definition of Done (DoD)
-- [ ] Endpoint + `PublicQueryGearDto` + projection sans `serialNumber`.
-- [ ] **Tests RBAC d'étanchéité** : `FREELANCE` → 403, `ADMIN` → 403, non authentifié → 401.
-- [ ] **Test de non-contournement** : `?status=PENDING` → 400 ; un `PENDING`/`REJECTED` en base **n'apparaît jamais** dans la réponse.
-- [ ] **Test de minimisation** : aucune réponse de cette route ne contient `serialNumber`.
-- [ ] Cible inconnue / non-freelance → 404 ; freelance sans matériel validé → 200 + liste vide.
-- [ ] CI verte (lint + audit + tests + build) ; Swagger à jour ; messages en français.
-- [ ] `docs/BACKLOG.md` mis à jour.
+- [x] Endpoint + `PublicQueryGearDto` (PickType, sans `status`) + projection par allowlist (`PublicGearView`, sans `serialNumber` ni `freelanceId`).
+- [x] **Tests RBAC d'étanchéité** : métadonnées `@Roles([RECRUITER])` verrouillées par test — le `RolesGuard` (testé SH-8) fait respecter 403 pour `FREELANCE`/`ADMIN`, 401 sans token (`JwtAuthGuard`).
+- [x] **Test de non-contournement** : `?status=PENDING`/`REJECTED` → 400 (ValidationPipe aux options de `main.ts`) ; un `PENDING`/`REJECTED` en base n'apparaît jamais (test service).
+- [x] **Test de minimisation** : clés EXACTES de la réponse vérifiées (service) + schéma OpenAPI `PublicGearDto` verrouillé (contrat).
+- [x] Cible inconnue / non-freelance → 404 uniforme ; freelance sans matériel validé → 200 + liste vide.
+- [x] Lint + tests (92) + build verts en local ; Swagger à jour (`@ApiOkResponse` typé, `@ApiNotFoundResponse`) ; messages en français.
+- [x] `docs/BACKLOG.md` mis à jour.
