@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -11,12 +12,15 @@ const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
 // Depuis SH-20, `Home` consomme useAuth() : il faut donc un <AuthProvider> et simuler
 // le refresh silencieux du démarrage (ici en échec, visiteur non connecté).
+// <StrictMode> généralisé (SH-41) : même runtime que `npm run dev` (double montage des effets).
 function renderAt(path: string) {
   const memoryRouter = createMemoryRouter(routes, { initialEntries: [path] });
   return render(
-    <AuthProvider>
-      <RouterProvider router={memoryRouter} />
-    </AuthProvider>,
+    <StrictMode>
+      <AuthProvider>
+        <RouterProvider router={memoryRouter} />
+      </AuthProvider>
+    </StrictMode>,
   );
 }
 

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
+import { rotatingRefreshHandler } from '@/test/auth-handlers';
 import { DEFAULT_API_URL } from '@/api/client';
 import { AuthProvider } from './AuthProvider';
 import { useAuth } from './useAuth';
@@ -33,23 +34,27 @@ function Probe() {
   );
 }
 
+// TOUS les rendus passent sous <StrictMode> (SH-41) : le double montage/démontage des effets
+// est le comportement de `npm run dev` — c'est lui qui avait révélé la double rotation du
+// cookie (bug 2 de SH-20). Tester sans StrictMode, c'est tester un runtime qui n'existe pas.
 function renderProbe() {
   return render(
-    <AuthProvider>
-      <Probe />
-    </AuthProvider>,
+    <StrictMode>
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    </StrictMode>,
   );
 }
 
 afterEach(() => sessionStore.clear());
 
-describe('AuthProvider (SH-20)', () => {
-  it('restaure la session au démarrage grâce au cookie de refresh', async () => {
-    server.use(
-      http.post(url('/api/v1/auth/refresh'), () =>
-        HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
-      ),
-    );
+describe('AuthProvider (SH-20, StrictMode généralisé en SH-41)', () => {
+  it('restaure la session au démarrage malgré un backend qui ROTATIONNE le refresh', async () => {
+    // Handler « rotation » : un 2e appel du même cookie recevrait 401 et purgerait la
+    // session — si une rotation concurrente réapparaît, ce test rougit (SH-41).
+    const refresh = rotatingRefreshHandler(TOKEN);
+    server.use(refresh.handler);
 
     renderProbe();
 
@@ -58,6 +63,11 @@ describe('AuthProvider (SH-20)', () => {
     expect(screen.getByText('Restauration de la session…')).toBeInTheDocument();
 
     expect(await screen.findByText('Connecté : pilote@skillhunt.io')).toBeInTheDocument();
+
+    // La session doit TENIR : un seul refresh est parti, et l'utilisateur reste connecté.
+    await waitFor(() => expect(refresh.calls()).toBe(1));
+    expect(screen.getByText('Connecté : pilote@skillhunt.io')).toBeInTheDocument();
+    expect(sessionStore.getAccessToken()).toBe(TOKEN);
   });
 
   it("reste déconnecté quand aucun cookie valide n'existe", async () => {
@@ -87,39 +97,23 @@ describe('AuthProvider (SH-20)', () => {
   });
 
   it("ne déclenche qu'un seul refresh sous StrictMode (pas de double rotation qui se révoque, SH-20)", async () => {
-    let refreshCalls = 0;
+    const refresh = rotatingRefreshHandler(TOKEN);
+    server.use(refresh.handler);
 
-    server.use(
-      http.post(url('/api/v1/auth/refresh'), () => {
-        refreshCalls += 1;
-        return HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' });
-      }),
-    );
-
-    // <StrictMode> double monte/démonte l'effet de restauration en dev : sans passer
-    // par refreshOnce(), l'AuthProvider lancerait deux rotations concurrentes du cookie,
-    // le backend révoquerait la première et l'utilisateur retomberait déconnecté.
-    render(
-      <StrictMode>
-        <AuthProvider>
-          <Probe />
-        </AuthProvider>
-      </StrictMode>,
-    );
+    renderProbe();
 
     expect(await screen.findByText('Connecté : pilote@skillhunt.io')).toBeInTheDocument();
 
     // Laisse le temps à un éventuel second appel concurrent de partir avant d'asserter.
-    await waitFor(() => expect(refreshCalls).toBe(1));
+    await waitFor(() => expect(refresh.calls()).toBe(1));
   });
 
   it('purge la session au logout et appelle le backend (révocation Redis)', async () => {
     let logoutCalled = false;
 
+    const refresh = rotatingRefreshHandler(TOKEN);
     server.use(
-      http.post(url('/api/v1/auth/refresh'), () =>
-        HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
-      ),
+      refresh.handler,
       http.post(url('/api/v1/auth/logout'), () => {
         logoutCalled = true;
         return HttpResponse.json({ success: true });
