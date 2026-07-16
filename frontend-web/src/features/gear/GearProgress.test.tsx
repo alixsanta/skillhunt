@@ -19,4 +19,19 @@ describe('GearProgress — part de matériel validé (SH-21a)', () => {
     render(<GearProgress validated={0} total={0} />);
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
   });
+
+  it('borne le pourcentage dans [0, 100] même sur des entrées incohérentes (SH-44)', () => {
+    // Sûr aujourd'hui (Armurerie passe validated <= total), mais un réemploi avec
+    // validated > total produirait un aria-valuenow > 100 — ARIA invalide.
+    render(<GearProgress validated={5} total={3} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+  });
+
+  it("annonce un texte riche aux lecteurs d'écran (aria-valuetext, SH-44/a11y)", () => {
+    render(<GearProgress validated={3} total={12} />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuetext',
+      '3 équipements validés sur 12',
+    );
+  });
 });

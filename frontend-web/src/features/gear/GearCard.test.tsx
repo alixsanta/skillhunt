@@ -43,12 +43,15 @@ describe('GearCard — fiche équipement (SH-21a)', () => {
     },
   );
 
-  it("n'affiche jamais le numéro de série (donnée sensible)", () => {
+  it("n'expose jamais le numéro de série — ni en texte, ni en attribut (SH-44)", () => {
     // La valeur cherchée est DÉRIVÉE de la fixture, jamais recopiée : une assertion sur un
     // littéral se périmerait en silence le jour où la fixture change (le test continuerait
     // de passer alors même que la fiche afficherait le numéro de série).
     const gear = makeGear();
-    renderCard(gear);
+    const { container } = renderCard(gear);
     expect(screen.queryByText(gear.serialNumber)).not.toBeInTheDocument();
+    // Durcissement SH-44 (item 4) : une fuite via title/aria-label/data-* passerait le
+    // queryByText — on balaye TOUT le HTML rendu, attributs compris.
+    expect(container.innerHTML).not.toContain(gear.serialNumber);
   });
 });

@@ -137,4 +137,26 @@ describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/réservée aux freelances/i);
     expect(screen.queryByRole('button', { name: 'Réessayer' })).not.toBeInTheDocument();
   });
+
+  it('explique le 401 (session expirée) SANS proposer un Réessayer futile (SH-44)', async () => {
+    // Les intercepteurs ont déjà tenté le refresh avant que ce 401 n'arrive au composant :
+    // re-cliquer « Réessayer » ne pourrait pas ressusciter la session.
+    server.use(http.get(url('/api/v1/gear/me'), () => new HttpResponse(null, { status: 401 })));
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/session a expiré/i);
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).not.toBeInTheDocument();
+  });
+
+  it('annonce le résultat du filtrage dans une région polie (4.1.3, SH-44)', async () => {
+    server.use(respondWith(LOCKER));
+    renderPage();
+
+    expect(await screen.findByText('3 équipements affichés')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Drone' }));
+
+    const live = screen.getByText('1 équipement affiché');
+    expect(live).toHaveAttribute('aria-live', 'polite');
+  });
 });
