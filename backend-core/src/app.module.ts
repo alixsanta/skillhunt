@@ -8,6 +8,8 @@ import { Gear } from './gear/gear.entity';
 import { Certification } from './certifications/certification.entity';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
+import { TwoFactorService } from './auth/two-factor.service';
+import { TwoFactorController } from './auth/two-factor.controller';
 import { GearService } from './gear/gear.service';
 import { GearController } from './gear/gear.controller';
 import { CertificationService } from './certifications/certification.service';
@@ -60,12 +62,14 @@ import { EventPublisherService } from './common/events/event-publisher.service';
   ],
   controllers: [
     AuthController,
+    TwoFactorController, // 2FA TOTP (SH-40)
     GearController, // Déclaration du contrôleur d'armurerie
     CertificationController, // Déclaration du contrôleur de certifications (SH-10)
     MatchingController, // Proxy vers le matching-service interne (SH-22)
   ],
   providers: [
     AuthService,
+    TwoFactorService, // 2FA TOTP : enrôlement/vérification, anti-brute-force Redis (SH-40)
     GearService, // Déclaration du service d'armurerie
     CertificationService, // Déclaration du service de certifications (SH-10)
     MatchingService, // Relais + enrichissement des résultats de matching (SH-22)

@@ -7,8 +7,10 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { AuthService } from './auth.service';
+import { JwtService } from '@nestjs/jwt';
+import { AuthService, TokenPair } from './auth.service';
 import { TokenStore } from './token-store.service';
+import { TwoFactorService } from './two-factor.service';
 import { loadJwtKeys } from './keys';
 import { User } from '../users/user.entity';
 import { UserRole } from '../common/enums';
@@ -98,12 +100,13 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
   let service: AuthService;
   let repo: FakeUserRepository;
   let redisMock: ReturnType<typeof makeStatefulRedisMock>;
+  let module: TestingModule;
 
   beforeEach(async () => {
     // Paire de clés RSA éphémère dédiée aux tests (RS256)
     const keys = loadJwtKeys();
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       imports: [
         JwtModule.register({
           privateKey: keys.privateKey,
@@ -117,6 +120,18 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
         TokenStore,
         { provide: getRepositoryToken(User), useClass: FakeUserRepository },
         { provide: REDIS_CLIENT, useFactory: makeStatefulRedisMock },
+        // Doublure 2FA : la vérification TOTP réelle a ses propres tests
+        // (two-factor.service.spec.ts) — ici seul le FLOW login importe (SH-40).
+        {
+          provide: TwoFactorService,
+          useValue: {
+            verifyCode: jest
+              .fn()
+              .mockImplementation((_userId: string, code: string) =>
+                Promise.resolve(code === '123456'),
+              ),
+          },
+        },
       ],
     }).compile();
 
@@ -236,7 +251,8 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
     });
 
     it('devrait retourner un couple de tokens (access + refresh) pour des identifiants valides', async () => {
-      const result = await service.login({ email: credentials.email, password: credentials.password });
+      // 2FA inactive dans ce scénario : le résultat est un TokenPair complet.
+      const result = (await service.login({ email: credentials.email, password: credentials.password })) as TokenPair;
 
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
@@ -249,6 +265,72 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
       await expect(
         service.login({ email: credentials.email, password: 'MauvaisMotDePasse!' }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('2FA active : le login ne rend NI tokens NI cookie, mais un jeton d\'étape 5 min (SH-40)', async () => {
+      const user = repo.all().find((u) => u.email === credentials.email)!;
+      user.twoFactorEnabled = true;
+
+      const result = await service.login({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      expect(result).toEqual({
+        twoFactorRequired: true,
+        twoFactorToken: expect.any(String),
+      });
+      expect(result).not.toHaveProperty('accessToken');
+      expect(result).not.toHaveProperty('refreshToken');
+
+      // Le jeton d'étape est de type dédié : REFUSÉ par le JwtAuthGuard (qui exige 'access')
+      const jwt = module.get<JwtService>(JwtService);
+      const payload = jwt.verify((result as { twoFactorToken: string }).twoFactorToken) as {
+        type: string;
+        userId: string;
+      };
+      expect(payload.type).toBe('twofa_pending');
+      expect(payload.userId).toBe(user.id);
+    });
+
+    it('completeTwoFactorLogin : un jeton d\'étape valide + code vérifié => vrais tokens (SH-40)', async () => {
+      const user = repo.all().find((u) => u.email === credentials.email)!;
+      user.twoFactorEnabled = true;
+
+      const challenge = (await service.login({
+        email: credentials.email,
+        password: credentials.password,
+      })) as { twoFactorToken: string };
+
+      const tokens = await service.completeTwoFactorLogin(challenge.twoFactorToken, '123456');
+
+      expect(tokens).toHaveProperty('accessToken');
+      expect(tokens).toHaveProperty('refreshToken');
+    });
+
+    it('completeTwoFactorLogin : refuse (401) un code invalide et un jeton non-2FA', async () => {
+      const user = repo.all().find((u) => u.email === credentials.email)!;
+      user.twoFactorEnabled = true;
+
+      const challenge = (await service.login({
+        email: credentials.email,
+        password: credentials.password,
+      })) as { twoFactorToken: string };
+
+      // Code refusé par le TwoFactorService
+      await expect(
+        service.completeTwoFactorLogin(challenge.twoFactorToken, '000000'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      // Un ACCESS token complet ne doit jamais franchir l'étape 2FA (anti-confusion de type)
+      user.twoFactorEnabled = false;
+      const full = (await service.login({
+        email: credentials.email,
+        password: credentials.password,
+      })) as { accessToken: string };
+      await expect(service.completeTwoFactorLogin(full.accessToken, '123456')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('panne Redis pendant le login => 503 explicite, jamais un 500 opaque (SH-36, F2)', async () => {
@@ -284,7 +366,7 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
     });
 
     it('devrait émettre un nouveau couple de tokens et révoquer l\'ancien refresh (rotation)', async () => {
-      const first = await service.login({ email: credentials.email, password: credentials.password });
+      const first = (await service.login({ email: credentials.email, password: credentials.password })) as TokenPair;
 
       const rotated = await service.refresh(first.refreshToken);
       expect(rotated.accessToken).toBeDefined();
@@ -295,7 +377,7 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
     });
 
     it('devrait rejeter un refresh token révoqué via logout', async () => {
-      const tokens = await service.login({ email: credentials.email, password: credentials.password });
+      const tokens = (await service.login({ email: credentials.email, password: credentials.password })) as TokenPair;
 
       await expect(service.logout(tokens.refreshToken)).resolves.toEqual({ success: true });
       await expect(service.refresh(tokens.refreshToken)).rejects.toThrow(UnauthorizedException);
