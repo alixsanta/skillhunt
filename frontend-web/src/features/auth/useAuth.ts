@@ -6,6 +6,9 @@ export interface RegisterInput {
   username: string;
   password: string;
   role: 'FREELANCE' | 'RECRUITER';
+  // Obligatoire pour un FREELANCE (SH-34) : sans position, il est invisible du matching
+  // par rayon (SH-13). Champs explicites latitude/longitude — jamais de tableau [lon, lat].
+  location?: { latitude: number; longitude: number };
 }
 
 export interface AuthContextValue {

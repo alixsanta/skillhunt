@@ -1,5 +1,6 @@
 /**
- * Villes de mission proposées au recruteur (SH-22).
+ * Villes proposées à la saisie d'une position (SH-22 : lieu de mission recruteur ;
+ * SH-34 : ville d'activité du freelance à l'inscription).
  *
  * Décision de design (2026-07-16) : saisie du lieu par liste prédéfinie — Mapbox (SH-23)
  * est hors périmètre du MVP et des lat/lon bruts sont hostiles pour un non-expert.
