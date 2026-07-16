@@ -9,6 +9,12 @@ import { DEFAULT_API_URL } from '@/api/client';
 import type { MatchResult } from '@/features/matching/types';
 import Search from './Search';
 
+// La carte a ses propres tests (SearchMap.test.tsx) ; ici on vérifie seulement QUAND elle
+// apparaît — jsdom ne rend pas de vraie carte Leaflet.
+vi.mock('@/features/matching/SearchMap', () => ({
+  SearchMap: () => <div data-testid="search-map" />,
+}));
+
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
 const RESULTS: MatchResult[] = [
@@ -17,12 +23,16 @@ const RESULTS: MatchResult[] = [
     username: 'pilote-pro',
     score: 0.92,
     distanceKm: 12.5,
+    latitude: 43.6045,
+    longitude: 1.4442,
   },
   {
     freelanceId: '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d',
     username: 'drone-master',
     score: 0.71,
     distanceKm: 3.2,
+    latitude: 43.7,
+    longitude: 1.5,
   },
 ];
 
@@ -71,6 +81,17 @@ describe('Page Recherche de freelances (SH-22)', () => {
     const body = receivedBody as { lat: number; lon: number };
     expect(body.lat).toBeCloseTo(43.6045, 2);
     expect(body.lon).toBeCloseTo(1.4442, 2);
+  });
+
+  it('affiche la carte de répartition avec les résultats, jamais sans (SH-23)', async () => {
+    server.use(http.post(url('/api/v1/matching/search'), () => HttpResponse.json(RESULTS)));
+
+    renderPage();
+    expect(screen.queryByTestId('search-map')).not.toBeInTheDocument();
+
+    await fillAndSubmit();
+    await screen.findAllByRole('listitem');
+    expect(screen.getByTestId('search-map')).toBeInTheDocument();
   });
 
   it("relie chaque résultat à l'armurerie publique du freelance (SH-21b)", async () => {

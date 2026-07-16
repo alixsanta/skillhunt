@@ -30,8 +30,9 @@ describe('🎯 MatchingService — proxy vers le matching-service (SH-22)', () =
 
   beforeEach(async () => {
     usersFind = jest.fn().mockResolvedValue([
-      { id: F1, username: 'pilote-pro' },
-      { id: F2, username: 'drone-master' },
+      // location en GeoJSON Point : ordre [longitude, latitude] (piège classique, SH-34)
+      { id: F1, username: 'pilote-pro', location: { type: 'Point', coordinates: [1.4442, 43.6045] } },
+      { id: F2, username: 'drone-master', location: null },
     ]);
 
     const module: TestingModule = await Test.createTestingModule({
@@ -73,7 +74,7 @@ describe('🎯 MatchingService — proxy vers le matching-service (SH-22)', () =
     });
   });
 
-  it('mappe snake_case→camelCase et enrichit chaque résultat avec le username', async () => {
+  it('mappe snake_case→camelCase et enrichit username ET position (lat/lon depuis le GeoJSON)', async () => {
     matchingServiceReplies([
       { freelance_id: F1, score: 0.92, distance_km: 12.5 },
       { freelance_id: F2, score: 0.71, distance_km: 3.2 },
@@ -82,15 +83,31 @@ describe('🎯 MatchingService — proxy vers le matching-service (SH-22)', () =
     const results = await service.search(q());
 
     expect(results).toEqual([
-      { freelanceId: F1, username: 'pilote-pro', score: 0.92, distanceKm: 12.5 },
-      { freelanceId: F2, username: 'drone-master', score: 0.71, distanceKm: 3.2 },
+      // GeoJSON [lon, lat] => latitude/longitude EXPLICITES (SH-23, carte des résultats)
+      {
+        freelanceId: F1,
+        username: 'pilote-pro',
+        score: 0.92,
+        distanceKm: 12.5,
+        latitude: 43.6045,
+        longitude: 1.4442,
+      },
+      // Position absente (donnée d'avant SH-34) : null, le front n'affiche pas de marqueur
+      {
+        freelanceId: F2,
+        username: 'drone-master',
+        score: 0.71,
+        distanceKm: 3.2,
+        latitude: null,
+        longitude: null,
+      },
     ]);
     // Enrichissement en UNE requête (pas de N+1)
     expect(usersFind).toHaveBeenCalledTimes(1);
   });
 
-  it('tolère un freelance supprimé entre-temps : username null, résultat conservé', async () => {
-    usersFind.mockResolvedValue([{ id: F1, username: 'pilote-pro' }]);
+  it('tolère un freelance supprimé entre-temps : username et position null, résultat conservé', async () => {
+    usersFind.mockResolvedValue([{ id: F1, username: 'pilote-pro', location: null }]);
     matchingServiceReplies([
       { freelance_id: F1, score: 0.9, distance_km: 1 },
       { freelance_id: F2, score: 0.8, distance_km: 2 },
@@ -98,7 +115,14 @@ describe('🎯 MatchingService — proxy vers le matching-service (SH-22)', () =
 
     const results = await service.search(q());
 
-    expect(results[1]).toEqual({ freelanceId: F2, username: null, score: 0.8, distanceKm: 2 });
+    expect(results[1]).toEqual({
+      freelanceId: F2,
+      username: null,
+      score: 0.8,
+      distanceKm: 2,
+      latitude: null,
+      longitude: null,
+    });
   });
 
   it('renvoie une liste vide sans interroger le repo users', async () => {

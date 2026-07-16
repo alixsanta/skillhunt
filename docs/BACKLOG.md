@@ -103,7 +103,7 @@
 | [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; **21a 🟢** (vue privée, 2026-07-15) / **21b 🟢** (vue publique recruteur, 2026-07-16) / 21c (loadout+badges, à cadrer — hors périmètre 23/07)* | 🟠 En cours | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
 | [SH-43](tickets/SH-43-armurerie-declaration-materiel.md) | Armurerie : écran de déclaration de matériel (`POST /api/v1/gear`) — active les CTA « + Ajouter … » de SH-21a | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching — *proxy backend-core (`POST /matching/search`, RBAC RECRUITER) + page `/recherche` ; boucle démo fermée jusqu'à SH-21b* | 🟢 Terminé | 5 | C2.4.1, C2.2.3, C2.2.2 | R4 |
-| [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie Mapbox (visualisation géographique des experts) | 🔵 Backlog | 5 | C2.4.1 | — |
+| [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie des résultats de recherche — *décision Mapbox→**Leaflet+OSM** tracée (zéro token/coût) ; lazy-loading éco-conçu ; position portée par le proxy SH-22* | 🟢 Terminé | 5 | C2.4.1, C2.2.2, C2.1.2 | — |
 | [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket / WSS, partage de fichiers) | 🔵 Backlog | 8 | C2.2.3 | R5, R9 |
 | [SH-25](tickets/SH-25-mobile-react-native.md) | App Mobile React Native + notifications Push | ⚪ Lot 2 | 13 | C2.2.3 | — |
 

@@ -651,6 +651,16 @@ export interface components {
              * @example 12.5
              */
             distanceKm: number;
+            /**
+             * @description Latitude (ville) du freelance
+             * @example 43.6045
+             */
+            latitude: number | null;
+            /**
+             * @description Longitude (ville) du freelance
+             * @example 1.4442
+             */
+            longitude: number | null;
         };
     };
     responses: never;

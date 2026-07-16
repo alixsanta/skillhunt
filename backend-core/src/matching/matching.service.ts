@@ -58,19 +58,26 @@ export class MatchingService {
       return [];
     }
 
-    // Enrichissement username : le microservice ne connaît que les ids (minimisation).
+    // Enrichissement username + position (SH-23) : le microservice ne connaît que les ids.
     const users = await this.usersRepo.find({
       where: { id: In(raw.map((r) => r.freelance_id)) },
-      select: { id: true, username: true },
+      select: { id: true, username: true, location: true },
     });
-    const usernameById = new Map(users.map((u) => [u.id, u.username]));
+    const userById = new Map(users.map((u) => [u.id, u]));
 
     // L'ordre du microservice fait foi (score décroissant, puis distance croissante).
-    return raw.map((r) => ({
-      freelanceId: r.freelance_id,
-      username: usernameById.get(r.freelance_id) ?? null,
-      score: r.score,
-      distanceKm: r.distance_km,
-    }));
+    return raw.map((r) => {
+      const user = userById.get(r.freelance_id);
+      // GeoJSON Point = [longitude, latitude] — on ressort des champs EXPLICITES (SH-34)
+      const coordinates = user?.location?.coordinates;
+      return {
+        freelanceId: r.freelance_id,
+        username: user?.username ?? null,
+        score: r.score,
+        distanceKm: r.distance_km,
+        latitude: coordinates?.[1] ?? null,
+        longitude: coordinates?.[0] ?? null,
+      };
+    });
   }
 }

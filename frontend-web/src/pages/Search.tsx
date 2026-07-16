@@ -1,9 +1,15 @@
-import { useState, type FormEvent } from 'react';
+import { lazy, Suspense, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CITIES } from '@/lib/cities';
 import type { MatchResult } from '@/features/matching/types';
 import { useMatchSearch } from '@/features/matching/useMatchSearch';
+
+// Leaflet (~55 kB gzip) est chargé PARESSEUSEMENT : il ne pèse ni sur le bundle initial
+// ni sur les visiteurs qui ne lancent aucune recherche (éco-conception, SH-28).
+const SearchMap = lazy(() =>
+  import('@/features/matching/SearchMap').then((module) => ({ default: module.SearchMap })),
+);
 
 const inputClass =
   'border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white ' +
@@ -22,6 +28,13 @@ export default function Search() {
   const [cityName, setCityName] = useState(CITIES[0].name);
   const [radiusKm, setRadiusKm] = useState('50');
   const [clientError, setClientError] = useState<string | null>(null);
+  // Périmètre réellement soumis (SH-23) : la carte doit refléter la RECHERCHE affichée,
+  // pas l'état courant du formulaire (que l'utilisateur peut modifier sans relancer).
+  const [submittedArea, setSubmittedArea] = useState<{
+    lat: number;
+    lon: number;
+    radiusKm: number;
+  } | null>(null);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -44,6 +57,7 @@ export default function Search() {
     }
 
     const city = CITIES.find((c) => c.name === cityName) ?? CITIES[0];
+    setSubmittedArea({ lat: city.lat, lon: city.lon, radiusKm: radius });
     search.mutate({ skills, lat: city.lat, lon: city.lon, radiusKm: radius });
   }
 
@@ -144,11 +158,25 @@ export default function Search() {
         )}
 
         {search.isSuccess && search.data.length > 0 && (
-          <ul className="flex flex-col gap-3">
-            {search.data.map((result) => (
-              <SearchResult key={result.freelanceId} result={result} />
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-3">
+              {search.data.map((result) => (
+                <SearchResult key={result.freelanceId} result={result} />
+              ))}
+            </ul>
+
+            {/* Répartition géographique (SH-23) : centre + rayon de mission + un marqueur
+                par freelance localisé. */}
+            {submittedArea && (
+              <Suspense fallback={null}>
+                <SearchMap
+                  center={{ lat: submittedArea.lat, lon: submittedArea.lon }}
+                  radiusKm={submittedArea.radiusKm}
+                  results={search.data}
+                />
+              </Suspense>
+            )}
+          </>
         )}
       </div>
     </main>
