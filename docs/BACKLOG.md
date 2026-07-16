@@ -31,6 +31,21 @@
 
 ---
 
+## 🎯 Décision de cadrage — rendu MVP du 23/07/2026
+
+> Actée le 2026-07-16 (contrainte : soirées uniquement jusqu'au rendu ; livrable = dossier + dépôt Git).
+> Périmètre resserré sur **(1) la boucle démo de bout en bout** (déclaration matériel → validation → consultation recruteur → matching) et **(2) les preuves RNCP bloc 2** (harnais de tests, sécurité, accessibilité, Swagger).
+
+**Priorisé pour le rendu** : `SH-43` ✅ · `SH-39` ✅ · `SH-41` ✅ · `SH-27` ✅ · puis `SH-21b` (vue publique) · `SH-22` (UI matching) · `SH-2` (Docker, si le temps le permet).
+
+**Explicitement dé-priorisé** (hors périmètre du rendu, reste au backlog — ni abandonné, ni oublié) :
+- **EP04 complet** (`SH-15` à `SH-18`, média/portfolio) : infrastructure lourde (S3/CloudFront/FFmpeg) sans impact sur la démonstration du cœur différenciant.
+- **`SH-24`** (chat temps réel), **`SH-23`** (cartographie Mapbox), **`SH-40`** (2FA), **`SH-37`** (offres/bus, 8 pts).
+- **`SH-26`** (harnais E2E complet) : couvert *a minima* par les smoke tests de `SH-41`.
+- **Dette non bloquante** : `SH-35`, `SH-36`, `SH-44` (fenêtres de risque bornées, documentées dans leurs tickets) ; `SH-33`/`SH-34` si le temps le permet uniquement.
+
+---
+
 ## EP01 — Architecture, DevOps & Sécurité · *14 J/H* · 🎯 J1
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
@@ -131,13 +146,8 @@
 
 ## Prochaines actions suggérées
 
-1. **✅ EP02 & EP03 livrés** : auth/RBAC, Armurerie backend, certifications, moteur de scoring géospatial et **bus d'événements Redis** (`SH-14`, PR [#15](https://github.com/alixsanta/skillhunt/pull/15) mergée).
-2. **✅ Front amorcé** : `SH-19` (scaffold React), `SH-38` (dette post-revue) puis **`SH-20` (parcours d'authentification web)** — access token en mémoire, refresh token en cookie `httpOnly`, CORS à origines explicites.
-3. **Dette de revue tracée** (non bloquante) : `SH-35` (cache/consumer matching), `SH-36` (TokenStore) — fenêtres bornées par le TTL 60 s.
-4. **Armurerie front : design validé** ([spec](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md)) :
-   - 🟢 **`SH-21a` (grille d'inventaire, vue privée) est LIVRÉE** (2026-07-15) — branchée sur l'API réelle via le JWT de `SH-20`. Le CTA d'ajout est désactivé → suivi en **`SH-43`**.
-   - 🔵 **`SH-43` (écran de déclaration de matériel)** — active les CTA « + Ajouter … » ; suite naturelle côté saisie.
-   - 🟡 **`SH-39` (endpoint recruteur)** — reste bloquant pour la **vue publique** (`SH-21b`) uniquement ; ticket rédigé, prêt à démarrer.
-5. **Chemin recommandé :** `SH-43` (saisie) et/ou `SH-39` → `SH-21b` (vue publique).
-6. **Autres pistes prêtes :** 🟡 `SH-34` (position freelance à l'onboarding), 🔵 `SH-40` (2FA comptes pro, sortie du périmètre SH-20), puis **EP04 (média)** avec `SH-15` (scaffolding `media-service`).
-7. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+1. **✅ Socle livré** : EP02 & EP03 (auth/RBAC, Armurerie backend, certifications, scoring géospatial, bus Redis) + front amorcé (`SH-19`/`SH-38`/`SH-20`/`SH-21a`).
+2. **Session du 2026-07-16 — 4 PRs ouvertes à merger** (CI verte) : [#23](https://github.com/alixsanta/skillhunt/pull/23) `SH-43` (déclaration matériel), [#24](https://github.com/alixsanta/skillhunt/pull/24) `SH-39` (endpoint recruteur), [#25](https://github.com/alixsanta/skillhunt/pull/25) `SH-41` (smoke tests bootstrap + StrictMode), [#26](https://github.com/alixsanta/skillhunt/pull/26) `SH-27` (audit accessibilité Lighthouse bloquant).
+3. **Suite immédiate (cadrage 23/07, voir section dédiée)** : `SH-21b` (vue publique Armurerie — dès le merge de #24, régénérer `schema.d.ts`) puis `SH-22` (UI recherche & score de matching) ; `SH-2` (Docker) si le temps le permet.
+4. **Dette tracée non bloquante** : `SH-35`, `SH-36`, `SH-44` ; `SH-33`/`SH-34` si le temps le permet.
+5. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
