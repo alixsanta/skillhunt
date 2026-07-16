@@ -9,12 +9,23 @@ import {
 import { apiClient } from '@/api/client';
 import { installAuthInterceptors, refreshOnce } from '@/api/auth-interceptors';
 import { sessionStore } from './session-store';
-import { AuthContext, type AuthContextValue, type RegisterInput } from './useAuth';
+import {
+  AuthContext,
+  type AuthContextValue,
+  type LoginOutcome,
+  type RegisterInput,
+} from './useAuth';
 
 interface TokenPair {
   accessToken: string;
   // Présent dans le body pour le mobile (Lot 2) ; le web l'ignore — il vit dans le cookie httpOnly.
   refreshToken: string;
+}
+
+// Réponse de /login quand la 2FA est active (SH-40) : aucun token de session.
+interface TwoFactorChallenge {
+  twoFactorRequired: true;
+  twoFactorToken: string;
 }
 
 // Les intercepteurs doivent être en place avant le tout premier appel (la restauration
@@ -35,8 +46,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setStatus('ready'));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const response = await apiClient.post<TokenPair>('/api/v1/auth/login', { email, password });
+  const login = useCallback(async (email: string, password: string): Promise<LoginOutcome> => {
+    const response = await apiClient.post<TokenPair | TwoFactorChallenge>('/api/v1/auth/login', {
+      email,
+      password,
+    });
+
+    // 2FA active (SH-40) : pas de session tant que le code n'est pas vérifié — le jeton
+    // d'étape reste dans le state éphémère du composant Login, jamais dans le store.
+    if ('twoFactorRequired' in response.data) {
+      return { twoFactorRequired: true, twoFactorToken: response.data.twoFactorToken };
+    }
+
+    sessionStore.setSession(response.data.accessToken);
+    return { twoFactorRequired: false };
+  }, []);
+
+  const verifyTwoFactor = useCallback(async (twoFactorToken: string, code: string) => {
+    const response = await apiClient.post<TokenPair>('/api/v1/auth/2fa/verify', {
+      twoFactorToken,
+      code,
+    });
     sessionStore.setSession(response.data.accessToken);
   }, []);
 
@@ -61,8 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout],
+    () => ({ user, status, login, verifyTwoFactor, register, logout }),
+    [user, status, login, verifyTwoFactor, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
