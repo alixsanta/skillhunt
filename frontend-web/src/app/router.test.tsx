@@ -40,4 +40,9 @@ describe('router', () => {
     renderAt('/mon-armurerie');
     expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
   });
+
+  it('redirige un visiteur non connecté de /mon-armurerie/ajouter vers /login (SH-43)', async () => {
+    renderAt('/mon-armurerie/ajouter');
+    expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
+  });
 });

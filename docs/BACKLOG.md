@@ -86,7 +86,7 @@
 | [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟢 Terminé | 2 | C2.1.2, C2.2.2 | — |
 | [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, access token en mémoire, refresh en cookie `httpOnly`, CORS à origines explicites) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3, C2.2.2 | — |
 | [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; **21a 🟢 livrée le 2026-07-15** (vue privée) / 21b (vue publique, dép. SH-39) / 21c (loadout+badges, à cadrer)* | 🟠 En cours | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
-| [SH-43](tickets/SH-43-armurerie-declaration-materiel.md) | Armurerie : écran de déclaration de matériel (`POST /api/v1/gear`) — active les CTA « + Ajouter … » aujourd'hui désactivés en SH-21a | 🔵 Backlog | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
+| [SH-43](tickets/SH-43-armurerie-declaration-materiel.md) | Armurerie : écran de déclaration de matériel (`POST /api/v1/gear`) — active les CTA « + Ajouter … » de SH-21a | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching | 🔵 Backlog | 5 | C2.4.1 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie Mapbox (visualisation géographique des experts) | 🔵 Backlog | 5 | C2.4.1 | — |
 | [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket / WSS, partage de fichiers) | 🔵 Backlog | 8 | C2.2.3 | R5, R9 |
