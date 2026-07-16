@@ -5,6 +5,7 @@ import Register from '@/pages/Register';
 import Account from '@/pages/Account';
 import Armurerie from '@/pages/Armurerie';
 import AddGear from '@/pages/AddGear';
+import FreelanceGear from '@/pages/FreelanceGear';
 import NotFound from '@/pages/NotFound';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 
@@ -35,6 +36,16 @@ export const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <AddGear />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // Vue publique de l'Armurerie (SH-21b) : « publique » au sens profil consultable,
+    // pas anonyme — session requise, et le backend réserve la donnée au rôle RECRUITER.
+    path: '/freelances/:freelanceId/armurerie',
+    element: (
+      <ProtectedRoute>
+        <FreelanceGear />
       </ProtectedRoute>
     ),
   },
