@@ -114,7 +114,7 @@
 | [SH-26](tickets/SH-26-tests-integration-e2e.md) | Harnais de tests d'intégration & end-to-end | 🔵 Backlog | 8 | C2.2.2 | — |
 | [SH-41](tickets/SH-41-smoke-tests-bootstrap.md) | Smoke test de bootstrap (backend) + tests front sous `StrictMode` — *angle mort : 2 bugs bloquants de SH-20 (serveur qui ne démarrait pas, déconnexion à chaque F5) ont échappé aux 103 tests verts* | 🟢 Terminé | 3 | C2.2.2, C2.1.2 | — |
 | [SH-42](tickets/SH-42-gitattributes-fins-de-ligne.md) | `.gitattributes` (`* text=auto eol=lf`) — *`format:check` mentait en local sous Windows (13 faux positifs) ; il dit désormais la vérité* | 🟢 Terminé | 1 | C2.1.2 | — |
-| [SH-44](tickets/SH-44-armurerie-durcissement-tests-revue.md) | Armurerie : durcissement des tests + polissage (dette de revue SH-21a : garde anti-hex sur `pages/`, contrat OpenAPI à clés exactes, assertion serialNumber sur attributs, couleur message 403) | 🔵 Backlog | 2 | C2.2.2, C2.1.2, C2.4.1 | — |
+| [SH-44](tickets/SH-44-armurerie-durcissement-tests-revue.md) | Armurerie : durcissement des tests + polissage (garde anti-hex étendu, contrat à clés exactes, serialNumber balayé attributs compris, 401/403, a11y aria-live/valuetext/reduced-motion) — *item contrat-vs-HTTP requalifié vers SH-26* | 🟢 Terminé | 2 | C2.2.2, C2.1.2, C2.4.1 | — |
 | [SH-27](tickets/SH-27-audit-accessibilite.md) | Audit accessibilité WCAG en CI (Lighthouse, bloquant < 90) — *pages publiques à 100/100 au merge* | 🟢 Terminé | 3 | C2.1.2 | R6 |
 | [SH-28](tickets/SH-28-eco-conception-ci.md) | Éco-conception en CI (EcoIndex, poids des pages, requêtes HTTP) | 🔵 Backlog | 3 | C2.1.2 | — |
 | [SH-29](tickets/SH-29-monitoring-elk.md) | Monitoring & alerting (stack ELK + webhooks) | 🔵 Backlog | 5 | C2.2.2 | R5 |

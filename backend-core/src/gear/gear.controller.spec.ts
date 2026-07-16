@@ -96,19 +96,21 @@ describe("GearController — contrat OpenAPI (C2.4.1)", () => {
     expect(roles).toEqual([UserRole.RECRUITER]);
   });
 
-  it("expose tous les champs réellement sérialisés par l'entité Gear", () => {
+  it("expose les champs EXACTS sérialisés par l'entité Gear (ni plus, ni moins — SH-44)", () => {
+    // Clés exactes plutôt qu'arrayContaining : un champ ajouté par inadvertance au contrat
+    // (donc exposé au front via gen:api) ferait rougir ce test au lieu de passer en silence.
     const gear = document.components?.schemas?.GearResponseDto;
-    expect(Object.keys((gear as { properties: object }).properties)).toEqual(
-      expect.arrayContaining([
-        'id',
+    expect(Object.keys((gear as { properties: object }).properties).sort()).toEqual(
+      [
         'brand',
-        'model',
-        'serialNumber',
         'category',
-        'status',
         'createdAt',
         'freelanceId',
-      ]),
+        'id',
+        'model',
+        'serialNumber',
+        'status',
+      ].sort(),
     );
   });
 });

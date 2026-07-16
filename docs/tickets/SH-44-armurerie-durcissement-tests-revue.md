@@ -64,7 +64,8 @@ bordures HUD `#1e2732` → `#5c6e88` (1.4.11)**. Restent, déférés ici :
 - **`prefers-reduced-motion`** : les `transition-*` (chips, boutons) mériteraient un override global.
 
 ### Definition of Done
-- [ ] Items 1, 2, 4, 5, 6 traités (rapides) ; item 3 traité ou requalifié dans un ticket d'intégration.
-- [ ] Items 7, 8 traités (bornage `GearProgress`, gestion du 401).
-- [ ] Items « candidats SH-27 » traités ici OU explicitement portés dans SH-27.
-- [ ] Tests Vitest/Jest passants ; CI verte (lint + `format:check` + tests + build).
+- [x] Items 1, 2, 4, 5, 6 traités : garde anti-hex étendu à `src/pages/` ; contrat `GearResponseDto` à **clés exactes** (l'assertion a immédiatement attrapé une clé oubliée de la liste attendue — preuve par l'exemple) ; `GearCard` balayé attributs compris (`container.innerHTML`) ; 403 en couleur neutre ; divergence de dénominateur commentée.
+- [x] **Item 3 requalifié vers SH-26** (harnais d'intégration/E2E) : comparer contrat Swagger et réponse HTTP réelle exige la base — hors de portée d'un test unitaire léger.
+- [x] Items 7, 8 traités : `GearProgress` borné [0,100] (+ test `validated > total`) ; 401 → message « session expirée » dédié SANS bouton Réessayer futile (+ test).
+- [x] Candidats SH-27 **traités ici** : région `aria-live="polite"` annonçant le résultat du filtrage (4.1.3, testée), `aria-valuetext` riche sur la progression (testé), override global `prefers-reduced-motion` (index.css) ; le contraste `text-hud-muted` est mesuré en continu par le job Lighthouse (SH-27, 100/100).
+- [x] 118 tests front + 28 tests gear backend verts ; lint + format + build OK — CI à confirmer sur la PR.

@@ -53,11 +53,17 @@ export default function Armurerie() {
         )}
 
         {isError &&
-          // 403 : le backend réserve GET /gear/me au rôle FREELANCE (RBAC). Réessayer n'y
-          // changerait rien — on explique au lieu de proposer une action inutile.
+          // 403 (RBAC) et 401 (session morte, refresh déjà tenté par les intercepteurs) :
+          // réessayer n'y changerait rien — on explique au lieu de proposer une action
+          // inutile. Couleur NEUTRE (SH-44 : l'ambre « attente » suggérait à tort un
+          // état de validation). Seuls les échecs 5xx/réseau méritent « Réessayer ».
           (error?.response?.status === 403 ? (
-            <p role="alert" className="text-hud-pending">
+            <p role="alert" className="text-hud-muted">
               Cette page est réservée aux freelances.
+            </p>
+          ) : error?.response?.status === 401 ? (
+            <p role="alert" className="text-hud-muted">
+              Ta session a expiré. Reconnecte-toi pour retrouver ton armurerie.
             </p>
           ) : (
             <div className="flex flex-col items-start gap-3">
@@ -72,12 +78,20 @@ export default function Armurerie() {
 
         {!isPending && !isError && items.length > 0 && (
           <>
+            {/* Dénominateur = items.length (les <= 100 chargés), PAS data.total : divergence
+                INTENTIONNELLE avec le compteur d'en-tête au-delà de 100 équipements, cohérente
+                avec la mention « Affichage des N plus récents » (SH-44, item 6). */}
             <GearProgress validated={validatedCount} total={items.length} />
             <GearCategoryChips
               categories={presentCategories}
               selected={category}
               onSelect={setCategory}
             />
+            {/* Région polie (4.1.3, SH-44) : le résultat du filtrage est annoncé aux lecteurs
+                d'écran — le compteur d'en-tête, lui, reste le total non filtré. */}
+            <p aria-live="polite" className="text-hud-muted text-xs">
+              {`${visibleItems.length} équipement${visibleItems.length > 1 ? 's' : ''} affiché${visibleItems.length > 1 ? 's' : ''}`}
+            </p>
             <GearGrid items={visibleItems} />
 
             {total > items.length && (

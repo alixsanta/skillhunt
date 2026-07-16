@@ -35,12 +35,15 @@ describe("Métadonnées de l'Armurerie (SH-21a)", () => {
 // Garde-fou de design (spec §3) : la palette vit dans les tokens Tailwind (src/index.css).
 // Une couleur écrite en dur dans un composant échapperait au thème et pourrait, par exemple,
 // réintroduire une couleur par catégorie — que la spec interdit explicitement.
+// Étendu à src/pages/ (SH-44, item 1) : les PAGES de l'Armurerie (et les autres) doivent
+// respecter le même contrat de thème que les composants de la feature.
 describe("Palette de l'Armurerie — aucune couleur codée en dur", () => {
-  const sources = [
-    ...readdirSync(join(process.cwd(), 'src/features/gear'))
+  const scanDirs = ['src/features/gear', 'src/pages'];
+  const sources = scanDirs.flatMap((dir) =>
+    readdirSync(join(process.cwd(), dir))
       .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
-      .map((file) => join('src/features/gear', file)),
-  ];
+      .map((file) => join(dir, file)),
+  );
 
   it.each(sources)("%s n'écrit aucune couleur hexadécimale", (source) => {
     const content = readFileSync(join(process.cwd(), source), 'utf8');

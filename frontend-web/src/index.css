@@ -149,3 +149,15 @@
     @apply font-sans;
   }
 }
+
+/* Confort de mouvement (SH-44, a11y) : neutralise transitions/animations pour les
+   utilisateurs qui demandent une réduction des mouvements (troubles vestibulaires). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
