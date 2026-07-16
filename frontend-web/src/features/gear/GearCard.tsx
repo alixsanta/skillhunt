@@ -1,14 +1,16 @@
 import { CATEGORY_META } from './gear-meta';
 import { GearStatusBadge } from './GearStatusBadge';
-import type { Gear } from './types';
+import type { PublicGear } from './types';
 
 /**
  * Fiche technique horizontale (spec §4) : pastille d'icône neutre → marque + modèle →
  * badge de statut. La catégorie se lit dans l'ICÔNE et le label texte, jamais dans une couleur.
  *
- * `serialNumber` n'est délibérément pas affiché : donnée sensible, inutile à l'écran.
+ * Typée sur `PublicGear` (le sous-ensemble commun aux deux vues, SH-21b) : `Gear` lui est
+ * assignable, et `serialNumber` — délibérément jamais affiché (donnée sensible) — n'est
+ * même plus accessible ici par construction.
  */
-export function GearCard({ gear }: { gear: Gear }) {
+export function GearCard({ gear }: { gear: PublicGear }) {
   const { label, Icon } = CATEGORY_META[gear.category];
 
   return (

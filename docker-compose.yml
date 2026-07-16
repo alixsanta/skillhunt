@@ -54,7 +54,9 @@ services:
     container_name: skillhunt-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      # Port HÔTE 6380 par défaut : 6379 est occupé par un Redis personnel hors projet
+      # sur le poste de dev, et backend-core/.env pointe déjà sur redis://localhost:6380.
+      - "${REDIS_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
