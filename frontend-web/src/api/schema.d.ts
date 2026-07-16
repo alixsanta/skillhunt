@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gear/freelance/{freelanceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consulter le matériel VALIDÉ d'un freelance (Recruteur) */
+        get: operations["GearController_getPublicFreelanceGear"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gear/pending": {
         parameters: {
             query?: never;
@@ -345,6 +362,56 @@ export interface components {
              */
             limit: number;
         };
+        PublicGearDto: {
+            /**
+             * Format: uuid
+             * @example 3f1b2c9e-6d54-4a1b-9d0e-7c2f5a8b1234
+             */
+            id: string;
+            /**
+             * @description Marque de l'équipement
+             * @example DJI
+             */
+            brand: string;
+            /**
+             * @description Modèle exact
+             * @example Mavic 3 Enterprise
+             */
+            model: string;
+            /**
+             * @example DRONE
+             * @enum {string}
+             */
+            category: "DRONE" | "CAMERA_360" | "ROBOTICS" | "SENSOR" | "OTHER";
+            /**
+             * @example PENDING
+             * @enum {string}
+             */
+            status: "PENDING" | "VALIDATED" | "REJECTED";
+            /**
+             * Format: date-time
+             * @example 2026-07-14T09:12:33.000Z
+             */
+            createdAt: string;
+        };
+        PaginatedPublicGearDto: {
+            items: components["schemas"]["PublicGearDto"][];
+            /**
+             * @description Nombre total d'équipements validés du freelance
+             * @example 12
+             */
+            total: number;
+            /**
+             * @description Page courante (1-indexée)
+             * @example 1
+             */
+            page: number;
+            /**
+             * @description Taille de page appliquée
+             * @example 20
+             */
+            limit: number;
+        };
         ReviewGearDto: {
             /**
              * @description Décision de validation : VALIDATED ou REJECTED
@@ -545,6 +612,56 @@ export interface operations {
             };
             /** @description Rôle insuffisant pour cette ressource (403) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GearController_getPublicFreelanceGear: {
+        parameters: {
+            query?: {
+                /** @description Filtrer par catégorie */
+                category?: "DRONE" | "CAMERA_360" | "ROBOTICS" | "SENSOR" | "OTHER";
+                /** @description Numéro de page (1-indexé) */
+                page?: number;
+                /** @description Taille de page */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                freelanceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matériel validé uniquement, sans donnée sensible (jamais de serialNumber) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPublicGearDto"];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant pour cette ressource (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Profil Freelance introuvable (404) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
