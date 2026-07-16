@@ -88,9 +88,9 @@ services:
       DB_NAME: ${DB_NAME:-skillhunt}
       REDIS_URL: redis://redis:6379
       MATCHING_SERVICE_URL: http://matching-service:8000
-      # Le front conteneurisé (FRONTEND_PORT, 8080 par défaut) ET le dev Vite (5173)
-      # sont des origines légitimes ; surchargable si 8080 est occupé sur l'hôte.
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080,http://localhost:5173}
+      # Derrière la gateway (SH-5), front et API partagent l'origine 8088 : CORS devient
+      # une défense en profondeur. 5173 reste listée pour le dev Vite hors conteneur.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8088,http://localhost:5173}
       AWS_REGION: ${AWS_REGION:-eu-west-3}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-skillhunt-media}
       AWS_S3_ENDPOINT: http://localstack:4566
@@ -102,8 +102,9 @@ services:
       # En staging/prod : injectés par le gestionnaire de secrets, JAMAIS commités (§8).
       JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
-    ports:
-      - "3001:3001"
+    # AUCUN port hôte (SH-5) : la gateway est le point d'entrée unique (archi §2).
+    # Swagger et gen:api restent accessibles via http://localhost:8088/api/docs.
+    # Le dev direct (npm run start:dev sur 3001) est inchangé hors conteneur.
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,15 +134,28 @@ services:
     build:
       context: ./frontend-web
       args:
-        # Cuite dans le bundle au build (contrainte Vite) : l'URL vue DEPUIS LE NAVIGATEUR
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        # Cuite dans le bundle au build (contrainte Vite) : l'URL vue DEPUIS LE NAVIGATEUR.
+        # Même origine que la gateway (SH-5) => l'app tourne en same-origin.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8088}
     container_name: skillhunt-frontend
     profiles: ["app"]
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-8080}:80"
+    # AUCUN port hôte (SH-5) : servi exclusivement à travers la gateway.
     depends_on:
       - backend-core
+
+  gateway:
+    build: ./gateway
+    container_name: skillhunt-gateway
+    profiles: ["app"]
+    restart: unless-stopped
+    # SEUL port publié du profil app (SH-5) : point d'entrée unique, rate-limiting
+    # par IP sur /api/v1/auth (mitigation R7/R9). TLS : SH-4 (hardening).
+    ports:
+      - "${GATEWAY_PORT:-8088}:80"
+    depends_on:
+      - backend-core
+      - frontend-web
 
 volumes:
   skillhunt_pgdata:
