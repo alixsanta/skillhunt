@@ -54,4 +54,9 @@ describe('router', () => {
     renderAt('/freelances/3f1b2c9e-6d54-4a1b-9d0e-7c2f5a8b1234/armurerie');
     expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
   });
+
+  it('redirige un visiteur non connecté de /recherche vers /login (SH-22)', async () => {
+    renderAt('/recherche');
+    expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
+  });
 });

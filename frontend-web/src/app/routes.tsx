@@ -6,6 +6,7 @@ import Account from '@/pages/Account';
 import Armurerie from '@/pages/Armurerie';
 import AddGear from '@/pages/AddGear';
 import FreelanceGear from '@/pages/FreelanceGear';
+import Search from '@/pages/Search';
 import NotFound from '@/pages/NotFound';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 
@@ -46,6 +47,15 @@ export const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <FreelanceGear />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // Recherche par matching (SH-22) — le backend réserve la donnée au rôle RECRUITER.
+    path: '/recherche',
+    element: (
+      <ProtectedRoute>
+        <Search />
       </ProtectedRoute>
     ),
   },
