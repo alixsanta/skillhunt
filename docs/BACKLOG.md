@@ -31,12 +31,27 @@
 
 ---
 
+## 🎯 Décision de cadrage — rendu MVP du 23/07/2026
+
+> Actée le 2026-07-16 (contrainte : soirées uniquement jusqu'au rendu ; livrable = dossier + dépôt Git).
+> Périmètre resserré sur **(1) la boucle démo de bout en bout** (déclaration matériel → validation → consultation recruteur → matching) et **(2) les preuves RNCP bloc 2** (harnais de tests, sécurité, accessibilité, Swagger).
+
+**Priorisé pour le rendu** : `SH-43` ✅ · `SH-39` ✅ · `SH-41` ✅ · `SH-27` ✅ · puis `SH-21b` (vue publique) · `SH-22` (UI matching) · `SH-2` (Docker, si le temps le permet).
+
+**Explicitement dé-priorisé** (hors périmètre du rendu, reste au backlog — ni abandonné, ni oublié) :
+- **EP04 complet** (`SH-15` à `SH-18`, média/portfolio) : infrastructure lourde (S3/CloudFront/FFmpeg) sans impact sur la démonstration du cœur différenciant.
+- **`SH-24`** (chat temps réel), **`SH-23`** (cartographie Mapbox), **`SH-40`** (2FA), **`SH-37`** (offres/bus, 8 pts).
+- **`SH-26`** (harnais E2E complet) : couvert *a minima* par les smoke tests de `SH-41`.
+- **Dette non bloquante** : `SH-35`, `SH-36`, `SH-44` (fenêtres de risque bornées, documentées dans leurs tickets) ; `SH-33`/`SH-34` si le temps le permet uniquement.
+
+---
+
 ## EP01 — Architecture, DevOps & Sécurité · *14 J/H* · 🎯 J1
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
 | [SH-1](tickets/SH-1-init-monorepo-backend.md) | Init monorepo + squelette backend-core NestJS | 🟢 Terminé | 3 | C2.1.2 | — |
-| [SH-2](tickets/SH-2-dockerisation.md) | Dockerisation + environnements Dev/Staging/Prod | 🔵 Backlog | 5 | C2.1.2 | — |
+| [SH-2](tickets/SH-2-dockerisation.md) | Dockerisation + environnements Dev/Staging/Prod — *3 images durcies, profil `app` du compose, migrations au boot, matching sans port hôte, CI docker* | 🟢 Terminé | 5 | C2.1.2, C2.2.3 | — |
 | [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟢 Terminé | 3 | C2.2.2 | — |
 | [SH-4](tickets/SH-4-securite-hardening.md) | Hardening : TLS 1.3, gestion des secrets (Vault/env), mTLS inter-services | 🔵 Backlog | 5 | C2.2.3 | R9 |
 | [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (Kong/Nginx) : point d'entrée unique + rate-limiting | 🔵 Backlog | 5 | C2.2.3 | R7, R9 |
@@ -54,6 +69,8 @@
 | [SH-10](tickets/SH-10-certifications-upload.md) | Certifications : upload sécurisé (PDF, magic bytes, Signed URL, purge PII, dedup) + validation Admin — *dépend de SH-31* | 🟢 Terminé | 5 | C2.2.3, C2.2.2, C2.4.1 | R2, R3 |
 | [SH-36](tickets/SH-36-tokenstore-failsafe-atomicite.md) | TokenStore Redis : cohérence du fail-safe (`save`/`revoke`) + écriture atomique (`MULTI`) — dette relevée en revue SH-14 | 🟡 Prêt | 2 | C2.2.3, C2.2.2 | R7 |
 | [SH-34](tickets/SH-34-position-freelance-onboarding.md) | Position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — qualité de donnée pour le matching géo SH-13 | 🟠 En cours | 3 | C2.2.3, C2.2.2 | R4 |
+| [SH-39](tickets/SH-39-gear-consultation-recruteur.md) | Armurerie : consultation du casier d'un freelance par un recruteur (`GET /gear/freelance/:id`, filtré `VALIDATED`, sans `serialNumber`) — débloque SH-21b | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
+| [SH-40](tickets/SH-40-2fa-comptes-pro.md) | 2FA comptes pro (TOTP, secret chiffré AES-256, codes de secours) — sortie du périmètre SH-20 | 🔵 Backlog | 5 | C2.2.3, C2.2.2 | R7 |
 
 ## EP03 — Microservice Matching · *17 J/H* · 🎯 J2–J3
 
@@ -62,7 +79,8 @@
 | [SH-11](tickets/SH-11-scaffolding-fastapi.md) | Scaffolding `matching-service` FastAPI (structure, requirements, tests, Pydantic) | 🟢 Terminé | 3 | C2.1.2 | — |
 | [SH-12](tickets/SH-12-moteur-scoring.md) | Moteur de scoring multicritères (Skills + Matériel + Localisation) | 🟢 Terminé | 8 | C2.2.2 | R4 |
 | [SH-13](tickets/SH-13-geolocalisation-postgis.md) | Géolocalisation : indexation spatiale PostGIS + requêtes rayon d'action | 🟢 Terminé | 5 | C2.2.3 | R4 |
-| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis + cache résultats — *mergé dans `develop` (PR #15) ; 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné). Dette de durcissement : SH-35/SH-36 ; extension bus : SH-37* | 🟢 Terminé | ~8–13 | C2.2.2, C2.2.3 | R4 |
+| [SH-14](tickets/SH-14-bus-evenements-redis.md) | Bus d'événements Redis (consommation offre/profil) + cache résultats — *périmètre réel : 4 sous-chantiers (A infra, B TokenStore→Redis, C événements Streams, D consumer + cache versionné)* | 🟢 Terminé | 5 → ~8–13 | C2.2.2 | R4 |
+| [SH-33](tickets/SH-33-resolveur-besoin-criteres.md) | Résolveur besoin→critères : catalogue de cas d'usage (recruteur non-expert B2C) — *dépend de SH-12* | 🟡 Prêt | 5 | C2.2.2, C2.2.3, C2.4.1 | R4, R10 |
 | [SH-35](tickets/SH-35-durcissement-cache-consumer-redis.md) | Durcissement cache `/match` & consumer Redis (course d'invalidation, PEL, scaling) — dette relevée en revue SH-14 | 🟡 Prêt | 3 | C2.2.2, C2.2.3 | R4 |
 | [SH-37](tickets/SH-37-offres-publication-bus.md) | Offres/Missions : publication recruteur + événement `offer.published` (2ᵉ producteur du bus, scénario archi §2) — constat post-revue SH-14 | 🔵 Backlog | 8 | C2.2.3, C2.2.2, C2.4.1 | R4 |
 
@@ -79,10 +97,12 @@
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
-| [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🔵 Backlog | 5 | C2.1.2 | — |
-| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, gestion du token, 2FA comptes pro) | 🔵 Backlog | 5 | C2.2.3 | — |
-| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (cartes, loadout, progression, badges) | 🔵 Backlog | 8 | C2.4.1 | R10 |
-| [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching | 🔵 Backlog | 5 | C2.4.1 | R4 |
+| [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🟢 Terminé | 5 | C2.1.2 | — |
+| [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟢 Terminé | 2 | C2.1.2, C2.2.2 | — |
+| [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, access token en mémoire, refresh en cookie `httpOnly`, CORS à origines explicites) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3, C2.2.2 | — |
+| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; **21a 🟢** (vue privée, 2026-07-15) / **21b 🟢** (vue publique recruteur, 2026-07-16) / 21c (loadout+badges, à cadrer — hors périmètre 23/07)* | 🟠 En cours | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
+| [SH-43](tickets/SH-43-armurerie-declaration-materiel.md) | Armurerie : écran de déclaration de matériel (`POST /api/v1/gear`) — active les CTA « + Ajouter … » de SH-21a | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
+| [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching — *proxy backend-core (`POST /matching/search`, RBAC RECRUITER) + page `/recherche` ; boucle démo fermée jusqu'à SH-21b* | 🟢 Terminé | 5 | C2.4.1, C2.2.3, C2.2.2 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie Mapbox (visualisation géographique des experts) | 🔵 Backlog | 5 | C2.4.1 | — |
 | [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket / WSS, partage de fichiers) | 🔵 Backlog | 8 | C2.2.3 | R5, R9 |
 | [SH-25](tickets/SH-25-mobile-react-native.md) | App Mobile React Native + notifications Push | ⚪ Lot 2 | 13 | C2.2.3 | — |
@@ -92,7 +112,10 @@
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
 | [SH-26](tickets/SH-26-tests-integration-e2e.md) | Harnais de tests d'intégration & end-to-end | 🔵 Backlog | 8 | C2.2.2 | — |
-| [SH-27](tickets/SH-27-audit-accessibilite.md) | Audit accessibilité WCAG en CI (Lighthouse/Axe, bloquant < 90) | 🔵 Backlog | 3 | C2.1.2 | R6 |
+| [SH-41](tickets/SH-41-smoke-tests-bootstrap.md) | Smoke test de bootstrap (backend) + tests front sous `StrictMode` — *angle mort : 2 bugs bloquants de SH-20 (serveur qui ne démarrait pas, déconnexion à chaque F5) ont échappé aux 103 tests verts* | 🟢 Terminé | 3 | C2.2.2, C2.1.2 | — |
+| [SH-42](tickets/SH-42-gitattributes-fins-de-ligne.md) | `.gitattributes` (`* text=auto eol=lf`) — *`format:check` mentait en local sous Windows (13 faux positifs) ; il dit désormais la vérité* | 🟢 Terminé | 1 | C2.1.2 | — |
+| [SH-44](tickets/SH-44-armurerie-durcissement-tests-revue.md) | Armurerie : durcissement des tests + polissage (dette de revue SH-21a : garde anti-hex sur `pages/`, contrat OpenAPI à clés exactes, assertion serialNumber sur attributs, couleur message 403) | 🔵 Backlog | 2 | C2.2.2, C2.1.2, C2.4.1 | — |
+| [SH-27](tickets/SH-27-audit-accessibilite.md) | Audit accessibilité WCAG en CI (Lighthouse, bloquant < 90) — *pages publiques à 100/100 au merge* | 🟢 Terminé | 3 | C2.1.2 | R6 |
 | [SH-28](tickets/SH-28-eco-conception-ci.md) | Éco-conception en CI (EcoIndex, poids des pages, requêtes HTTP) | 🔵 Backlog | 3 | C2.1.2 | — |
 | [SH-29](tickets/SH-29-monitoring-elk.md) | Monitoring & alerting (stack ELK + webhooks) | 🔵 Backlog | 5 | C2.2.2 | R5 |
 | [SH-30](tickets/SH-30-mise-en-production.md) | Mise en production V1.0 + PCA (rollback < 5 min) | 🔵 Backlog | 5 | C2.2.2 | — |
@@ -123,8 +146,16 @@
 
 ## Prochaines actions suggérées
 
+<<<<<<< HEAD
 1. **✅ EP02 complet** ; **✅ `SH-12`** et **✅ `SH-13`** terminés → le moteur de matching géospatial est complet.
 2. **✅ `SH-14` mergé** dans `develop` (PR #15, SCRUM-30 Terminé). Dette de revue tracée : `SH-35` (cache/consumer) + `SH-36` (TokenStore) ; extension du bus : `SH-37` (offres) — tous non bloquants.
 3. **🟠 En cours :** `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — branche `feature/SH-34-position-freelance-onboarding` créée.
 5. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
 6. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+=======
+1. **✅ Socle livré** : EP02 & EP03 (auth/RBAC, Armurerie backend, certifications, scoring géospatial, bus Redis) + front amorcé (`SH-19`/`SH-38`/`SH-20`/`SH-21a`).
+2. **Session du 2026-07-16 — 4 PRs ouvertes à merger** (CI verte) : [#23](https://github.com/alixsanta/skillhunt/pull/23) `SH-43` (déclaration matériel), [#24](https://github.com/alixsanta/skillhunt/pull/24) `SH-39` (endpoint recruteur), [#25](https://github.com/alixsanta/skillhunt/pull/25) `SH-41` (smoke tests bootstrap + StrictMode), [#26](https://github.com/alixsanta/skillhunt/pull/26) `SH-27` (audit accessibilité Lighthouse bloquant).
+3. **Suite immédiate (cadrage 23/07, voir section dédiée)** : `SH-21b` (vue publique Armurerie — dès le merge de #24, régénérer `schema.d.ts`) puis `SH-22` (UI recherche & score de matching) ; `SH-2` (Docker) si le temps le permet.
+4. **Dette tracée non bloquante** : `SH-35`, `SH-36`, `SH-44` ; `SH-33`/`SH-34` si le temps le permet.
+5. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+>>>>>>> develop

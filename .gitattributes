@@ -1,0 +1,31 @@
+# Normalisation des fins de ligne (SH-42).
+#
+# Sans ce fichier, Git extrait les sources en CRLF sous Windows (core.autocrlf),
+# alors que Prettier attend des LF (endOfLine: "lf", sa valeur par défaut) :
+# `npm run format:check` échouait donc en local sur des fichiers parfaitement
+# corrects, pendant que la CI (Linux, extraction en LF) les validait.
+#
+# Conséquence : on apprenait à ignorer son échec — et c'est ainsi qu'un vrai défaut
+# de formatage est passé inaperçu et a fait rougir la CI de la PR #19 (SH-20).
+#
+# `text=auto eol=lf` : LF dans l'index ET dans le répertoire de travail, quelle que
+# soit la plateforme.
+* text=auto eol=lf
+
+# Fichiers binaires : jamais de conversion de fins de ligne (elle les corromprait).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+*.mp4 binary
+*.mov binary
+*.docx binary
+*.xlsx binary

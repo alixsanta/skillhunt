@@ -1,0 +1,87 @@
+name: SkillHunt - CI Frontend Web
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'frontend-web/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'frontend-web/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  validation-frontend:
+    name: Validation du Frontend Web React
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-web
+
+    steps:
+      - name: 📥 Récupération du code source
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend-web/package-lock.json'
+
+      - name: 📦 Installation propre des dépendances (ci)
+        run: npm ci
+
+      - name: 🛡️ Audit de sécurité des dépendances NPM
+        run: npm audit --audit-level=high
+
+      - name: 🔍 Analyse statique du code (Lint)
+        run: npm run lint
+
+      - name: 🎨 Vérification du formatage (Prettier)
+        run: npm run format:check
+
+      - name: 🧪 Exécution des tests automatisés
+        run: npm run test
+
+      - name: 🏗️ Validation de la compilation (Build)
+        run: npm run build
+
+  audit-accessibilite:
+    name: Audit d'accessibilité WCAG (Lighthouse CI, bloquant < 90)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-web
+
+    steps:
+      - name: 📥 Récupération du code source
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend-web/package-lock.json'
+
+      - name: 📦 Installation propre des dépendances (ci)
+        run: npm ci
+
+      - name: 🏗️ Build de production
+        run: npm run build
+
+      # Audit des pages publiques sur le build servi par `vite preview` (fallback SPA).
+      # Le job ÉCHOUE si le score accessibilité d'une page passe sous 90 (R6, C2.1.2).
+      - name: ♿ Audit Lighthouse (accessibilité ≥ 90)
+        run: npm run audit:a11y
+
+      # Preuve consultable (jury / revue) — publiée même quand l'audit échoue.
+      - name: 📤 Publication du rapport Lighthouse
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-lighthouse
+          path: frontend-web/lighthouse-report/

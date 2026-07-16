@@ -13,6 +13,8 @@ import { GearController } from './gear/gear.controller';
 import { CertificationService } from './certifications/certification.service';
 import { CertificationController } from './certifications/certification.controller';
 import { StorageModule } from './storage/storage.module';
+import { MatchingService } from './matching/matching.service';
+import { MatchingController } from './matching/matching.controller';
 import { TokenStore } from './auth/token-store.service';
 import { loadJwtKeys } from './auth/keys';
 import { RedisModule } from './common/redis/redis.module';
@@ -60,11 +62,13 @@ import { EventPublisherService } from './common/events/event-publisher.service';
     AuthController,
     GearController, // Déclaration du contrôleur d'armurerie
     CertificationController, // Déclaration du contrôleur de certifications (SH-10)
+    MatchingController, // Proxy vers le matching-service interne (SH-22)
   ],
   providers: [
     AuthService,
     GearService, // Déclaration du service d'armurerie
     CertificationService, // Déclaration du service de certifications (SH-10)
+    MatchingService, // Relais + enrichissement des résultats de matching (SH-22)
     TokenStore, // Registre des refresh tokens (en mémoire → Redis SH-14)
     EventPublisherService, // Bus d'événements Redis Streams (SH-14, C2.2.3)
   ],

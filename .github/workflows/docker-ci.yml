@@ -1,0 +1,40 @@
+name: SkillHunt - CI Docker
+
+# SH-2 — Preuve de reproductibilité : les 3 images applicatives doivent SE CONSTRUIRE
+# à chaque changement qui les concerne. Pas de push (registre : périmètre SH-30).
+on:
+  push:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'backend-core/Dockerfile'
+      - 'backend-core/docker-entrypoint.sh'
+      - 'matching-service/Dockerfile'
+      - 'frontend-web/Dockerfile'
+      - 'frontend-web/nginx.conf'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-ci.yml'
+  pull_request:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'backend-core/Dockerfile'
+      - 'backend-core/docker-entrypoint.sh'
+      - 'matching-service/Dockerfile'
+      - 'frontend-web/Dockerfile'
+      - 'frontend-web/nginx.conf'
+      - 'docker-compose.yml'
+      - '.github/workflows/docker-ci.yml'
+
+jobs:
+  build-images:
+    name: Build des images applicatives (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend-core, matching-service, frontend-web]
+
+    steps:
+      - name: 📥 Récupération du code source
+        uses: actions/checkout@v4
+
+      - name: 🐳 Build de l'image ${{ matrix.service }}
+        run: docker build -t skillhunt-${{ matrix.service }}:ci ./${{ matrix.service }}
