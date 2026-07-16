@@ -1,6 +1,6 @@
 # C2.2.2 — Repository : accès données PostgreSQL/PostGIS pour le matching géospatial (SH-13)
 from uuid import UUID
-from sqlalchemy import cast, func, select
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from geoalchemy2 import Geography
 from app.db.models import FreelanceDB, GearDB
@@ -26,14 +26,18 @@ async def get_candidates(
     radius_m = radius_km * 1000.0
     distance_km = (func.ST_Distance(FreelanceDB.location, point) / 1000.0).label("distance_km")
 
+    # `users.role` et `gear.status` sont des ENUM PostgreSQL (user_role_enum,
+    # gear_status_enum) : asyncpg refuse la comparaison implicite enum = VARCHAR
+    # (« operator does not exist »). On caste la COLONNE en texte — bug relevé lors de la
+    # vérification e2e de SH-22, invisible des tests unitaires (get_candidates mocké).
     stmt = (
         select(FreelanceDB.id, distance_km, GearDB.category)
         .outerjoin(
             GearDB,
-            (GearDB.freelanceId == FreelanceDB.id) & (GearDB.status == "VALIDATED"),
+            (GearDB.freelanceId == FreelanceDB.id) & (cast(GearDB.status, String) == "VALIDATED"),
         )
         .where(
-            FreelanceDB.role == "FREELANCE",
+            cast(FreelanceDB.role, String) == "FREELANCE",
             FreelanceDB.location.isnot(None),
             func.ST_DWithin(FreelanceDB.location, point, radius_m),
         )
