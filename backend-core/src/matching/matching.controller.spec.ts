@@ -44,10 +44,10 @@ describe('MatchingController — contrat OpenAPI et RBAC (SH-22)', () => {
     });
   });
 
-  it('expose les clés exactes de MatchResultDto (freelanceId, username, score, distanceKm)', () => {
+  it('expose les clés exactes de MatchResultDto (+ position pour la carte, SH-23)', () => {
     const dto = document.components?.schemas?.MatchResultDto;
     expect(Object.keys((dto as { properties: object }).properties).sort()).toEqual(
-      ['distanceKm', 'freelanceId', 'score', 'username'].sort(),
+      ['distanceKm', 'freelanceId', 'latitude', 'longitude', 'score', 'username'].sort(),
     );
   });
 

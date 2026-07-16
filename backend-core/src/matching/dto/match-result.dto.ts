@@ -23,4 +23,13 @@ export class MatchResultDto {
 
   @ApiProperty({ example: 12.5, description: 'Distance au lieu de mission (km)' })
   distanceKm!: number;
+
+  // Position déclarée à l'inscription (SH-34), précision « ville » — alimente la carte des
+  // résultats (SH-23). `type: Number` explicite : une union `number | null` ferait perdre
+  // le type au schéma OpenAPI (piège déjà rencontré sur `username`, SH-22).
+  @ApiProperty({ type: Number, nullable: true, example: 43.6045, description: 'Latitude (ville) du freelance' })
+  latitude!: number | null;
+
+  @ApiProperty({ type: Number, nullable: true, example: 1.4442, description: 'Longitude (ville) du freelance' })
+  longitude!: number | null;
 }

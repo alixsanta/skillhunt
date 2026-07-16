@@ -161,3 +161,16 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Carte des résultats (SH-23) : marqueurs SVG Leaflet stylés par les tokens du thème —
+   aucun asset d'icône embarqué, aucune couleur en dur dans les composants. */
+.map-mission-radius {
+  stroke: var(--color-hud-icon);
+  fill: var(--color-hud-icon);
+  fill-opacity: 0.08;
+}
+.map-freelance-marker {
+  stroke: var(--color-hud-positive);
+  fill: var(--color-hud-positive);
+  fill-opacity: 0.55;
+}
