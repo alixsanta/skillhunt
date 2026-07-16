@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
 import { DEFAULT_API_URL } from '@/api/client';
@@ -18,15 +19,19 @@ const TOKEN = fakeJwt({ userId: 'u-2', email: 'nouvelle@skillhunt.io', role: 'FR
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
 function renderRegister() {
+  // QueryClientProvider : « Mon compte » (cible post-inscription) porte la section 2FA (SH-40).
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <AuthProvider>
-      <MemoryRouter initialEntries={['/register']}>
-        <Routes>
-          <Route path="/register" element={<Register />} />
-          <Route path="/mon-compte" element={<Account />} />
-        </Routes>
-      </MemoryRouter>
-    </AuthProvider>,
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/register']}>
+          <Routes>
+            <Route path="/register" element={<Register />} />
+            <Route path="/mon-compte" element={<Account />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -39,7 +44,11 @@ async function fillForm() {
 
 beforeEach(() => {
   // Aucune session au démarrage : le refresh silencieux échoue (pas de cookie).
-  server.use(http.post(url('/api/v1/auth/refresh'), () => new HttpResponse(null, { status: 401 })));
+  server.use(
+    http.post(url('/api/v1/auth/refresh'), () => new HttpResponse(null, { status: 401 })),
+    // Section 2FA de « Mon compte » (SH-40) : état par défaut, hors sujet ici.
+    http.get(url('/api/v1/auth/2fa/status'), () => HttpResponse.json({ enabled: false })),
+  );
 });
 afterEach(() => sessionStore.clear());
 

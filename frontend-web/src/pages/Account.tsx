@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
+import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
 
 // Première page protégée du front (SH-20). Elle sert de preuve de bout en bout du
 // parcours d'authentification, en attendant les écrans métier (Armurerie, SH-21a).
@@ -35,6 +36,9 @@ export default function Account() {
           Se déconnecter
         </Button>
       </div>
+
+      {/* Gestion de la 2FA (SH-40) — opt-in, tous rôles */}
+      <TwoFactorSettings />
     </main>
   );
 }

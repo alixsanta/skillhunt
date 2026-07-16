@@ -11,11 +11,11 @@
 > Prérequis livrés : Auth Argon2id + JWT RS256 (SH-7/SH-14), cookie `httpOnly` de refresh (SH-20).
 
 ### 0. Definition of Ready (DoR)
-- [ ] **Valeur Claire :** un compte `RECRUITER` (ou `ADMIN`) peut activer un second facteur pour réduire le risque de prise de contrôle de compte (accès aux données candidats).
-- [ ] **Specs Complètes :** Gherkin ci-dessous couvre enrôlement, vérification au login, codes de secours et cas d'erreur.
-- [ ] **UX/UI Validé :** écran d'enrôlement (QR code + saisie manuelle du secret) et écran de saisie du code à la connexion — maquettes à valider.
-- [ ] **Faisabilité Technique :** librairie TOTP (RFC 6238) à choisir côté NestJS (ex. `otplib`), stockage du secret chiffré AES-256 (cf. CLAUDE.md §8) — mécanisme de chiffrement/déchiffrement à trancher (clé via variable d'env / Vault, pas de secret en dur).
-- [ ] **Estimé :** 5 SP.
+- [x] **Valeur Claire :** un compte `RECRUITER` (ou `ADMIN`) peut activer un second facteur pour réduire le risque de prise de contrôle de compte (accès aux données candidats).
+- [x] **Specs Complètes :** Gherkin ci-dessous couvre enrôlement, vérification au login, codes de secours et cas d'erreur.
+- [x] **UX/UI Validé :** enrôlement dans « Mon compte » (QR `qrcode.react` + secret texte), écran « Vérification en deux étapes » au login.
+- [x] **Faisabilité Technique — décisions actées le 2026-07-16 :** (1) 2FA **opt-in** pour tous les rôles, jamais imposée ; (2) jeton d'étape = **JWT dédié type `twofa_pending`, 5 min** (refusé par le JwtAuthGuard) ; (3) **otplib v12** (l'API v13 est ESM-only, incompatible Jest CJS) + clé **AES-256-GCM** via `TWO_FACTOR_ENCRYPTION_KEY` (Vault/KMS : SH-4).
+- [x] **Estimé :** 5 SP.
 
 ### 1. User Story
 **En tant que** recruteur (compte pro),
@@ -95,12 +95,12 @@
 - Politique d'obligation par organisation/équipe (gestion multi-comptes recruteur) — hors périmètre MVP.
 
 ### 7. Definition of Done (DoD)
-- [ ] Migration `users` (colonnes 2FA) + secret chiffré AES-256 (jamais en clair en base).
-- [ ] Endpoints d'enrôlement/confirmation/vérification/désactivation + régénération des codes de secours, tous documentés Swagger.
-- [ ] Codes de secours : générés serveur, affichés une seule fois, stockés hachés, usage unique vérifié par test.
-- [ ] Rate-limiting/anti-brute-force sur `/verify` testé.
-- [ ] Tests backend : enrôlement, confirmation, login avec 2FA (succès/échec), codes de secours, désactivation, RBAC (un utilisateur ne peut pas gérer la 2FA d'un autre compte).
-- [ ] Tests front : flow d'enrôlement, étape « 2FA requise » au login, gestion dans « Mon compte », aucun secret/QR ne fuit dans les logs ou le state persistant.
-- [ ] CI verte (lint + audit sécurité + tests + build).
-- [ ] Aucun secret en dur ; clé de chiffrement AES-256 via variable d'env ; messages en français.
-- [ ] `docs/BACKLOG.md` mis à jour.
+- [x] Migration `users` (3 colonnes 2FA) + secret chiffré **AES-256-GCM** (`iv.ciphertext.tag`, IV aléatoire, intégrité par tag — vérifié en base : jamais en clair). `PublicUser` étendu pour ne JAMAIS exposer les champs 2FA.
+- [x] Endpoints `status`/`enroll`/`confirm`/`verify`/`disable`/`backup-codes/regenerate` documentés Swagger ; `/verify` authentifié par le **jeton d'étape** (JWT `twofa_pending` 5 min, refusé partout ailleurs ; un access token ne franchit jamais cette étape — testé).
+- [x] Codes de secours : 8, générés serveur (alphabet sans ambiguïté), affichés **une seule fois**, stockés **hachés Argon2id**, usage unique vérifié par test ET en e2e réel (rejeu → 401).
+- [x] Anti-brute-force sur la vérification : compteur Redis par compte, **5 échecs → 429** pendant 5 min (même un code valide est refusé) — testé unitairement ET en e2e réel ; panne Redis → fail-closed 503 (cohérent SH-36).
+- [x] Tests backend (26 nouveaux : crypto 4, service 11, flow login 3, + suites existantes adaptées) ; l'identité vient toujours du token (`@CurrentUser`) : personne ne gère la 2FA d'un autre compte.
+- [x] Tests front (105 au total) : étape « 2FA requise » au login (session vide tant que non vérifiée), enrôlement→confirmation→codes montrés une fois, désactivation ; secret/jeton d'étape/codes uniquement en state éphémère de composant, jamais persistés.
+- [x] **Vérifié de bout en bout** : 9 scénarios API réels (enrôlement → confirm → login 2 étapes → TOTP réel → backup unique → 429 → disable) + parcours navigateur complet (QR affiché, code d'une « app » réelle otplib, reconnexion en 2 étapes).
+- [x] Aucun secret en dur ; `TWO_FACTOR_ENCRYPTION_KEY` documentée dans `.env.example` (clé éphémère + warning en dev) ; messages en français. CI à confirmer sur la PR.
+- [x] `docs/BACKLOG.md` mis à jour.

@@ -72,6 +72,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/2fa/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État 2FA du compte courant (le JWT ne porte pas cette information) */
+        get: operations["TwoFactorController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Démarrer l'enrôlement 2FA (génère le secret TOTP, chiffré en base) */
+        post: operations["TwoFactorController_enroll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirmer l'enrôlement avec le premier code : ACTIVE la 2FA */
+        post: operations["TwoFactorController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Étape 2 du login : jeton d'étape + code TOTP (ou code de secours) => vrais tokens */
+        post: operations["TwoFactorController_verify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Désactiver la 2FA (exige un code valide) : purge secret + codes de secours */
+        post: operations["TwoFactorController_disable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/backup-codes/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Régénérer les codes de secours (les anciens sont invalidés) */
+        post: operations["TwoFactorController_regenerateBackupCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gear": {
         parameters: {
             query?: never;
@@ -309,6 +411,44 @@ export interface components {
         RefreshDto: {
             /** @description Refresh token (JWT). Inutile pour le web : le cookie httpOnly fait foi. */
             refreshToken?: string;
+        };
+        EnrollResponseDto: {
+            /**
+             * @description Secret TOTP (base32), à ne jamais re-consulter
+             * @example JBSWY3DPEHPK3PXP
+             */
+            secret: string;
+            /**
+             * @description URI otpauth à encoder en QR code côté client
+             * @example otpauth://totp/SkillHunt:pro%40skillhunt.io?secret=…
+             */
+            otpauthUrl: string;
+        };
+        TwoFactorCodeDto: {
+            /**
+             * @description Code TOTP (6 chiffres) ou code de secours
+             * @example 123456
+             */
+            code: string;
+        };
+        BackupCodesResponseDto: {
+            /**
+             * @description Codes de secours à usage unique — stockés hachés, jamais re-consultables
+             * @example [
+             *       "A2C4-E6G8",
+             *       "K3M5-P7R9"
+             *     ]
+             */
+            backupCodes: string[];
+        };
+        VerifyTwoFactorDto: {
+            /** @description Jeton d'étape 2FA émis par /login (validité 5 min) */
+            twoFactorToken: string;
+            /**
+             * @description Code TOTP (6 chiffres) ou code de secours
+             * @example 123456
+             */
+            code: string;
         };
         AddGearDto: {
             /**
@@ -556,7 +696,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Jetons JWT RS256 émis ; cookie `sh_refresh` déposé. */
+            /** @description Jetons JWT RS256 émis ; cookie `sh_refresh` déposé. Si la 2FA est active (SH-40) : `{ twoFactorRequired: true, twoFactorToken }` — AUCUN token ni cookie avant /auth/2fa/verify. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -613,6 +753,164 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    TwoFactorController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `{ enabled: boolean }` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TwoFactorController_enroll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secret + URI otpauth (affichés une seule fois) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollResponseDto"];
+                };
+            };
+            /** @description 2FA déjà activée sur ce compte */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TwoFactorController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCodeDto"];
+            };
+        };
+        responses: {
+            /** @description Codes de secours — affichés UNE seule fois */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupCodesResponseDto"];
+                };
+            };
+            /** @description Code invalide : la 2FA reste inactive */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TwoFactorController_verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyTwoFactorDto"];
+            };
+        };
+        responses: {
+            /** @description Connexion complétée : tokens émis, cookie sh_refresh déposé */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Jeton d'étape expiré ou code invalide */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Trop de tentatives : compte temporairement verrouillé */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TwoFactorController_disable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCodeDto"];
+            };
+        };
+        responses: {
+            /** @description Code invalide : la 2FA reste active */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TwoFactorController_regenerateBackupCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCodeDto"];
+            };
+        };
+        responses: {
+            /** @description Nouveaux codes — affichés UNE seule fois */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupCodesResponseDto"];
+                };
             };
         };
     };

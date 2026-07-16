@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
 import { DEFAULT_API_URL } from '@/api/client';
@@ -17,15 +18,19 @@ const TOKEN = fakeJwt({ userId: 'u-1', email: 'pilote@skillhunt.io', role: 'FREE
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
 function renderAccount() {
+  // QueryClientProvider : la section 2FA de « Mon compte » interroge /auth/2fa/status (SH-40).
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <AuthProvider>
-      <MemoryRouter initialEntries={['/mon-compte']}>
-        <Routes>
-          <Route path="/login" element={<p>Écran de connexion</p>} />
-          <Route path="/mon-compte" element={<Account />} />
-        </Routes>
-      </MemoryRouter>
-    </AuthProvider>,
+    <QueryClientProvider client={client}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/mon-compte']}>
+          <Routes>
+            <Route path="/login" element={<p>Écran de connexion</p>} />
+            <Route path="/mon-compte" element={<Account />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -35,6 +40,8 @@ beforeEach(() => {
     http.post(url('/api/v1/auth/refresh'), () =>
       HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
     ),
+    // Section 2FA (SH-40) : état par défaut, non testé ici (TwoFactorSettings.test.tsx).
+    http.get(url('/api/v1/auth/2fa/status'), () => HttpResponse.json({ enabled: false })),
   );
 });
 afterEach(() => sessionStore.clear());

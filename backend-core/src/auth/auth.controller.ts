@@ -48,12 +48,23 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Authentification : access token dans le body, refresh token en cookie httpOnly' })
-  @ApiResponse({ status: 200, description: 'Jetons JWT RS256 émis ; cookie `sh_refresh` déposé.' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Jetons JWT RS256 émis ; cookie `sh_refresh` déposé. Si la 2FA est active (SH-40) : '
+      + '`{ twoFactorRequired: true, twoFactorToken }` — AUCUN token ni cookie avant /auth/2fa/verify.',
+  })
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const tokens = await this.authService.login(dto);
-    this.setRefreshCookie(res, tokens.refreshToken);
+    const result = await this.authService.login(dto);
+
+    // Étape intermédiaire 2FA (SH-40) : pas de session tant que le code n'est pas vérifié
+    if ('twoFactorRequired' in result) {
+      return result;
+    }
+
+    this.setRefreshCookie(res, result.refreshToken);
     // Le body conserve le couple complet : le mobile (Lot 2) n'utilise pas les cookies.
-    return tokens;
+    return result;
   }
 
   @Post('refresh')
