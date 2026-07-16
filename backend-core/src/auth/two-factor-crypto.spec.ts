@@ -20,7 +20,8 @@ describe('two-factor-crypto — AES-256-GCM (SH-40)', () => {
 
   it("rejette un chiffré falsifié (le tag GCM garantit l'intégrité)", () => {
     const encrypted = encryptTwoFactorSecret('JBSWY3DPEHPK3PXP');
-    const [iv, data, tag] = encrypted.split('.');
+    const [iv, _data, tag] = encrypted.split('.');
+    void _data; // le ciphertext d'origine est justement ce qu'on remplace
     const tampered = [iv, Buffer.from('falsifie-par-un-attaquant').toString('base64'), tag].join('.');
 
     expect(() => decryptTwoFactorSecret(tampered)).toThrow();
