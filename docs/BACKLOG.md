@@ -54,7 +54,7 @@
 | [SH-2](tickets/SH-2-dockerisation.md) | Dockerisation + environnements Dev/Staging/Prod — *3 images durcies, profil `app` du compose, migrations au boot, matching sans port hôte, CI docker* | 🟢 Terminé | 5 | C2.1.2, C2.2.3 | — |
 | [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟢 Terminé | 3 | C2.2.2 | — |
 | [SH-4](tickets/SH-4-securite-hardening.md) | Hardening : TLS 1.3, gestion des secrets (Vault/env), mTLS inter-services | 🔵 Backlog | 5 | C2.2.3 | R9 |
-| [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (Kong/Nginx) : point d'entrée unique + rate-limiting | 🔵 Backlog | 5 | C2.2.3 | R7, R9 |
+| [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (nginx, décision tracée) : point d'entrée unique du profil `app` + rate-limiting anti-brute-force sur l'auth (429 prouvé) | 🟢 Terminé | 5 | C2.2.3, C2.1.2 | R7, R9 |
 | [SH-32](tickets/SH-32-audit-deps-transitives.md) | Hygiène des dépendances backend-core : résorber les vulnérabilités transitives (audit npm) — dette relevée en SH-31 | 🟢 Terminé | 2 | C2.2.3, C2.1.2 | R7 |
 
 ## EP02 — Monolithe & Authentification · *18 J/H* · 🎯 J2
