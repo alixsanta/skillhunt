@@ -73,6 +73,7 @@
 - [x] DTO : validation conditionnelle de `location` par rôle (freelance obligatoire) + tests unitaires (passant/rejet/rôle non concerné).
 - [x] Migration TypeORM : `CHECK` conditionnel + stratégie de reprise des données existantes documentée et testée (la migration s'applique sans casse).
 - [x] **Tests d'étanchéité** : un recruteur reste créable sans position ; un freelance sans position est refusé aux deux niveaux (API + base).
-- [ ] CI verte (lint + audit + tests + build) ; Swagger à jour (schéma d'enregistrement, C2.4.1).
+- [x] CI verte (lint + audit + tests + build) ; Swagger à jour (schéma d'enregistrement, C2.4.1) — confirmée sur la PR.
 - [x] Aucun secret en dur ; messages utilisateur en français.
-- [ ] `CLAUDE.md` §5 / backlog mis à jour si la nullabilité de `location` y est décrite.
+- [x] Backlog mis à jour (la nullabilité de `location` n'est pas décrite dans `CLAUDE.md` §5 — rien à y changer).
+- [x] **Complément front (reprise du 2026-07-16)** : champ « Ville d'activité » au Register (rôle FREELANCE uniquement, villes partagées avec SH-22 dans `lib/cities.ts`), payload `{latitude, longitude}`, masqué/omis pour un RECRUTEUR — testé RTL ; `schema.d.ts` régénéré (`LocationDto`). **Vérifié en réel** : 400 sans position, 201 recruteur, violation `CHK` en SQL direct, GeoJSON `POINT(4.8357 45.764)` persisté, freelance immédiatement matchable (score 0.2 à Lyon).
