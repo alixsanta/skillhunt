@@ -59,7 +59,7 @@ aller-retour).
 * **THEN** les trois tokens sont invalidés (aucun jti orphelin hors index).
 
 ### 4. Definition of Done (DoD)
-- [ ] Décision F2 tracée dans ce ticket (option retenue + justification) et implémentée avec test de panne Redis (C2.2.2).
-- [ ] `save` atomique via `multi()`, tests unitaires adaptés (commandes groupées).
-- [ ] Suite backend-core verte (lint + Jest + build) ; tests d'intégration Redis réels re-passés.
-- [ ] Backlog mis à jour.
+- [x] **Décision F2 (2026-07-16) : option 1 — fail-closed PROPRE.** Sans `save`, le refresh token émis serait invérifiable (fail-open interdit, §8-5) ; `save` et `revoke` lèvent une `ServiceUnavailableException` (503, message français) sur toute panne Redis — y compris `exec()` null ou erreur par-commande (écriture partielle traitée en panne). Le logout reste idempotent (catch existant dans `auth.service`). Testé : panne au login avec identifiants valides → 503, jamais un 500 opaque.
+- [x] `save` atomique via `multi()` (SET + SADD + EXPIRE dans une transaction, 1 RTT) — tests unitaires adaptés (pipeline mocké, 4 cas de panne) ; le jti ne peut plus être valide hors de l'index `revokeAllForUser` (F6).
+- [x] Suite backend-core verte (130 tests, lint, build) ; **tests d'intégration Redis réels re-passés** (`REDIS_URL=redis://localhost:6380`).
+- [x] Backlog mis à jour.

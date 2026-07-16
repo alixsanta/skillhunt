@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtModule } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  UnauthorizedException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { AuthService } from './auth.service';
 import { TokenStore } from './token-store.service';
@@ -32,6 +36,24 @@ function makeStatefulRedisMock() {
     srem: jest.fn().mockResolvedValue(1),
     smembers: jest.fn().mockResolvedValue([]),
     expire: jest.fn().mockResolvedValue(1),
+    // TokenStore.save écrit désormais en MULTI/EXEC atomique (SH-36) : le pipeline
+    // rejoue les écritures sur le même store en mémoire à l'exec().
+    multi: jest.fn().mockImplementation(() => {
+      const ops: Array<() => void> = [];
+      const pipeline = {
+        set: (key: string, value: string) => {
+          ops.push(() => store.set(key, value));
+          return pipeline;
+        },
+        sadd: () => pipeline,
+        expire: () => pipeline,
+        exec: () => {
+          ops.forEach((apply) => apply());
+          return Promise.resolve([[null, 'OK']]);
+        },
+      };
+      return pipeline;
+    }),
   };
 }
 
@@ -75,6 +97,7 @@ class FakeUserRepository {
 describe('🔐 AuthService (Tests Unitaires)', () => {
   let service: AuthService;
   let repo: FakeUserRepository;
+  let redisMock: ReturnType<typeof makeStatefulRedisMock>;
 
   beforeEach(async () => {
     // Paire de clés RSA éphémère dédiée aux tests (RS256)
@@ -99,6 +122,7 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
 
     service = module.get<AuthService>(AuthService);
     repo = module.get<FakeUserRepository>(getRepositoryToken(User));
+    redisMock = module.get<ReturnType<typeof makeStatefulRedisMock>>(REDIS_CLIENT);
   });
 
   it('devrait être défini (Test de Sanité)', () => {
@@ -225,6 +249,18 @@ describe('🔐 AuthService (Tests Unitaires)', () => {
       await expect(
         service.login({ email: credentials.email, password: 'MauvaisMotDePasse!' }),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('panne Redis pendant le login => 503 explicite, jamais un 500 opaque (SH-36, F2)', async () => {
+      redisMock.multi.mockImplementation(() => {
+        throw new Error('connexion Redis perdue');
+      });
+
+      // Identifiants VALIDES : c'est bien l'indisponibilité du registre de tokens qui
+      // refuse proprement, pas l'authentification.
+      await expect(
+        service.login({ email: credentials.email, password: credentials.password }),
+      ).rejects.toThrow(ServiceUnavailableException);
     });
 
     it('devrait lever une 401 pour un email inconnu', async () => {
