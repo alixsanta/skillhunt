@@ -51,7 +51,7 @@
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
 | [SH-1](tickets/SH-1-init-monorepo-backend.md) | Init monorepo + squelette backend-core NestJS | 🟢 Terminé | 3 | C2.1.2 | — |
-| [SH-2](tickets/SH-2-dockerisation.md) | Dockerisation + environnements Dev/Staging/Prod | 🔵 Backlog | 5 | C2.1.2 | — |
+| [SH-2](tickets/SH-2-dockerisation.md) | Dockerisation + environnements Dev/Staging/Prod — *3 images durcies, profil `app` du compose, migrations au boot, matching sans port hôte, CI docker* | 🟢 Terminé | 5 | C2.1.2, C2.2.3 | — |
 | [SH-3](tickets/SH-3-cicd-github-actions.md) | Pipelines CI/CD GitHub Actions (lint, audit, tests, build) | 🟢 Terminé | 3 | C2.2.2 | — |
 | [SH-4](tickets/SH-4-securite-hardening.md) | Hardening : TLS 1.3, gestion des secrets (Vault/env), mTLS inter-services | 🔵 Backlog | 5 | C2.2.3 | R9 |
 | [SH-5](tickets/SH-5-api-gateway.md) | API Gateway (Kong/Nginx) : point d'entrée unique + rate-limiting | 🔵 Backlog | 5 | C2.2.3 | R7, R9 |
