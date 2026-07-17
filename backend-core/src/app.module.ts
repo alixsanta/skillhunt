@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { buildDataSourceOptions } from './database/data-source';
 import { User } from './users/user.entity';
@@ -21,6 +22,10 @@ import { TokenStore } from './auth/token-store.service';
 import { loadJwtKeys } from './auth/keys';
 import { RedisModule } from './common/redis/redis.module';
 import { EventPublisherService } from './common/events/event-publisher.service';
+import { Message, MessageSchema } from './chat/message.schema';
+import { ChatService } from './chat/chat.service';
+import { ChatGateway } from './chat/chat.gateway';
+import { ChatController } from './chat/chat.controller';
 
 @Module({
   imports: [
@@ -35,6 +40,15 @@ import { EventPublisherService } from './common/events/event-publisher.service';
       useFactory: () => buildDataSourceOptions(),
     }),
     TypeOrmModule.forFeature([User, Gear, Certification]),
+
+    // Persistance NoSQL MongoDB (SH-24) — brique chat de l'architecture (§2/§3).
+    // URL via l'environnement uniquement (CLAUDE.md §8-4) ; défaut = compose dev (port hôte 27018).
+    MongooseModule.forRootAsync({
+      useFactory: () => ({
+        uri: process.env.MONGODB_URL ?? 'mongodb://localhost:27018/skillhunt',
+      }),
+    }),
+    MongooseModule.forFeature([{ name: Message.name, schema: MessageSchema }]),
 
     // Stockage objet privé (SH-31) — fournit STORAGE_SERVICE aux certifications (et médias SH-17)
     StorageModule,
@@ -66,6 +80,7 @@ import { EventPublisherService } from './common/events/event-publisher.service';
     GearController, // Déclaration du contrôleur d'armurerie
     CertificationController, // Déclaration du contrôleur de certifications (SH-10)
     MatchingController, // Proxy vers le matching-service interne (SH-22)
+    ChatController, // Historique + liste des conversations du chat (SH-24)
   ],
   providers: [
     AuthService,
@@ -75,6 +90,8 @@ import { EventPublisherService } from './common/events/event-publisher.service';
     MatchingService, // Relais + enrichissement des résultats de matching (SH-22)
     TokenStore, // Registre des refresh tokens (en mémoire → Redis SH-14)
     EventPublisherService, // Bus d'événements Redis Streams (SH-14, C2.2.3)
+    ChatService, // Persistance MongoDB + règles métier du chat (SH-24)
+    ChatGateway, // WebSocket socket.io authentifié au handshake (SH-24)
   ],
 })
 export class AppModule {}
