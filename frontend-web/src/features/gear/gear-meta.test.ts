@@ -38,7 +38,7 @@ describe("Métadonnées de l'Armurerie (SH-21a)", () => {
 // Étendu à src/pages/ (SH-44, item 1) : les PAGES de l'Armurerie (et les autres) doivent
 // respecter le même contrat de thème que les composants de la feature.
 describe("Palette de l'Armurerie — aucune couleur codée en dur", () => {
-  const scanDirs = ['src/features/gear', 'src/pages'];
+  const scanDirs = ['src/features/gear', 'src/features/gamification', 'src/pages'];
   const sources = scanDirs.flatMap((dir) =>
     readdirSync(join(process.cwd(), dir))
       .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
