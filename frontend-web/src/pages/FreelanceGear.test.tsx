@@ -77,6 +77,17 @@ describe('Page Armurerie publique — vue recruteur (SH-21b)', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
+  it('propose « Contacter » vers le fil de discussion du freelance (SH-24)', async () => {
+    server.use(respondWith(VALIDATED_LOCKER));
+    renderPage();
+
+    await screen.findByText('2 équipements validés');
+    expect(screen.getByRole('link', { name: /contacter/i })).toHaveAttribute(
+      'href',
+      `/messages/${FREELANCE_ID}`,
+    );
+  });
+
   it('filtre par catégorie via les chips, et « Tous » rétablit la liste', async () => {
     server.use(respondWith(VALIDATED_LOCKER));
     renderPage();
@@ -91,14 +102,17 @@ describe('Page Armurerie publique — vue recruteur (SH-21b)', () => {
     expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(2);
   });
 
-  it("affiche un état vide NEUTRE (sans CTA) quand rien n'est validé", async () => {
+  it("affiche un état vide NEUTRE (sans CTA d'ajout) quand rien n'est validé", async () => {
     server.use(respondWith([]));
     renderPage();
 
     expect(await screen.findByText('Aucun équipement validé pour le moment.')).toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    // Aucun CTA d'AJOUT (on ne déclare pas dans le casier d'un tiers)…
+    expect(screen.queryByRole('button', { name: /ajouter/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /ajouter/i })).not.toBeInTheDocument();
+    // … mais « Contacter » reste pertinent : le profil existe, la mise en relation aussi (SH-24)
+    expect(screen.getByRole('link', { name: /contacter/i })).toBeInTheDocument();
   });
 
   it('explique le 404 (profil freelance introuvable)', async () => {

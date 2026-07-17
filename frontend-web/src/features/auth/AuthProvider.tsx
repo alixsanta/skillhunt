@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { apiClient } from '@/api/client';
 import { installAuthInterceptors, refreshOnce } from '@/api/auth-interceptors';
+import { resetChatSocket } from '@/features/chat/socket';
 import { sessionStore } from './session-store';
 import {
   AuthContext,
@@ -87,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // La session locale est purgée même si l'appel réseau échoue.
       sessionStore.clear();
+      // La connexion WS du chat ne survit pas à la session qui l'a ouverte (SH-24, C2.2.3).
+      resetChatSocket();
     }
   }, []);
 

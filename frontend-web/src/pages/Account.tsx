@@ -32,6 +32,10 @@ export default function Account() {
         <Button asChild>
           <Link to="/mon-armurerie">Mon Armurerie</Link>
         </Button>
+        {/* Chat contextuel (SH-24) : point d'entrée des deux rôles vers leurs conversations */}
+        <Button asChild variant="outline">
+          <Link to="/messages">Messages</Link>
+        </Button>
         <Button variant="outline" onClick={handleLogout}>
           Se déconnecter
         </Button>

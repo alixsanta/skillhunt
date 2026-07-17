@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { GearCategoryChips } from '@/features/gear/GearCategoryChips';
 import { GearGrid } from '@/features/gear/GearGrid';
@@ -38,14 +38,23 @@ export default function FreelanceGear() {
   return (
     <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
-            Armurerie du freelance
-          </h1>
-          {!isPending && !isError && (
-            <p className="text-hud-muted text-sm">
-              {`${total} équipement${total > 1 ? 's' : ''} validé${total > 1 ? 's' : ''}`}
-            </p>
+        <header className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
+              Armurerie du freelance
+            </h1>
+            {!isPending && !isError && (
+              <p className="text-hud-muted text-sm">
+                {`${total} équipement${total > 1 ? 's' : ''} validé${total > 1 ? 's' : ''}`}
+              </p>
+            )}
+          </div>
+          {/* Mise en relation (SH-24) : le « chat contextuel » démarre depuis le profil.
+              Masqué sur erreur (403 : pas recruteur ; 404 : profil inexistant). */}
+          {!isError && (
+            <Button asChild>
+              <Link to={`/messages/${freelanceId}`}>Contacter</Link>
+            </Button>
           )}
         </header>
 
