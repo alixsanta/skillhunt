@@ -20,7 +20,15 @@ export class GamificationProfileDto {
   @ApiProperty({ example: 260 }) xp!: number;
   @ApiProperty({ example: 3 }) level!: number;
   @ApiProperty({ example: 'Spécialiste' }) levelLabel!: string;
-  @ApiProperty({ example: 450, nullable: true, description: 'Seuil du niveau suivant (null au niveau maximum)' })
+  // `type: Number` explicite (C2.4.1) : un type union `number | null` n'est pas reflété
+  // correctement par @nestjs/swagger (design:type = Object), ce qui générait un schéma
+  // `"type": "object"` et donc un `Record<string, never>` côté front après `gen:api`.
+  @ApiProperty({
+    type: Number,
+    example: 450,
+    nullable: true,
+    description: 'Seuil du niveau suivant (null au niveau maximum)',
+  })
   nextLevelAt!: number | null;
   @ApiProperty({ type: [BadgeDto] }) badges!: BadgeDto[];
 }

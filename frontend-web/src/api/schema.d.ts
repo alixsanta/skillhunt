@@ -259,6 +259,23 @@ export interface paths {
         patch: operations["GearController_review"];
         trace?: never;
     };
+    "/api/v1/gear/{id}/loadout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Épingler/retirer un équipement de son loadout (validé uniquement, max 4) */
+        patch: operations["GearController_setLoadout"];
+        trace?: never;
+    };
     "/api/v1/certifications": {
         parameters: {
             query?: never;
@@ -355,6 +372,74 @@ export interface paths {
         put?: never;
         /** Rechercher des freelances par matching multicritères (Recruteur) */
         post: operations["MatchingController_search"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister ses conversations (interlocuteur + dernier message) */
+        get: operations["ChatController_getConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/with/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historique du fil avec un utilisateur (50 derniers messages) */
+        get: operations["ChatController_getHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gamification/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mon profil de gamification (XP, niveau, badges — Freelance) */
+        get: operations["GamificationController_getMyProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gamification/freelance/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profil public d'un freelance : niveau + badges obtenus (Recruteur) */
+        get: operations["GamificationController_getPublicProfile"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -505,6 +590,11 @@ export interface components {
              */
             status: "PENDING" | "VALIDATED" | "REJECTED";
             /**
+             * @description Épinglé au loadout (vitrine, SH-21c)
+             * @example false
+             */
+            isInLoadout: boolean;
+            /**
              * Format: date-time
              * @example 2026-07-14T09:12:33.000Z
              */
@@ -560,6 +650,11 @@ export interface components {
              */
             status: "PENDING" | "VALIDATED" | "REJECTED";
             /**
+             * @description Épinglé au loadout (vitrine, SH-21c)
+             * @example false
+             */
+            isInLoadout: boolean;
+            /**
              * Format: date-time
              * @example 2026-07-14T09:12:33.000Z
              */
@@ -590,6 +685,13 @@ export interface components {
              * @enum {string}
              */
             decision: "VALIDATED" | "REJECTED";
+        };
+        SetLoadoutDto: {
+            /**
+             * @description true = épingler au loadout, false = retirer
+             * @example true
+             */
+            inLoadout: boolean;
         };
         ReviewCertificationDto: {
             /**
@@ -661,6 +763,84 @@ export interface components {
              * @example 1.4442
              */
             longitude: number | null;
+        };
+        ConversationPeerDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example jean-telepilote */
+            username: string;
+            /**
+             * @example FREELANCE
+             * @enum {string}
+             */
+            role: "FREELANCE" | "RECRUITER" | "ADMIN";
+        };
+        ChatMessageDto: {
+            /**
+             * @description Identifiant MongoDB du message
+             * @example 66a1f0c2e4b0a1b2c3d4e5f6
+             */
+            id: string;
+            /**
+             * @description Identifiant de conversation (les deux ids participants triés, joints par ":")
+             * @example 3f6e…-a1b2:9c8d…-e4f5
+             */
+            conversationId: string;
+            /**
+             * Format: uuid
+             * @description Auteur du message (toujours l'un des deux participants)
+             */
+            senderId: string;
+            /** @example Bonjour, votre profil correspond à notre mission. */
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ConversationSummaryDto: {
+            /** @example 3f6e…-a1b2:9c8d…-e4f5 */
+            conversationId: string;
+            with: components["schemas"]["ConversationPeerDto"];
+            /** @description Dernier message échangé */
+            lastMessage: components["schemas"]["ChatMessageDto"];
+        };
+        BadgeDto: {
+            /** @example first-validated */
+            id: string;
+            /** @example Première validation */
+            label: string;
+            /** @example Un premier équipement validé par un admin */
+            description: string;
+            /** @example true */
+            earned: boolean;
+        };
+        GamificationProfileDto: {
+            /** @example 260 */
+            xp: number;
+            /** @example 3 */
+            level: number;
+            /** @example Spécialiste */
+            levelLabel: string;
+            /**
+             * @description Seuil du niveau suivant (null au niveau maximum)
+             * @example 450
+             */
+            nextLevelAt: number | null;
+            badges: components["schemas"]["BadgeDto"][];
+        };
+        PublicBadgeDto: {
+            /** @example first-validated */
+            id: string;
+            /** @example Première validation */
+            label: string;
+            /** @example Un premier équipement validé par un admin */
+            description: string;
+        };
+        PublicGamificationProfileDto: {
+            /** @example 3 */
+            level: number;
+            /** @example Spécialiste */
+            levelLabel: string;
+            badges: components["schemas"]["PublicBadgeDto"][];
         };
     };
     responses: never;
@@ -1138,6 +1318,53 @@ export interface operations {
             };
         };
     };
+    GearController_setLoadout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetLoadoutDto"];
+            };
+        };
+        responses: {
+            /** @description Équipement après mise à jour du loadout */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GearResponseDto"];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant pour cette ressource (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Équipement introuvable dans SON casier (404) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     CertificationController_upload: {
         parameters: {
             query?: never;
@@ -1372,6 +1599,151 @@ export interface operations {
             };
             /** @description Matching-service indisponible (502) */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ChatController_getConversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversations du compte connecté, la plus récente d'abord */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationSummaryDto"][];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ChatController_getHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages en ordre chronologique */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessageDto"][];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description La paire n'est pas RECRUITER↔FREELANCE (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Interlocuteur introuvable (404) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GamificationController_getMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GamificationProfileDto"];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant pour cette ressource (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GamificationController_getPublicProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicGamificationProfileDto"];
+                };
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant pour cette ressource (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Profil Freelance introuvable (404 uniforme) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
