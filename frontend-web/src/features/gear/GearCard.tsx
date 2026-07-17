@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { CATEGORY_META } from './gear-meta';
 import { GearStatusBadge } from './GearStatusBadge';
 import type { PublicGear } from './types';
@@ -9,8 +10,17 @@ import type { PublicGear } from './types';
  * Typée sur `PublicGear` (le sous-ensemble commun aux deux vues, SH-21b) : `Gear` lui est
  * assignable, et `serialNumber` — délibérément jamais affiché (donnée sensible) — n'est
  * même plus accessible ici par construction.
+ *
+ * `trailingAction` (SH-21c) : action optionnelle affichée après le badge de statut (épingler/
+ * retirer du loadout). Absente en vue publique (recruteur), qui n'appelle jamais cette prop.
  */
-export function GearCard({ gear }: { gear: PublicGear }) {
+export function GearCard({
+  gear,
+  trailingAction,
+}: {
+  gear: PublicGear;
+  trailingAction?: ReactNode;
+}) {
   const { label, Icon } = CATEGORY_META[gear.category];
 
   return (
@@ -27,6 +37,7 @@ export function GearCard({ gear }: { gear: PublicGear }) {
       </span>
 
       <GearStatusBadge status={gear.status} />
+      {trailingAction}
     </li>
   );
 }
