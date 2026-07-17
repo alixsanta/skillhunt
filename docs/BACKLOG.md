@@ -40,7 +40,7 @@
 
 **Explicitement dé-priorisé** (hors périmètre du rendu, reste au backlog — ni abandonné, ni oublié) :
 - **EP04 complet** (`SH-15` à `SH-18`, média/portfolio) : infrastructure lourde (S3/CloudFront/FFmpeg) sans impact sur la démonstration du cœur différenciant.
-- **`SH-24`** (chat temps réel), **`SH-23`** (cartographie Mapbox), **`SH-40`** (2FA), **`SH-37`** (offres/bus, 8 pts).
+- **`SH-24`** (chat temps réel), **`SH-23`** (cartographie Mapbox), **`SH-40`** (2FA), **`SH-37`** (offres/bus, 8 pts). — *Marge dégagée depuis : `SH-40`, `SH-23` puis `SH-24` ont finalement été livrés avant le rendu.*
 - **`SH-26`** (harnais E2E complet) : couvert *a minima* par les smoke tests de `SH-41`.
 - **Dette non bloquante** : `SH-35`, `SH-36`, `SH-44` (fenêtres de risque bornées, documentées dans leurs tickets) ; `SH-33`/`SH-34` si le temps le permet uniquement.
 
@@ -104,7 +104,7 @@
 | [SH-43](tickets/SH-43-armurerie-declaration-materiel.md) | Armurerie : écran de déclaration de matériel (`POST /api/v1/gear`) — active les CTA « + Ajouter … » de SH-21a | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching — *proxy backend-core (`POST /matching/search`, RBAC RECRUITER) + page `/recherche` ; boucle démo fermée jusqu'à SH-21b* | 🟢 Terminé | 5 | C2.4.1, C2.2.3, C2.2.2 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie des résultats de recherche — *décision Mapbox→**Leaflet+OSM** tracée (zéro token/coût) ; lazy-loading éco-conçu ; position portée par le proxy SH-22* | 🟢 Terminé | 5 | C2.4.1, C2.2.2, C2.1.2 | — |
-| [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket / WSS, partage de fichiers) | 🔵 Backlog | 8 | C2.2.3 | R5, R9 |
+| [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket + MongoDB) — *périmètre acté 2026-07-17 : texte, 1-à-1 RECRUITER↔FREELANCE ; partage de fichiers reporté avec EP04 ; e2e vérifié à travers la gateway* | 🟢 Terminé | 8 | C2.2.3, C2.2.2, C2.4.1 | R5, R9 |
 | [SH-25](tickets/SH-25-mobile-react-native.md) | App Mobile React Native + notifications Push | ⚪ Lot 2 | 13 | C2.2.3 | — |
 
 ## EP06 — Qualité & Déploiement · *20 J/H* · 🎯 J5
@@ -146,16 +146,7 @@
 
 ## Prochaines actions suggérées
 
-<<<<<<< HEAD
-1. **✅ EP02 complet** ; **✅ `SH-12`** et **✅ `SH-13`** terminés → le moteur de matching géospatial est complet.
-2. **✅ `SH-14` mergé** dans `develop` (PR #15, SCRUM-30 Terminé). Dette de revue tracée : `SH-35` (cache/consumer) + `SH-36` (TokenStore) ; extension du bus : `SH-37` (offres) — tous non bloquants.
-3. **🟠 En cours :** `SH-34` — position freelance obligatoire à l'onboarding (validation DTO conditionnelle + CHECK PostgreSQL par rôle) — branche `feature/SH-34-position-freelance-onboarding` créée.
-5. **Puis :** attaquer **EP04 (média)**, en commençant par `SH-15` (scaffolding `media-service`).
-6. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
-=======
-1. **✅ Socle livré** : EP02 & EP03 (auth/RBAC, Armurerie backend, certifications, scoring géospatial, bus Redis) + front amorcé (`SH-19`/`SH-38`/`SH-20`/`SH-21a`).
-2. **Session du 2026-07-16 — 4 PRs ouvertes à merger** (CI verte) : [#23](https://github.com/alixsanta/skillhunt/pull/23) `SH-43` (déclaration matériel), [#24](https://github.com/alixsanta/skillhunt/pull/24) `SH-39` (endpoint recruteur), [#25](https://github.com/alixsanta/skillhunt/pull/25) `SH-41` (smoke tests bootstrap + StrictMode), [#26](https://github.com/alixsanta/skillhunt/pull/26) `SH-27` (audit accessibilité Lighthouse bloquant).
-3. **Suite immédiate (cadrage 23/07, voir section dédiée)** : `SH-21b` (vue publique Armurerie — dès le merge de #24, régénérer `schema.d.ts`) puis `SH-22` (UI recherche & score de matching) ; `SH-2` (Docker) si le temps le permet.
-4. **Dette tracée non bloquante** : `SH-35`, `SH-36`, `SH-44` ; `SH-33`/`SH-34` si le temps le permet.
-5. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
->>>>>>> develop
+1. **✅ Socle livré** : EP02 & EP03 (auth/RBAC, Armurerie backend, certifications, scoring géospatial, bus Redis) + boucle démo front fermée (`SH-19`→`SH-23`, `SH-39`, `SH-41`, `SH-27`, `SH-43`, `SH-44`).
+2. **✅ `SH-24` livré** (2026-07-17) : chat contextuel temps réel (MongoDB + socket.io + gateway WS + pages `/messages`) — branche `feature/SH-24-chat-temps-reel`, e2e vérifié sur la stack conteneurisée.
+3. **Suite :** `SH-21c` (loadout + badges de l'Armurerie, à cadrer) — dernier morceau EP05 Lot 1 ; dette tracée non bloquante : `SH-35` ; `SH-33` si le temps le permet.
+4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
