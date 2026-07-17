@@ -14,6 +14,7 @@ import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
 import { PublicQueryGearDto } from './dto/public-query-gear.dto';
 import { ReviewGearDto } from './dto/review-gear.dto';
+import { SetLoadoutDto } from './dto/set-loadout.dto';
 import {
   JwtAuthGuard,
   CurrentUser,
@@ -91,5 +92,19 @@ export class GearController {
   @ApiOkResponse({ type: GearResponseDto, description: 'Équipement après décision (VALIDATED ou REJECTED)' })
   review(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewGearDto) {
     return this.gearService.reviewGear(id, dto.decision);
+  }
+
+  @Patch(':id/loadout')
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({ summary: 'Épingler/retirer un équipement de son loadout (validé uniquement, max 4)' })
+  @ApiOkResponse({ type: GearResponseDto, description: 'Équipement après mise à jour du loadout' })
+  @ApiNotFoundResponse({ description: 'Équipement introuvable dans SON casier (404)' })
+  setLoadout(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetLoadoutDto,
+  ) {
+    // Identité issue du token : impossible d'épingler le matériel d'autrui (C2.2.3)
+    return this.gearService.setLoadout(user.userId, id, dto.inLoadout);
   }
 }

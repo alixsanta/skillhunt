@@ -38,6 +38,11 @@ export class Gear {
   @Column({ type: 'enum', enum: GearStatus, default: GearStatus.PENDING })
   status!: GearStatus;
 
+  // Vitrine « loadout » (SH-21c) : épinglé par le freelance. Règles métier côté service :
+  // VALIDATED uniquement, 4 maximum, épingle retirée au rejet admin.
+  @Column({ type: 'boolean', default: false })
+  isInLoadout!: boolean;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
