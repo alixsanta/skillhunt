@@ -65,6 +65,23 @@ services:
     volumes:
       - skillhunt_redis:/data
 
+  # MongoDB (SH-24) — persistance du chat (brique NoSQL de l'archi §2/§3).
+  mongo:
+    image: mongo:7
+    container_name: skillhunt-mongo
+    restart: unless-stopped
+    ports:
+      # Port HÔTE 27018 : 27017 est occupé par un service personnel hors projet
+      # sur le poste de dev (même convention que Redis 6380).
+      - "${MONGO_PORT:-27018}:27017"
+    volumes:
+      - skillhunt_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ------------------------------------------------------------------
   # Services applicatifs (SH-2) — profil "app" : `docker compose --profile app up -d --build`.
   # Sans profil, seule l'INFRA démarre (workflow dev inchangé : npm run start:dev, uvicorn).
@@ -87,6 +104,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-skillhunt}
       DB_NAME: ${DB_NAME:-skillhunt}
       REDIS_URL: redis://redis:6379
+      MONGODB_URL: mongodb://mongo:27017/skillhunt
       MATCHING_SERVICE_URL: http://matching-service:8000
       # Derrière la gateway (SH-5), front et API partagent l'origine 8088 : CORS devient
       # une défense en profondeur. 5173 reste listée pour le dev Vite hors conteneur.
@@ -109,6 +127,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
       localstack:
         condition: service_healthy
@@ -161,3 +181,4 @@ volumes:
   skillhunt_pgdata:
   skillhunt_localstack:
   skillhunt_redis:
+  skillhunt_mongo:

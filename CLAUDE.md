@@ -102,7 +102,7 @@ Le code actuel est un **squelette de démonstration**. Plusieurs briques sont de
 | Sujet | État actuel (placeholder) | Cible à implémenter |
 |---|---|---|
 | Persistance (SQL) | ✅ **PostgreSQL + PostGIS réel** via **TypeORM** (entités `User`/`Gear`, migrations, index GiST) — *fait, SH-6* | — |
-| Persistance (NoSQL) | pas encore branchée | MongoDB (chat/logs) — à venir |
+| Persistance (NoSQL) | ✅ **MongoDB réel** via **Mongoose** (chat, service `mongo` du compose, port hôte 27018) — *fait, SH-24* | — |
 | Hash mot de passe | ✅ **Argon2id réel** (`@node-rs/argon2`) — *fait, SH-7* | — |
 | JWT | ✅ **RS256** + refresh tokens avec rotation, refresh store **Redis** (TTL natif) — *fait, SH-7 & SH-14* | — |
 | Guard JWT | ✅ vérification cryptographique réelle de la signature — *fait, SH-7* | — |

@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
+import { vi } from 'vitest';
 import { server } from '@/test/server';
 import { rotatingRefreshHandler } from '@/test/auth-handlers';
 import { DEFAULT_API_URL } from '@/api/client';
@@ -16,6 +17,11 @@ function fakeJwt(payload: Record<string, unknown>): string {
 
 const TOKEN = fakeJwt({ userId: 'u-1', email: 'pilote@skillhunt.io', role: 'FREELANCE' });
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
+
+// Socket du chat (SH-24) : le logout doit la COUPER — une connexion WS authentifiée
+// ne survit jamais à la session qui l'a ouverte.
+const { resetChatSocketMock } = vi.hoisted(() => ({ resetChatSocketMock: vi.fn() }));
+vi.mock('@/features/chat/socket', () => ({ resetChatSocket: resetChatSocketMock }));
 
 // Sonde : affiche l'état de la session et permet de déclencher les actions.
 function Probe() {
@@ -128,5 +134,21 @@ describe('AuthProvider (SH-20, StrictMode généralisé en SH-41)', () => {
     expect(await screen.findByText('Déconnecté')).toBeInTheDocument();
     await waitFor(() => expect(logoutCalled).toBe(true));
     expect(sessionStore.getAccessToken()).toBeNull();
+  });
+
+  it('coupe la socket du chat au logout (une connexion WS ne survit pas à la session, SH-24)', async () => {
+    const refresh = rotatingRefreshHandler(TOKEN);
+    server.use(
+      refresh.handler,
+      http.post(url('/api/v1/auth/logout'), () => HttpResponse.json({ success: true })),
+    );
+
+    renderProbe();
+    await screen.findByText('Connecté : pilote@skillhunt.io');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Se déconnecter' }));
+
+    await screen.findByText('Déconnecté');
+    expect(resetChatSocketMock).toHaveBeenCalled();
   });
 });

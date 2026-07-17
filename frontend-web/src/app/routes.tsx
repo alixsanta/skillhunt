@@ -7,6 +7,8 @@ import Armurerie from '@/pages/Armurerie';
 import AddGear from '@/pages/AddGear';
 import FreelanceGear from '@/pages/FreelanceGear';
 import Search from '@/pages/Search';
+import Messages from '@/pages/Messages';
+import MessageThread from '@/pages/MessageThread';
 import NotFound from '@/pages/NotFound';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 
@@ -56,6 +58,24 @@ export const routes: RouteObject[] = [
     element: (
       <ProtectedRoute>
         <Search />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // Chat contextuel (SH-24) : liste des conversations, pour les DEUX rôles.
+    path: '/messages',
+    element: (
+      <ProtectedRoute>
+        <Messages />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    // Fil de discussion 1-à-1 — le backend impose la paire RECRUITER↔FREELANCE.
+    path: '/messages/:userId',
+    element: (
+      <ProtectedRoute>
+        <MessageThread />
       </ProtectedRoute>
     ),
   },
