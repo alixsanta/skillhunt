@@ -116,6 +116,7 @@
 | [SH-42](tickets/SH-42-gitattributes-fins-de-ligne.md) | `.gitattributes` (`* text=auto eol=lf`) — *`format:check` mentait en local sous Windows (13 faux positifs) ; il dit désormais la vérité* | 🟢 Terminé | 1 | C2.1.2 | — |
 | [SH-44](tickets/SH-44-armurerie-durcissement-tests-revue.md) | Armurerie : durcissement des tests + polissage (garde anti-hex étendu, contrat à clés exactes, serialNumber balayé attributs compris, 401/403, a11y aria-live/valuetext/reduced-motion) — *item contrat-vs-HTTP requalifié vers SH-26* | 🟢 Terminé | 2 | C2.2.2, C2.1.2, C2.4.1 | — |
 | [SH-27](tickets/SH-27-audit-accessibilite.md) | Audit accessibilité WCAG en CI (Lighthouse, bloquant < 90) — *pages publiques à 100/100 au merge* | 🟢 Terminé | 3 | C2.1.2 | R6 |
+| [SH-45](tickets/SH-45-dette-gamification-loadout.md) | Dette gamification/loadout post-revue SH-21c (TOCTOU max-4, sweep Swagger 400, test frontière de seuil, nettoyage types, PublicLevelBadge) — tous différables, décision « épinglés visibles 2× » actée | 🟡 Prêt | 2 | C2.2.2, C2.4.1, C2.1.2 | — |
 | [SH-28](tickets/SH-28-eco-conception-ci.md) | Éco-conception en CI (EcoIndex, poids des pages, requêtes HTTP) | 🔵 Backlog | 3 | C2.1.2 | — |
 | [SH-29](tickets/SH-29-monitoring-elk.md) | Monitoring & alerting (stack ELK + webhooks) | 🔵 Backlog | 5 | C2.2.2 | R5 |
 | [SH-30](tickets/SH-30-mise-en-production.md) | Mise en production V1.0 + PCA (rollback < 5 min) | 🔵 Backlog | 5 | C2.2.2 | — |
