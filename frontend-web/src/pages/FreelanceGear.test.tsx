@@ -37,6 +37,14 @@ function respondWith(items: PublicGear[]) {
   );
 }
 
+// Handler par défaut de la gamification publique (SH-21c) : la page consomme désormais ce
+// endpoint pour TOUTES ses vues — sans profil (0 badge), le niveau reste discret.
+function respondWithNoGamification() {
+  return http.get(url(`/api/v1/gamification/freelance/${FREELANCE_ID}`), () =>
+    HttpResponse.json({ level: 1, levelLabel: 'Débutant', badges: [] }),
+  );
+}
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -50,6 +58,10 @@ function renderPage() {
   );
   return render(<FreelanceGear />, { wrapper });
 }
+
+beforeEach(() => {
+  server.use(respondWithNoGamification());
+});
 
 describe('Page Armurerie publique — vue recruteur (SH-21b)', () => {
   it('affiche le matériel validé du freelance avec compteur et fiches', async () => {
@@ -155,5 +167,35 @@ describe('Page Armurerie publique — vue recruteur (SH-21b)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
 
     expect(await screen.findByText('DJI Mavic 3')).toBeInTheDocument();
+  });
+
+  it('affiche le loadout en tête, le niveau et les badges obtenus (SH-21c)', async () => {
+    server.use(
+      respondWith([
+        makePublicGear({ id: 'g-1', brand: 'DJI', model: 'Mavic 3', isInLoadout: true }),
+        makePublicGear({ id: 'g-2', brand: 'Insta360', model: 'Pro 2', category: 'CAMERA_360' }),
+      ]),
+      http.get(url(`/api/v1/gamification/freelance/${FREELANCE_ID}`), () =>
+        HttpResponse.json({
+          level: 2,
+          levelLabel: 'Opérateur',
+          badges: [
+            {
+              id: 'first-validated',
+              label: 'Première validation',
+              description: 'Un premier équipement validé par un admin',
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage();
+
+    expect(await screen.findByText('Opérateur')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /loadout/i })).toBeInTheDocument();
+    expect(screen.getByText('Première validation')).toBeInTheDocument();
+    // Vue publique : pas d'XP chiffré, pas de contrôle d'épinglage
+    expect(screen.queryByText(/XP/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /épingler|retirer/i })).not.toBeInTheDocument();
   });
 });
