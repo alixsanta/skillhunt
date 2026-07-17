@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { GearService } from './gear.service';
+import { GearService, LOADOUT_MAX_SLOTS } from './gear.service';
 import { Gear } from './gear.entity';
 import { User } from '../users/user.entity';
 import { UserRole, GearStatus, GearCategory } from '../common/enums';
@@ -337,8 +337,8 @@ describe('🎒 GearService (Armurerie — SH-9)', () => {
       await expect(service.setLoadout(freelance.id, gear.id, true)).rejects.toThrow(BadRequestException);
     });
 
-    it('refuse (400) le 5e épinglage — 4 emplacements maximum', async () => {
-      for (let i = 0; i < 4; i += 1) {
+    it(`refuse (400) le 5e épinglage — ${LOADOUT_MAX_SLOTS} emplacements maximum`, async () => {
+      for (let i = 0; i < LOADOUT_MAX_SLOTS; i += 1) {
         const g = await seedGear({ status: GearStatus.VALIDATED, freelanceId: freelance.id });
         await service.setLoadout(freelance.id, g.id, true);
       }

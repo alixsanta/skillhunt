@@ -232,4 +232,21 @@ describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
     await userEvent.click(await screen.findByRole('button', { name: /épingler .* au loadout/i }));
     await waitFor(() => expect(patched).toEqual({ inLoadout: true }));
   });
+
+  it("« Retirer » sur une fiche épinglée affiche le message d'échec (revue finale SH-21c)", async () => {
+    // g-1 déjà VALIDATED : on le marque épinglé pour faire apparaître le bouton « Retirer »
+    // dans le LoadoutRow (le callback d'échec doit être partagé avec « Épingler », pas dupliqué).
+    const pinnedLocker = LOCKER.map((gear) =>
+      gear.id === 'g-1' ? { ...gear, isInLoadout: true } : gear,
+    );
+    server.use(
+      respondWith(pinnedLocker),
+      http.patch(url('/api/v1/gear/g-1/loadout'), () =>
+        HttpResponse.json({ message: 'Retrait du loadout impossible' }, { status: 400 }),
+      ),
+    );
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: /retirer .* du loadout/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Retrait du loadout impossible');
+  });
 });

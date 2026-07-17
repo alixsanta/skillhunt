@@ -41,7 +41,7 @@ function respondWith(items: PublicGear[]) {
 // endpoint pour TOUTES ses vues — sans profil (0 badge), le niveau reste discret.
 function respondWithNoGamification() {
   return http.get(url(`/api/v1/gamification/freelance/${FREELANCE_ID}`), () =>
-    HttpResponse.json({ level: 1, levelLabel: 'Débutant', badges: [] }),
+    HttpResponse.json({ level: 1, levelLabel: 'Recrue', badges: [] }),
   );
 }
 

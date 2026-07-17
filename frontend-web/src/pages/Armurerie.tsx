@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { BadgeGrid } from '@/features/gamification/BadgeGrid';
 import { LevelCard } from '@/features/gamification/LevelCard';
@@ -46,6 +47,18 @@ export default function Armurerie() {
   const validatedCount = items.filter((gear) => gear.status === 'VALIDATED').length;
   const total = data?.total ?? 0;
 
+  // Callbacks partagés entre « Épingler » et « Retirer » (revue finale SH-21c) : sans ce
+  // partage, le chemin « Retirer » échouait en silence et ne purgeait jamais une erreur
+  // d'épinglage précédente.
+  const loadoutCallbacks = {
+    onError: (mutationError: AxiosError) =>
+      setLoadoutError(
+        (mutationError.response?.data as { message?: string })?.message ??
+          'Impossible de modifier le loadout',
+      ),
+    onSuccess: () => setLoadoutError(null),
+  };
+
   return (
     <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -91,7 +104,9 @@ export default function Armurerie() {
             {/* Gamification (SH-21c) : loadout, niveau, badges — dérivés de la preuve validée */}
             <LoadoutRow
               items={pinnedItems}
-              onUnpin={(gearId) => setLoadout.mutate({ gearId, inLoadout: false })}
+              onUnpin={(gearId) =>
+                setLoadout.mutate({ gearId, inLoadout: false }, loadoutCallbacks)
+              }
             />
             {gamification.data && (
               <>
@@ -128,17 +143,7 @@ export default function Armurerie() {
                     size="sm"
                     aria-label={`Épingler ${gear.brand} ${gear.model} au loadout`}
                     onClick={() =>
-                      setLoadout.mutate(
-                        { gearId: gear.id, inLoadout: true },
-                        {
-                          onError: (mutationError) =>
-                            setLoadoutError(
-                              (mutationError.response?.data as { message?: string })?.message ??
-                                'Impossible de modifier le loadout',
-                            ),
-                          onSuccess: () => setLoadoutError(null),
-                        },
-                      )
+                      setLoadout.mutate({ gearId: gear.id, inLoadout: true }, loadoutCallbacks)
                     }
                   >
                     Épingler
