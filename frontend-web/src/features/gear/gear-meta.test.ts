@@ -37,8 +37,17 @@ describe("Métadonnées de l'Armurerie (SH-21a)", () => {
 // réintroduire une couleur par catégorie — que la spec interdit explicitement.
 // Étendu à src/pages/ (SH-44, item 1) : les PAGES de l'Armurerie (et les autres) doivent
 // respecter le même contrat de thème que les composants de la feature.
+// Étendu à src/features/navigation, src/components/ui et src/lib (SH-46, tâche 3) : la
+// refonte HUD introduit de nouveaux répertoires qui doivent respecter le même contrat.
 describe("Palette de l'Armurerie — aucune couleur codée en dur", () => {
-  const scanDirs = ['src/features/gear', 'src/features/gamification', 'src/pages'];
+  const scanDirs = [
+    'src/features/gear',
+    'src/features/gamification',
+    'src/pages',
+    'src/features/navigation',
+    'src/components/ui',
+    'src/lib',
+  ];
   const sources = scanDirs.flatMap((dir) =>
     readdirSync(join(process.cwd(), dir))
       .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
