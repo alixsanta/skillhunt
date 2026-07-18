@@ -52,7 +52,7 @@ export default function Register() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
+    <div className="flex flex-col items-center justify-center gap-6 p-4">
       <h1 className="text-2xl font-bold">Créer un compte</h1>
 
       <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4" noValidate>
@@ -149,6 +149,6 @@ export default function Register() {
           Se connecter
         </Link>
       </p>
-    </main>
+    </div>
   );
 }

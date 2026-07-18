@@ -24,7 +24,7 @@ export default function Account() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+    <div className="flex flex-col items-center justify-center gap-4 p-4">
       <h1 className="text-2xl font-bold">Mon compte</h1>
       <p>{user?.email}</p>
       <p className="text-muted-foreground text-sm tracking-widest uppercase">{user?.role}</p>
@@ -43,6 +43,6 @@ export default function Account() {
 
       {/* Gestion de la 2FA (SH-40) — opt-in, tous rôles */}
       <TwoFactorSettings />
-    </main>
+    </div>
   );
 }

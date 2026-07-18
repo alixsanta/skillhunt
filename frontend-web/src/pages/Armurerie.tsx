@@ -60,7 +60,7 @@ export default function Armurerie() {
   };
 
   return (
-    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
+    <div className="p-4 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-widest text-white uppercase">Mon Armurerie</h1>
@@ -166,6 +166,6 @@ export default function Armurerie() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

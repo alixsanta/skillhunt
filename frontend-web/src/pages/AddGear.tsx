@@ -95,7 +95,7 @@ export default function AddGear() {
   }
 
   return (
-    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
+    <div className="p-4 lg:p-8">
       <div className="mx-auto flex max-w-xl flex-col gap-6">
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
@@ -200,6 +200,6 @@ export default function AddGear() {
           </div>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

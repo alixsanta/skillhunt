@@ -43,7 +43,7 @@ export default function FreelanceGear() {
   const status = error?.response?.status;
 
   return (
-    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
+    <div className="p-4 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <header className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
@@ -130,6 +130,6 @@ export default function FreelanceGear() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }
