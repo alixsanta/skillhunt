@@ -16,6 +16,7 @@ const VALIDATED_ITEM: PublicGear = {
   model: 'Mavic 3',
   category: 'DRONE',
   status: 'VALIDATED',
+  isInLoadout: false,
   createdAt: '2026-07-01T10:00:00.000Z',
 };
 

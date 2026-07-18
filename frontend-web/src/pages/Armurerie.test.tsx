@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -43,6 +43,18 @@ function respondWith(items: Gear[]) {
   );
 }
 
+// Handler par défaut de la gamification (SH-21c) : la page rend désormais `useGamification()`
+// en plus du casier — sans ce handler, TOUS les tests existants échoueraient (MSW
+// `onUnhandledRequest: 'error'`) alors qu'ils ne testent pas la gamification. Enregistré dans
+// un `beforeEach` (voir plus bas) : les tests qui veulent un profil précis le surchargent via
+// leur propre `server.use(...)`, exécuté APRÈS le `beforeEach` et donc prioritaire (MSW empile
+// les handlers "runtime" du plus récent au plus ancien).
+function defaultGamificationHandler() {
+  return http.get(url('/api/v1/gamification/me'), () =>
+    HttpResponse.json({ xp: 0, level: 1, levelLabel: 'Recrue', nextLevelAt: 100, badges: [] }),
+  );
+}
+
 function renderPage() {
   // `useMyGear` définit sa PROPRE politique de retry (pas de retry sur 4xx, 3 essais sur
   // 5xx/réseau), qui prime sur les options du client — un `retry: false` ici serait ignoré
@@ -60,6 +72,10 @@ function renderPage() {
 }
 
 describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
+  beforeEach(() => {
+    server.use(defaultGamificationHandler());
+  });
+
   it('affiche un état de chargement pendant la requête', () => {
     server.use(respondWith(LOCKER));
     renderPage();
@@ -76,10 +92,20 @@ describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
     // résolue, comme véritable point de synchronisation.
     expect(await screen.findByText('3 équipements')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mon Armurerie' })).toBeInTheDocument();
-    // 1 VALIDATED sur 3 → 33 %
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '33');
+    // 1 VALIDATED sur 3 → 33 % — nommé explicitement : depuis SH-21c, `LevelCard` ajoute SON
+    // PROPRE `role="progressbar"` (progression XP) sur la même page, ce qui rendrait une
+    // requête non scopée ambiguë.
+    expect(screen.getByRole('progressbar', { name: 'Part de matériel validé' })).toHaveAttribute(
+      'aria-valuenow',
+      '33',
+    );
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    // Scopé sur la liste du CASIER (nommée « Équipements ») : depuis SH-21c, la page rend
+    // aussi la liste du loadout (`LoadoutRow`), qui porterait sinon les mêmes rôles `listitem`
+    // (emplacements libres) et fausserait un décompte non scopé.
+    expect(
+      within(screen.getByRole('list', { name: 'Équipements' })).getAllByRole('listitem'),
+    ).toHaveLength(3);
     expect(screen.getByText('VALIDÉ')).toBeInTheDocument();
     expect(screen.getByText('ATTENTE')).toBeInTheDocument();
     expect(screen.getByText('REJETÉ')).toBeInTheDocument();
@@ -91,12 +117,16 @@ describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Drone' }));
 
-    const list = screen.getByRole('list');
+    // Scopé sur la liste du CASIER (voir commentaire du test précédent) — le loadout ne
+    // filtre jamais par catégorie, il resterait sinon dans `screen.getByRole('list')` non scopé.
+    const list = screen.getByRole('list', { name: 'Équipements' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(1);
     expect(within(list).getByText('DJI Mavic 3')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Tous' }));
-    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(3);
+    expect(
+      within(screen.getByRole('list', { name: 'Équipements' })).getAllByRole('listitem'),
+    ).toHaveLength(3);
   });
 
   it('propose un CTA actif vers la déclaration de matériel (SH-43)', async () => {
@@ -158,5 +188,65 @@ describe('Page Mon Armurerie — vue privée (SH-21a)', () => {
 
     const live = screen.getByText('1 équipement affiché');
     expect(live).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('affiche le niveau, les badges et la rangée loadout (SH-21c)', async () => {
+    server.use(
+      respondWith(LOCKER),
+      http.get(url('/api/v1/gamification/me'), () =>
+        HttpResponse.json({
+          xp: 130,
+          level: 2,
+          levelLabel: 'Opérateur',
+          nextLevelAt: 250,
+          badges: [
+            {
+              id: 'first-validated',
+              label: 'Première validation',
+              description: 'Un premier équipement validé par un admin',
+              earned: true,
+            },
+          ],
+        }),
+      ),
+    );
+    renderPage();
+    expect(await screen.findByText('Opérateur')).toBeInTheDocument();
+    expect(screen.getByText('Première validation')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /loadout/i })).toBeInTheDocument();
+  });
+
+  it('« Épingler » sur une fiche validée appelle PATCH /gear/:id/loadout', async () => {
+    // g-1 (LOCKER) est déjà VALIDATED et non épinglé (isInLoadout absent des fixtures) :
+    // c'est la seule fiche éligible au bouton « Épingler », donc pas besoin d'un id dédié
+    // (adaptation du brief, qui utilisait `g-validated`, aux fixtures réelles du fichier).
+    let patched: unknown = null;
+    server.use(
+      respondWith(LOCKER),
+      http.patch(url('/api/v1/gear/g-1/loadout'), async ({ request }) => {
+        patched = await request.json();
+        return HttpResponse.json({});
+      }),
+    );
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: /épingler .* au loadout/i }));
+    await waitFor(() => expect(patched).toEqual({ inLoadout: true }));
+  });
+
+  it("« Retirer » sur une fiche épinglée affiche le message d'échec (revue finale SH-21c)", async () => {
+    // g-1 déjà VALIDATED : on le marque épinglé pour faire apparaître le bouton « Retirer »
+    // dans le LoadoutRow (le callback d'échec doit être partagé avec « Épingler », pas dupliqué).
+    const pinnedLocker = LOCKER.map((gear) =>
+      gear.id === 'g-1' ? { ...gear, isInLoadout: true } : gear,
+    );
+    server.use(
+      respondWith(pinnedLocker),
+      http.patch(url('/api/v1/gear/g-1/loadout'), () =>
+        HttpResponse.json({ message: 'Retrait du loadout impossible' }, { status: 400 }),
+      ),
+    );
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: /retirer .* du loadout/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Retrait du loadout impossible');
   });
 });

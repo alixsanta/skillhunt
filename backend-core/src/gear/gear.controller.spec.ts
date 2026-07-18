@@ -83,7 +83,7 @@ describe("GearController — contrat OpenAPI (C2.4.1)", () => {
     const pub = document.components?.schemas?.PublicGearDto;
     // Clés EXACTES (allowlist) : un champ sensible ajouté par inadvertance ferait rougir ce test.
     expect(Object.keys((pub as { properties: object }).properties).sort()).toEqual(
-      ['brand', 'category', 'createdAt', 'id', 'model', 'status'].sort(),
+      ['brand', 'category', 'createdAt', 'id', 'isInLoadout', 'model', 'status'].sort(),
     );
   });
 
@@ -107,6 +107,7 @@ describe("GearController — contrat OpenAPI (C2.4.1)", () => {
         'createdAt',
         'freelanceId',
         'id',
+        'isInLoadout',
         'model',
         'serialNumber',
         'status',

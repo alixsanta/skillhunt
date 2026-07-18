@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { BadgeGrid } from '@/features/gamification/BadgeGrid';
+import { useFreelanceGamification } from '@/features/gamification/useGamification';
 import { GearCategoryChips } from '@/features/gear/GearCategoryChips';
 import { GearGrid } from '@/features/gear/GearGrid';
 import { GEAR_CATEGORIES } from '@/features/gear/gear-meta';
+import { LoadoutRow } from '@/features/gear/LoadoutRow';
 import type { GearCategory } from '@/features/gear/types';
 import { useFreelanceGear } from '@/features/gear/useFreelanceGear';
 
@@ -18,9 +21,13 @@ import { useFreelanceGear } from '@/features/gear/useFreelanceGear';
 export default function FreelanceGear() {
   const { freelanceId } = useParams<{ freelanceId: string }>();
   const { data, isPending, isError, error, refetch } = useFreelanceGear(freelanceId ?? '');
+  const gamification = useFreelanceGamification(freelanceId ?? '');
   const [category, setCategory] = useState<GearCategory | null>(null);
 
   const items = useMemo(() => data?.items ?? [], [data]);
+  // Loadout (SH-21c) : mis en avant au-dessus de la grille — dérivé du casier déjà chargé,
+  // pas d'appel réseau supplémentaire (le backend sert déjà le loadout en premier).
+  const pinnedItems = useMemo(() => items.filter((gear) => gear.isInLoadout), [items]);
 
   const presentCategories = useMemo(
     () => GEAR_CATEGORIES.filter((c) => items.some((gear) => gear.category === c)),
@@ -95,6 +102,19 @@ export default function FreelanceGear() {
 
         {!isPending && !isError && items.length > 0 && (
           <>
+            {/* Gamification (SH-21c) : loadout en tête, niveau + badges obtenus — vue publique,
+                aucun contrôle d'épinglage (LoadoutRow sans onUnpin) et pas d'XP chiffré. */}
+            {pinnedItems.length > 0 && <LoadoutRow items={pinnedItems} />}
+            {gamification.data && (
+              <>
+                <p className="font-bold tracking-widest text-white uppercase">
+                  {gamification.data.levelLabel}
+                </p>
+                {gamification.data.badges.length > 0 && (
+                  <BadgeGrid badges={gamification.data.badges} />
+                )}
+              </>
+            )}
             <GearCategoryChips
               categories={presentCategories}
               selected={category}

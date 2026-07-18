@@ -29,6 +29,9 @@ export class GearResponseDto {
   @ApiProperty({ enum: GearStatus, example: GearStatus.PENDING })
   status!: GearStatus;
 
+  @ApiProperty({ example: false, description: 'Épinglé au loadout (vitrine, SH-21c)' })
+  isInLoadout!: boolean;
+
   @ApiProperty({ format: 'date-time', example: '2026-07-14T09:12:33.000Z' })
   createdAt!: Date;
 

@@ -100,7 +100,7 @@
 | [SH-19](tickets/SH-19-setup-web-react.md) | Setup Web React (TS, Tailwind, routing, design system de base) | 🟢 Terminé | 5 | C2.1.2 | — |
 | [SH-38](tickets/SH-38-dette-frontend-scaffold.md) | Dette technique scaffold frontend-web (nettoyage post-revue SH-19 : asset mort, littéral dupliqué, Prettier CI, side-effect router, wording tests) | 🟢 Terminé | 2 | C2.1.2, C2.2.2 | — |
 | [SH-20](tickets/SH-20-parcours-auth-web.md) | Parcours Auth Web (register/login, access token en mémoire, refresh en cookie `httpOnly`, CORS à origines explicites) — *2FA sortie du périmètre, voir `SH-40`* | 🟢 Terminé | 5 | C2.2.3, C2.2.2 | — |
-| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; **21a 🟢** (vue privée, 2026-07-15) / **21b 🟢** (vue publique recruteur, 2026-07-16) / 21c (loadout+badges, à cadrer — hors périmètre 23/07)* | 🟠 En cours | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
+| [SH-21](tickets/SH-21-armurerie-gamifiee.md) | Armurerie gamifiée (grille d'inventaire, cartes, loadout, progression, badges) — *[design validé](superpowers/specs/2026-07-01-armurerie-grille-inventaire-design.md) ; **21a 🟢** (vue privée, 2026-07-15) / **21b 🟢** (vue publique recruteur, 2026-07-16) / **21c 🟢** (loadout+badges, 2026-07-17)* | 🟢 Terminé | 8 | C2.4.1, C2.1.2, C2.2.2 | R10 |
 | [SH-43](tickets/SH-43-armurerie-declaration-materiel.md) | Armurerie : écran de déclaration de matériel (`POST /api/v1/gear`) — active les CTA « + Ajouter … » de SH-21a | 🟢 Terminé | 3 | C2.2.3, C2.2.2, C2.4.1 | R10 |
 | [SH-22](tickets/SH-22-recherche-matching-ui.md) | Recherche & affichage du score de matching — *proxy backend-core (`POST /matching/search`, RBAC RECRUITER) + page `/recherche` ; boucle démo fermée jusqu'à SH-21b* | 🟢 Terminé | 5 | C2.4.1, C2.2.3, C2.2.2 | R4 |
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie des résultats de recherche — *décision Mapbox→**Leaflet+OSM** tracée (zéro token/coût) ; lazy-loading éco-conçu ; position portée par le proxy SH-22* | 🟢 Terminé | 5 | C2.4.1, C2.2.2, C2.1.2 | — |
@@ -116,6 +116,7 @@
 | [SH-42](tickets/SH-42-gitattributes-fins-de-ligne.md) | `.gitattributes` (`* text=auto eol=lf`) — *`format:check` mentait en local sous Windows (13 faux positifs) ; il dit désormais la vérité* | 🟢 Terminé | 1 | C2.1.2 | — |
 | [SH-44](tickets/SH-44-armurerie-durcissement-tests-revue.md) | Armurerie : durcissement des tests + polissage (garde anti-hex étendu, contrat à clés exactes, serialNumber balayé attributs compris, 401/403, a11y aria-live/valuetext/reduced-motion) — *item contrat-vs-HTTP requalifié vers SH-26* | 🟢 Terminé | 2 | C2.2.2, C2.1.2, C2.4.1 | — |
 | [SH-27](tickets/SH-27-audit-accessibilite.md) | Audit accessibilité WCAG en CI (Lighthouse, bloquant < 90) — *pages publiques à 100/100 au merge* | 🟢 Terminé | 3 | C2.1.2 | R6 |
+| [SH-45](tickets/SH-45-dette-gamification-loadout.md) | Dette gamification/loadout post-revue SH-21c (TOCTOU max-4, sweep Swagger 400, test frontière de seuil, nettoyage types, PublicLevelBadge) — tous différables, décision « épinglés visibles 2× » actée | 🟡 Prêt | 2 | C2.2.2, C2.4.1, C2.1.2 | — |
 | [SH-28](tickets/SH-28-eco-conception-ci.md) | Éco-conception en CI (EcoIndex, poids des pages, requêtes HTTP) | 🔵 Backlog | 3 | C2.1.2 | — |
 | [SH-29](tickets/SH-29-monitoring-elk.md) | Monitoring & alerting (stack ELK + webhooks) | 🔵 Backlog | 5 | C2.2.2 | R5 |
 | [SH-30](tickets/SH-30-mise-en-production.md) | Mise en production V1.0 + PCA (rollback < 5 min) | 🔵 Backlog | 5 | C2.2.2 | — |
@@ -148,5 +149,5 @@
 
 1. **✅ Socle livré** : EP02 & EP03 (auth/RBAC, Armurerie backend, certifications, scoring géospatial, bus Redis) + boucle démo front fermée (`SH-19`→`SH-23`, `SH-39`, `SH-41`, `SH-27`, `SH-43`, `SH-44`).
 2. **✅ `SH-24` livré** (2026-07-17) : chat contextuel temps réel (MongoDB + socket.io + gateway WS + pages `/messages`) — branche `feature/SH-24-chat-temps-reel`, e2e vérifié sur la stack conteneurisée.
-3. **Suite :** `SH-21c` (loadout + badges de l'Armurerie, à cadrer) — dernier morceau EP05 Lot 1 ; dette tracée non bloquante : `SH-35` ; `SH-33` si le temps le permet.
+3. **✅ `SH-21c` livré** (2026-07-17) : gamification de l'Armurerie (XP dérivé, 6 niveaux, 7 badges, loadout 4 emplacements) — **EP05 Lot 1 complet**. Dette tracée non bloquante : `SH-35` ; `SH-33` si le temps le permet.
 4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).

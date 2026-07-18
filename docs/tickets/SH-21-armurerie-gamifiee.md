@@ -87,11 +87,11 @@
 ### 6. Découpage proposé
 - **SH-21a — Grille d'inventaire, vue privée** (~5 SP) : thème/tokens, `GearCard`, grille responsive, chips, progression, état vide, états chargement/erreur, tests. *Dépend de SH-20.* — 🟢 **Livrée le 2026-07-15** (branche `feature/SH-21a-armurerie-grille-inventaire`, PR à venir). Le CTA « + Ajouter du matériel » est volontairement **désactivé** : l'écran de déclaration (`POST /api/v1/gear`) est hors périmètre 21a → suivi en **SH-43**.
 - **SH-21b — Vue publique recruteur** (~2 SP) : réutilise les composants, filtre `VALIDATED`, pas de CTA. *Dépend de SH-39.* — 🟢 **Livrée le 2026-07-16** : page `/freelances/:freelanceId/armurerie` (`FreelanceGear`), hook `useFreelanceGear` sur `GET /gear/freelance/:id` (SH-39), `GearCard`/`GearGrid` retypés sur `PublicGear` (le `serialNumber` n'est même plus accessible aux composants par construction). États 403/404/5xx/vide neutre testés. **Écart assumé vs spec §5.2** : pas de barre de progression — tout le visible étant `VALIDATED`, le ratio serait 100 % par construction ; le compteur « N équipements validés » porte le signal. Vérifiée de bout en bout sur l'API réelle (recruteur ne voit que le validé ; 403 freelance ; 400 sur `?status=` ; 404 cible non-freelance).
-- **SH-21c — Loadout, progression/XP, badges** (à cadrer) : **hors périmètre de la spec de design actuelle**, nécessite un cadrage produit dédié (et probablement de nouveaux champs backend).
+- **SH-21c — Loadout, progression/XP, badges** (~5 SP) : 🟢 **Livrée le 2026-07-17** — design validé dans [`docs/superpowers/specs/2026-07-17-armurerie-gamification-design.md`](../superpowers/specs/2026-07-17-armurerie-gamification-design.md) (XP dérivé à la lecture — barème 50/30/80, 6 niveaux Recrue→Légende, 7 badges dérivés, loadout 4 slots `VALIDATED` uniquement via `gear.isInLoadout` + `PATCH /gear/:id/loadout`, vue recruteur réduite niveau+badges obtenus, sans XP chiffré ni contrôle d'épinglage). Branche `feature/SH-21c-armurerie-gamification`.
 
 ### 7. Definition of Done (DoD)
 
-> **SH-21a (vue privée) — satisfaite.** La vue publique recruteur (SH-21b, dép. SH-39) et le loadout/badges (SH-21c) restent hors périmètre.
+> **SH-21a (vue privée) et SH-21b (vue publique recruteur) — satisfaites.** SH-21c (loadout/badges) — voir section dédiée ci-dessous.
 
 - [x] Composants conformes à la spec de design (palette en tokens `--color-hud-*`, fiche horizontale, badges de statut).
 - [x] Responsive vérifié : 1 colonne < 1024px, 2 colonnes ≥ 1024px (`GearGrid` : `grid-cols-1 lg:grid-cols-2`).
@@ -101,3 +101,11 @@
 - [x] Aucun appel API hors `apiClient` (hook `useMyGear`) ; `schema.d.ts` régénéré via `gen:api`, non édité à la main.
 - [x] CI frontend verte (lint + `format:check` + tests + build).
 - [x] `docs/BACKLOG.md` mis à jour.
+
+#### DoD — SH-21c (loadout, XP/niveaux, badges)
+
+- [x] Composants conformes à la spec de gamification ([`2026-07-17-armurerie-gamification-design.md`](../superpowers/specs/2026-07-17-armurerie-gamification-design.md)) : `LoadoutRow` (4 emplacements, épingler/retirer en vue privée, sans contrôle en vue publique), `LevelCard`/niveau + `BadgeGrid` (obtenu/verrouillé en vue privée, obtenu-only en vue publique, jamais d'XP chiffré côté recruteur).
+- [x] Statut badge (obtenu/à débloquer) porté par un **libellé texte**, jamais par la seule opacité (R6).
+- [x] Backend : XP dérivé à la lecture (pas de colonne stockée), niveaux/badges calculés côté `GamificationService`, `PATCH /gear/:id/loadout` avec bornes (4 slots, `VALIDATED` uniquement, RBAC propriétaire — 400/404 testés).
+- [x] Front : `useGamification`/`useFreelanceGamification`, `LoadoutRow`, `BadgeGrid`, `LevelCard` couverts par tests Vitest + RTL ; vue publique (`FreelanceGear.tsx`) étendue en TDD (RED confirmé avant implémentation).
+- [ ] CI (lint + tests + build, front et back) à confirmer sur la PR `feature/SH-21c-armurerie-gamification` → `develop`.

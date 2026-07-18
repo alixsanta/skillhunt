@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { GearCategory, GearStatus, UserRole } from '../common/enums';
@@ -8,6 +8,9 @@ import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
 import { PublicQueryGearDto } from './dto/public-query-gear.dto';
 import { EventPublisherService, DomainEventType } from '../common/events/event-publisher.service';
+
+// Nombre maximum d'équipements épinglables au loadout (spec SH-21c §4)
+export const LOADOUT_MAX_SLOTS = 4;
 
 // Résultat paginé générique de l'Armurerie
 export interface PaginatedGear {
@@ -28,6 +31,7 @@ export interface PublicGearView {
   category: GearCategory;
   status: GearStatus;
   createdAt: Date;
+  isInLoadout: boolean;
 }
 
 export interface PaginatedPublicGear {
@@ -111,6 +115,7 @@ export class GearService {
       category: gear.category,
       status: gear.status,
       createdAt: gear.createdAt,
+      isInLoadout: gear.isInLoadout,
     };
   }
 
@@ -121,6 +126,35 @@ export class GearService {
       where.category = query.category;
     }
     return this.paginate(where, query);
+  }
+
+  /**
+   * Épingle/retire un équipement du loadout (SH-21c). Étanchéité : le gear est cherché
+   * PAR (id, freelanceId du token) → le casier d'autrui répond 404, pas d'énumération (C2.2.3).
+   */
+  async setLoadout(freelanceId: string, gearId: string, inLoadout: boolean): Promise<Gear> {
+    const gear = await this.gearRepo.findOne({ where: { id: gearId, freelanceId } });
+    if (!gear) {
+      throw new NotFoundException('Équipement introuvable');
+    }
+
+    if (inLoadout) {
+      // Le loadout est une vitrine de PREUVE : seul le matériel validé s'y épingle
+      if (gear.status !== GearStatus.VALIDATED) {
+        throw new BadRequestException('Seul un équipement validé peut rejoindre le loadout');
+      }
+      if (!gear.isInLoadout) {
+        const pinned = await this.gearRepo.count({ where: { freelanceId, isInLoadout: true } });
+        if (pinned >= LOADOUT_MAX_SLOTS) {
+          throw new BadRequestException(
+            `Le loadout est complet (${LOADOUT_MAX_SLOTS} emplacements maximum)`,
+          );
+        }
+      }
+    }
+
+    gear.isInLoadout = inLoadout;
+    return this.gearRepo.save(gear);
   }
 
   /** Décision admin sur un équipement : PENDING -> VALIDATED | REJECTED (transition unique, tracée). */
@@ -134,6 +168,12 @@ export class GearService {
     }
 
     gear.status = decision;
+
+    // Cohérence loadout (SH-21c) : un équipement rejeté ne reste jamais en vitrine
+    if (decision === GearStatus.REJECTED) {
+      gear.isInLoadout = false;
+    }
+
     const saved = await this.gearRepo.save(gear);
 
     // Émission best-effort : notifie le matching-service pour invalider son cache (SH-14)
@@ -151,7 +191,8 @@ export class GearService {
     const { page, limit } = query;
     const [items, total] = await this.gearRepo.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      // Loadout d'abord (SH-21c), puis du plus récent au plus ancien
+      order: { isInLoadout: 'DESC', createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });

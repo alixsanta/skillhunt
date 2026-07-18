@@ -26,6 +26,8 @@ import { Message, MessageSchema } from './chat/message.schema';
 import { ChatService } from './chat/chat.service';
 import { ChatGateway } from './chat/chat.gateway';
 import { ChatController } from './chat/chat.controller';
+import { GamificationService } from './gamification/gamification.service';
+import { GamificationController } from './gamification/gamification.controller';
 
 @Module({
   imports: [
@@ -81,6 +83,7 @@ import { ChatController } from './chat/chat.controller';
     CertificationController, // Déclaration du contrôleur de certifications (SH-10)
     MatchingController, // Proxy vers le matching-service interne (SH-22)
     ChatController, // Historique + liste des conversations du chat (SH-24)
+    GamificationController, // XP/niveaux/badges dérivés (SH-21c)
   ],
   providers: [
     AuthService,
@@ -92,6 +95,7 @@ import { ChatController } from './chat/chat.controller';
     EventPublisherService, // Bus d'événements Redis Streams (SH-14, C2.2.3)
     ChatService, // Persistance MongoDB + règles métier du chat (SH-24)
     ChatGateway, // WebSocket socket.io authentifié au handshake (SH-24)
+    GamificationService, // Gamification de l'Armurerie (SH-21c)
   ],
 })
 export class AppModule {}
