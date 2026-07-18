@@ -24,7 +24,7 @@ export default function Account() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 p-4">
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
       <h1 className="text-2xl font-bold">Mon compte</h1>
       <p>{user?.email}</p>
       <p className="text-muted-foreground text-sm tracking-widest uppercase">{user?.role}</p>

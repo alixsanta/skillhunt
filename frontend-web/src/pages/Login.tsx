@@ -70,7 +70,7 @@ export default function Login() {
 
   if (twoFactorToken) {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 p-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
         <h1 className="text-2xl font-bold">Vérification en deux étapes</h1>
         <p className="text-muted-foreground max-w-sm text-center text-sm">
           Saisis le code à 6 chiffres de ton application d'authentification, ou un de tes codes de
@@ -106,7 +106,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-6 p-4">
+    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">
       <h1 className="text-2xl font-bold">Connexion</h1>
 
       <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4" noValidate>

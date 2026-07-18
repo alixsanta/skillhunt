@@ -8,7 +8,7 @@ export default function AppLayout() {
   return (
     <div className="bg-hud-bg flex min-h-screen flex-col">
       <header role="banner" className="border-hud-border bg-hud-card sticky top-0 z-40 border-b" />
-      <main className="flex-1">
+      <main className="flex flex-1 flex-col">
         <Outlet />
       </main>
     </div>
