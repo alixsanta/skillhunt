@@ -24,25 +24,35 @@ export default function Account() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
-      <h1 className="text-2xl font-bold">Mon compte</h1>
-      <p>{user?.email}</p>
-      <p className="text-muted-foreground text-sm tracking-widest uppercase">{user?.role}</p>
-      <div className="flex gap-3">
-        <Button asChild>
-          <Link to="/mon-armurerie">Mon Armurerie</Link>
-        </Button>
-        {/* Chat contextuel (SH-24) : point d'entrée des deux rôles vers leurs conversations */}
-        <Button asChild variant="outline">
-          <Link to="/messages">Messages</Link>
-        </Button>
-        <Button variant="outline" onClick={handleLogout}>
-          Se déconnecter
-        </Button>
-      </div>
+    <div className="flex flex-1 items-center justify-center p-4">
+      <div className="border-hud-border bg-hud-card flex w-full max-w-md flex-col items-center gap-6 rounded-xl border p-8">
+        <div className="flex flex-col items-center gap-1">
+          <h1 className="text-2xl font-bold text-white">Mon compte</h1>
+          <p className="text-white">{user?.email}</p>
+          <p className="text-hud-muted text-sm tracking-widest uppercase">{user?.role}</p>
+        </div>
 
-      {/* Gestion de la 2FA (SH-40) — opt-in, tous rôles */}
-      <TwoFactorSettings />
+        <div className="border-hud-border flex w-full flex-wrap justify-center gap-3 border-t pt-6">
+          <Button asChild>
+            <Link to="/mon-armurerie">Mon Armurerie</Link>
+          </Button>
+          {/* Chat contextuel (SH-24) : point d'entrée des deux rôles vers leurs conversations */}
+          <Button asChild variant="outline">
+            <Link to="/messages">Messages</Link>
+          </Button>
+          <Button variant="outline" onClick={handleLogout}>
+            Se déconnecter
+          </Button>
+        </div>
+
+        {/* Gestion de la 2FA (SH-40) — opt-in, tous rôles. Ancre pour le lien du menu compte
+            (AccountMenu.tsx) : « deux-facteurs » plutôt que l'abréviation usuelle, qui ressemble
+            à de l'hexadécimal une fois préfixée du dièse et fait échouer le garde anti-couleur
+            en dur (gear-meta.test.ts). */}
+        <div id="deux-facteurs" className="border-hud-border w-full border-t pt-6">
+          <TwoFactorSettings />
+        </div>
+      </div>
     </div>
   );
 }
