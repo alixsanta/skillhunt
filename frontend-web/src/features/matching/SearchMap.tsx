@@ -7,6 +7,8 @@ interface SearchMapProps {
   center: { lat: number; lon: number };
   radiusKm: number;
   results: MatchResult[];
+  /** Freelance dont la fiche de résultat est survolée (SH-46) : agrandit son marqueur. */
+  highlightedId?: string | null;
 }
 
 /** Zoom heuristique pour que le cercle de mission tienne dans la vue. */
@@ -25,19 +27,22 @@ function zoomForRadius(radiusKm: number): number {
  * className + tokens CSS (`index.css`) : aucun asset d'icône Leaflet, aucune couleur en dur.
  * Un freelance sans position (donnée d'avant SH-34) n'a simplement pas de marqueur.
  */
-export function SearchMap({ center, radiusKm, results }: SearchMapProps) {
+export function SearchMap({ center, radiusKm, results, highlightedId }: SearchMapProps) {
   const located = results.filter(
     (result): result is MatchResult & { latitude: number; longitude: number } =>
       result.latitude !== null && result.longitude !== null,
   );
 
   return (
-    <div className="border-hud-border overflow-hidden rounded-lg border">
+    // h-full : en split-view (SH-46) cette carte remplit tout le panneau de droite, dont
+    // la hauteur résolue vient du conteneur flex parent (voir Search.tsx) — Leaflet a
+    // besoin d'une hauteur réelle sur toute la chaîne, jamais d'une valeur fixe en dur.
+    <div className="border-hud-border h-full overflow-hidden rounded-lg border">
       <MapContainer
         center={[center.lat, center.lon]}
         zoom={zoomForRadius(radiusKm)}
         scrollWheelZoom={false}
-        style={{ height: 380 }}
+        style={{ height: '100%' }}
       >
         <TileLayer
           attribution='&copy; les contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -51,21 +56,28 @@ export function SearchMap({ center, radiusKm, results }: SearchMapProps) {
           pathOptions={{ className: 'map-mission-radius' }}
         />
 
-        {located.map((result) => (
-          <CircleMarker
-            key={result.freelanceId}
-            center={[result.latitude, result.longitude]}
-            radius={10}
-            pathOptions={{ className: 'map-freelance-marker' }}
-          >
-            <Popup>
-              <span className="block font-bold">
-                {result.username ?? 'Freelance'} — {Math.round(result.score * 100)} %
-              </span>
-              <Link to={`/freelances/${result.freelanceId}/armurerie`}>Voir l'armurerie</Link>
-            </Popup>
-          </CircleMarker>
-        ))}
+        {located.map((result) => {
+          const isHighlighted = result.freelanceId === highlightedId;
+          return (
+            <CircleMarker
+              key={result.freelanceId}
+              center={[result.latitude, result.longitude]}
+              radius={isHighlighted ? 14 : 10}
+              pathOptions={{
+                className: isHighlighted
+                  ? 'map-freelance-marker map-freelance-marker--highlighted'
+                  : 'map-freelance-marker',
+              }}
+            >
+              <Popup>
+                <span className="block font-bold">
+                  {result.username ?? 'Freelance'} — {Math.round(result.score * 100)} %
+                </span>
+                <Link to={`/freelances/${result.freelanceId}/armurerie`}>Voir l'armurerie</Link>
+              </Popup>
+            </CircleMarker>
+          );
+        })}
       </MapContainer>
     </div>
   );

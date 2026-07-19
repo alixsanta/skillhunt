@@ -94,6 +94,17 @@ describe('Page Recherche de freelances (SH-22)', () => {
     expect(screen.getByTestId('search-map')).toBeInTheDocument();
   });
 
+  it('présente les résultats dans une liste nommée', async () => {
+    server.use(http.post(url('/api/v1/matching/search'), () => HttpResponse.json(RESULTS)));
+
+    renderPage();
+    await fillAndSubmit();
+
+    expect(
+      await screen.findByRole('list', { name: /résultats de la recherche/i }),
+    ).toBeInTheDocument();
+  });
+
   it("relie chaque résultat à l'armurerie publique du freelance (SH-21b)", async () => {
     server.use(http.post(url('/api/v1/matching/search'), () => HttpResponse.json(RESULTS)));
 

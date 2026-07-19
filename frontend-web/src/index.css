@@ -198,3 +198,11 @@
   fill: var(--color-hud-positive);
   fill-opacity: 0.55;
 }
+/* Survol d'une fiche de résultat côté liste (SH-46) : le marqueur correspondant ressort
+   sans dépendre uniquement du rayon (déjà agrandi côté composant) — accessibilité couleur
+   + forme, cohérent avec R6. */
+.map-freelance-marker--highlighted {
+  stroke: var(--color-hud-positive);
+  stroke-width: 3;
+  fill-opacity: 0.85;
+}
