@@ -1608,7 +1608,11 @@ Envelopper le formulaire dans une carte centrée :
 
 - [ ] **Step 3: Compte**
 
-Carte HUD, sections séparées par des bordures, et **ancre `id="2fa"`** sur la section double authentification (le menu compte y renvoie via `/mon-compte#2fa`).
+Carte HUD, sections séparées par des bordures, et **ancre `id="deux-facteurs"`** sur la section double authentification (le menu compte y renvoie via `/mon-compte#deux-facteurs`).
+
+> ⚠️ L'ancre est `deux-facteurs`, **pas `2fa`** : la chaîne `#2fa` est de l'hexadécimal valide et
+> déclenche un faux positif du garde anti-couleur-en-dur (Task 4). Le libellé français est de toute
+> façon plus cohérent avec la convention du projet.
 
 - [ ] **Step 4: Ajout de matériel et 404**
 
