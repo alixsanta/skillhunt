@@ -60,7 +60,12 @@ export function SearchMap({ center, radiusKm, results, highlightedId }: SearchMa
           const isHighlighted = result.freelanceId === highlightedId;
           return (
             <CircleMarker
-              key={result.freelanceId}
+              // La clé inclut l'état de survol (C2.2.3 — pas de bug silencieux) : Leaflet
+              // n'applique `pathOptions.className` qu'à la CRÉATION du <path> SVG (son
+              // `setStyle` interne ne touche que stroke/fill, jamais l'attribut `class`).
+              // Sans ce changement de clé, la classe `--highlighted` ne s'appliquerait
+              // jamais après le premier rendu — on force donc un remount du marqueur.
+              key={`${result.freelanceId}-${isHighlighted ? 'highlighted' : 'default'}`}
               center={[result.latitude, result.longitude]}
               radius={isHighlighted ? 14 : 10}
               pathOptions={{
