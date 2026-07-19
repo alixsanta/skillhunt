@@ -37,7 +37,15 @@ export function SearchResultCard({ result, isHighlighted, onHover }: SearchResul
       </span>
 
       <Button asChild>
-        <Link to={`/freelances/${result.freelanceId}/armurerie`}>Voir l'armurerie</Link>
+        {/* state.username (SH-46) : transmis à la vue publique pour afficher un en-tête de
+            profil nommé sans appel réseau supplémentaire — dégradé en son absence (accès
+            direct par URL) plutôt que d'afficher l'UUID brut comme si c'était un nom. */}
+        <Link
+          to={`/freelances/${result.freelanceId}/armurerie`}
+          state={{ username: result.username }}
+        >
+          Voir l'armurerie
+        </Link>
       </Button>
     </li>
   );

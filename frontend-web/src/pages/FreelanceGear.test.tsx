@@ -45,11 +45,14 @@ function respondWithNoGamification() {
   );
 }
 
-function renderPage() {
+// state.username (SH-46) : reproduit ce que `SearchResultCard` pose via `<Link state={...}>`
+// lors d'une vraie navigation depuis la recherche. Optionnel : un accès direct par URL
+// (favori, lien partagé) n'a pas cet état — c'est le cas par défaut ici.
+function renderPage(state?: { username?: string }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[`/freelances/${FREELANCE_ID}/armurerie`]}>
+      <MemoryRouter initialEntries={[{ pathname: `/freelances/${FREELANCE_ID}/armurerie`, state }]}>
         <Routes>
           <Route path="/freelances/:freelanceId/armurerie" element={children} />
         </Routes>
@@ -64,12 +67,28 @@ beforeEach(() => {
 });
 
 describe('Page Armurerie publique — vue recruteur (SH-21b)', () => {
+  it('présente le freelance dans un en-tête de profil quand le nom est transmis par la recherche (SH-46)', async () => {
+    server.use(respondWith(VALIDATED_LOCKER));
+    renderPage({ username: 'demopilote' });
+
+    expect(await screen.findByRole('heading', { name: /demopilote/i })).toBeInTheDocument();
+  });
+
+  it("affiche un libellé neutre en en-tête quand l'URL est ouverte directement, sans passer par la recherche (SH-46)", async () => {
+    server.use(respondWith(VALIDATED_LOCKER));
+    renderPage();
+
+    expect(await screen.findByRole('heading', { name: 'Profil freelance' })).toBeInTheDocument();
+  });
+
   it('affiche le matériel validé du freelance avec compteur et fiches', async () => {
     server.use(respondWith(VALIDATED_LOCKER));
     renderPage();
 
     expect(await screen.findByText('2 équipements validés')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Armurerie du freelance' })).toBeInTheDocument();
+    // Sans state.username (accès direct par URL, sans passer par la recherche) : libellé
+    // neutre honnête plutôt que l'UUID brut (SH-46).
+    expect(screen.getByRole('heading', { name: 'Profil freelance' })).toBeInTheDocument();
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByText('DJI Mavic 3')).toBeInTheDocument();
