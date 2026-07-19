@@ -54,4 +54,26 @@ describe('GearCard — fiche équipement (SH-21a)', () => {
     // queryByText — on balaye TOUT le HTML rendu, attributs compris.
     expect(container.innerHTML).not.toContain(gear.serialNumber);
   });
+
+  it('affiche le statut en toutes lettres, pas seulement par la couleur', () => {
+    // Écart avec le brief (SH-46 task-7) : `GearCard.gear` est typé `PublicGear`, qui n'expose
+    // ni `serialNumber` ni `freelanceId` (SH-39/SH-44) — ces champs, présents dans l'exemple du
+    // brief, sont donc omis ici. Le libellé réel de STATUS_META pour PENDING est « ATTENTE »,
+    // pas « en attente » (aucune des deux formes n'existe ailleurs dans le code) : l'assertion
+    // vise le vrai libellé plutôt que le texte supposé par le brief.
+    render(
+      <GearCard
+        gear={{
+          id: 'g-1',
+          brand: 'DJI',
+          model: 'Mavic 3 Enterprise',
+          category: 'DRONE',
+          status: 'PENDING',
+          isInLoadout: false,
+          createdAt: '2026-07-18T10:00:00.000Z',
+        }}
+      />,
+    );
+    expect(screen.getByText('ATTENTE')).toBeInTheDocument();
+  });
 });
