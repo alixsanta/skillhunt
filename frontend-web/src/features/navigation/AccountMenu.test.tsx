@@ -35,10 +35,31 @@ describe('AccountMenu', () => {
 
   it('ouvre le menu au clavier et propose la déconnexion', async () => {
     const user = userEvent.setup();
-    renderMenu();
+    const { logout } = renderMenu();
+    const trigger = screen.getByRole('button', { name: /mon compte/i });
+
     await user.tab();
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('menuitem', { name: /se déconnecter/i })).toBeInTheDocument();
+
+    // Le focus doit entrer DANS le menu (roving focus Radix), pas rester sur le déclencheur :
+    // un <div role="menu"> mono-clic sans gestion clavier ne déplacerait jamais le focus ici.
+    const accountItem = screen.getByRole('menuitem', { name: /mon compte/i });
+    expect(accountItem).toHaveFocus();
+
+    // Navigation par flèches entre les items (le séparateur est ignoré) — preuve du roving
+    // focus au clavier, qu'un menu mono-clic sans gestion ArrowDown ne fournirait pas.
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    const logoutItem = screen.getByRole('menuitem', { name: /se déconnecter/i });
+    expect(logoutItem).toHaveFocus();
+
+    // Activation au clavier du bon item : prouve que les flèches ont déplacé le focus
+    // jusqu'à « Se déconnecter », pas seulement que Entrée clique le déclencheur.
+    await user.keyboard('{Enter}');
+    expect(logout).toHaveBeenCalledOnce();
+
+    // Le menu se referme et le focus revient au déclencheur (comportement Radix standard).
+    expect(trigger).toHaveFocus();
   });
 
   it('déclenche la déconnexion', async () => {
