@@ -78,10 +78,8 @@ export default function MessageThread() {
                     return (
                       <li
                         key={message.id}
-                        className={`flex max-w-[85%] flex-col gap-0.5 rounded-lg border p-3 ${
-                          isMine
-                            ? 'border-hud-border self-end bg-white/10'
-                            : 'border-hud-border bg-hud-bg self-start'
+                        className={`border-hud-border flex max-w-[85%] flex-col gap-0.5 rounded-lg border p-3 ${
+                          isMine ? 'bg-hud-icon/20 self-end' : 'bg-hud-card self-start'
                         }`}
                       >
                         <span className="text-hud-muted text-xs tracking-widest uppercase">
@@ -89,6 +87,12 @@ export default function MessageThread() {
                         </span>
                         <span className="break-words whitespace-pre-wrap text-white">
                           {message.body}
+                        </span>
+                        <span className="text-hud-muted text-xs">
+                          {new Date(message.createdAt).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </span>
                       </li>
                     );
