@@ -78,7 +78,13 @@ export function SearchMap({ center, radiusKm, results, highlightedId }: SearchMa
                 <span className="block font-bold">
                   {result.username ?? 'Freelance'} — {Math.round(result.score * 100)} %
                 </span>
-                <Link to={`/freelances/${result.freelanceId}/armurerie`}>Voir l'armurerie</Link>
+                {/* Même état de navigation que SearchResultCard : le profil affiche le nom (SH-46) */}
+                <Link
+                  to={`/freelances/${result.freelanceId}/armurerie`}
+                  state={{ username: result.username }}
+                >
+                  Voir l'armurerie
+                </Link>
               </Popup>
             </CircleMarker>
           );
