@@ -1,7 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { AuthContext, type AuthContextValue } from '@/features/auth/useAuth';
 import AppLayout from './AppLayout';
+
+vi.mock('@/features/chat/socket', () => ({
+  getChatSocket: () => ({ on: vi.fn(), off: vi.fn() }),
+}));
+
+// AppLayout monte désormais AppHeader (SH-46), qui lit useAuth() : ce test a donc
+// besoin d'un AuthContext.Provider, comme AppHeader.test.tsx.
+const authValue = {
+  user: null,
+  status: 'ready' as const,
+  login: vi.fn(),
+  verifyTwoFactor: vi.fn(),
+  register: vi.fn(),
+  logout: vi.fn(),
+} as AuthContextValue;
 
 function renderAt(path: string) {
   const router = createMemoryRouter(
@@ -13,7 +29,11 @@ function renderAt(path: string) {
     ],
     { initialEntries: [path] },
   );
-  return render(<RouterProvider router={router} />);
+  return render(
+    <AuthContext.Provider value={authValue}>
+      <RouterProvider router={router} />
+    </AuthContext.Provider>,
+  );
 }
 
 describe('AppLayout', () => {
