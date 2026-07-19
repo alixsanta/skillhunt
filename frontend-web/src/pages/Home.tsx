@@ -11,9 +11,10 @@ export default function Home() {
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4 text-center">
       <div className="flex items-center gap-3">
         <Crosshair className="text-hud-positive h-10 w-10" aria-hidden="true" />
-        <span className="text-4xl font-bold tracking-widest text-white">
+        {/* Le wordmark reste le <h1> de la page : chaque page garde un titre accessible (WCAG 2.4.6) */}
+        <h1 className="text-4xl font-bold tracking-widest text-white">
           SKILL<span className="text-hud-positive">HUNT</span>
-        </span>
+        </h1>
       </div>
       <p className="text-hud-muted max-w-md">
         La preuve de compétence par l'image et la donnée technique.
