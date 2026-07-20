@@ -19,6 +19,31 @@ jobs:
     name: Validation de la Base de Code FastAPI
     runs-on: ubuntu-latest
 
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: skillhunt
+          POSTGRES_PASSWORD: skillhunt
+          POSTGRES_DB: skillhunt_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U skillhunt"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       # Étape 1 : Récupérer le code source du dépôt global
       - name: 📥 Récupération du code source
@@ -29,18 +54,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          # Cache pip désactivé tant que matching-service/requirements.txt n'existe pas.
-          # À réactiver lors du scaffolding du microservice (SH-11).
+          cache: 'pip'
+          cache-dependency-path: |
+            matching-service/requirements.txt
+            matching-service/requirements-dev.txt
 
       # Étape 3 : Installer pip, les dépendances de l'application et les outils de test/qualité
       - name: 📦 Installation des dépendances et outils de validation
         run: |
           python -m pip install --upgrade pip
-          if [ -f matching-service/requirements.txt ]; then
-            pip install -r matching-service/requirements.txt
-          fi
-          # Installation des outils d'analyse statique, de sécurité et de test
-          pip install flake8 bandit pytest pytest-cov
+          pip install -r matching-service/requirements.txt
+          pip install -r matching-service/requirements-dev.txt
 
       # Étape 4 : Analyse de sécurité statique (Compétence C2.2.3 - Sécurité OWASP)
       - name: 🛡️ Audit de sécurité statique du code (Bandit)
@@ -61,6 +85,9 @@ jobs:
 
       # Étape 6 : Lancer les tests unitaires et de matching géospatial (Compétence C2.2.2 - Harnais de test)
       - name: 🧪 Exécution des tests unitaires et couverture (PyTest)
+        env:
+          DATABASE_URL: postgresql+asyncpg://skillhunt:skillhunt@localhost:5432/skillhunt_test
+          REDIS_URL: redis://localhost:6379
         run: |
           # Se déplace dans le répertoire de service pour charger le contexte d'exécution Python
           cd matching-service

@@ -24,6 +24,18 @@ jobs:
       run:
         working-directory: backend-core
 
+    # Service Redis pour les tests d'intégration (SH-14 — C2.2.2)
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       # Étape 1 : Récupérer le code source du dépôt GitHub
       - name: 📥 Récupération du code source
@@ -43,10 +55,10 @@ jobs:
       - name: 📦 Installation propre des dépendances (ci)
         run: npm ci
 
-      # Étape 4 : Auditer le code pour traquer d'éventuelles failles de sécurité dans nos dépendances
+      # Étape 4 : Auditer les dépendances — BLOQUANT au niveau high (SH-32 : 0 vulnérabilité HIGH/CRITICAL)
+      # Les vulnérabilités 'moderate' (outillage de test : js-yaml via jest) ne bloquent pas la CI.
       - name: 🛡️ Audit de sécurité des dépendances NPM
         run: npm audit --audit-level=high
-        continue-on-error: true # Permet de ne pas bloquer complètement la CI pour de simples alertes, mais logue l'info
 
       # Étape 5 : Analyser le code avec le Linter (ESLint) pour s'assurer du respect des normes
       - name: 🔍 Analyse statique du code (Lint)
@@ -54,6 +66,8 @@ jobs:
 
       # Étape 6 : Lancer les tests unitaires et d'intégration
       - name: 🧪 Exécution des tests automatisés
+        env:
+          REDIS_URL: redis://localhost:6379
         run: npm run test
 
       # Étape 7 : Vérifier que TypeScript compile correctement l'application pour la production

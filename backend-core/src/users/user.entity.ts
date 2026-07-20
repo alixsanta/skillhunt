@@ -44,6 +44,19 @@ export class User {
   @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: true })
   location?: Point | null;
 
+  // --- 2FA TOTP (SH-40) — champs sensibles, JAMAIS exposés (cf. PublicUser) ---
+
+  @Column({ type: 'boolean', default: false })
+  twoFactorEnabled!: boolean;
+
+  /** Secret TOTP chiffré AES-256-GCM (`iv.ciphertext.tag` base64) — jamais en clair (§8-6). */
+  @Column({ type: 'varchar', nullable: true })
+  twoFactorSecretEncrypted?: string | null;
+
+  /** Codes de secours à usage unique, hachés Argon2id (cohérent SH-7) — jamais en clair. */
+  @Column({ type: 'text', array: true, nullable: true })
+  twoFactorBackupCodesHashed?: string[] | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

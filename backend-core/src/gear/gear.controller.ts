@@ -12,7 +12,9 @@ import {
 import { GearService } from './gear.service';
 import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
+import { PublicQueryGearDto } from './dto/public-query-gear.dto';
 import { ReviewGearDto } from './dto/review-gear.dto';
+import { SetLoadoutDto } from './dto/set-loadout.dto';
 import {
   JwtAuthGuard,
   CurrentUser,
@@ -26,7 +28,11 @@ import {
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
 } from '@nestjs/swagger';
+import { GearResponseDto, PaginatedGearDto, PaginatedPublicGearDto } from './dto/gear-response.dto';
 import { UserRole } from '../common/enums';
 
 @ApiTags('🎒 Armurerie (Gear Locker)')
@@ -41,6 +47,7 @@ export class GearController {
   @Post()
   @Roles(UserRole.FREELANCE)
   @ApiOperation({ summary: 'Déclarer un équipement dans son casier (Freelance)' })
+  @ApiCreatedResponse({ type: GearResponseDto, description: 'Équipement déclaré, en attente de validation' })
   addGear(@CurrentUser() user: JwtPayload, @Body() dto: AddGearDto) {
     // Identité issue du token : aucun {id} client n'est accepté (anti-usurpation, OWASP)
     return this.gearService.addGearToLocker(user.userId, dto);
@@ -49,14 +56,32 @@ export class GearController {
   @Get('me')
   @Roles(UserRole.FREELANCE)
   @ApiOperation({ summary: 'Lister son propre matériel (filtres + pagination)' })
+  @ApiOkResponse({ type: PaginatedGearDto, description: 'Page du casier du Freelance authentifié' })
   getMyGear(@CurrentUser() user: JwtPayload, @Query() query: QueryGearDto) {
     // Un Freelance ne peut interroger que SON casier (étanchéité garantie par l'id du token)
     return this.gearService.getFreelanceGear(user.userId, query);
   }
 
+  @Get('freelance/:freelanceId')
+  @Roles(UserRole.RECRUITER)
+  @ApiOperation({ summary: 'Consulter le matériel VALIDÉ d\'un freelance (Recruteur)' })
+  @ApiOkResponse({
+    type: PaginatedPublicGearDto,
+    description: 'Matériel validé uniquement, sans donnée sensible (jamais de serialNumber)',
+  })
+  @ApiNotFoundResponse({ description: 'Profil Freelance introuvable (404)' })
+  getPublicFreelanceGear(
+    @Param('freelanceId', ParseUUIDPipe) freelanceId: string,
+    @Query() query: PublicQueryGearDto,
+  ) {
+    // Le statut VALIDATED est imposé par le service ; le DTO public n'accepte pas ?status= (C2.2.3)
+    return this.gearService.getPublicFreelanceGear(freelanceId, query);
+  }
+
   @Get('pending')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'File de validation : matériel en attente (Admin)' })
+  @ApiOkResponse({ type: PaginatedGearDto, description: 'Page des équipements en attente de validation' })
   getPending(@Query() query: QueryGearDto) {
     return this.gearService.listPendingForValidation(query);
   }
@@ -64,7 +89,22 @@ export class GearController {
   @Patch(':id/review')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Valider ou rejeter un équipement (Admin)' })
+  @ApiOkResponse({ type: GearResponseDto, description: 'Équipement après décision (VALIDATED ou REJECTED)' })
   review(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewGearDto) {
     return this.gearService.reviewGear(id, dto.decision);
+  }
+
+  @Patch(':id/loadout')
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({ summary: 'Épingler/retirer un équipement de son loadout (validé uniquement, max 4)' })
+  @ApiOkResponse({ type: GearResponseDto, description: 'Équipement après mise à jour du loadout' })
+  @ApiNotFoundResponse({ description: 'Équipement introuvable dans SON casier (404)' })
+  setLoadout(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetLoadoutDto,
+  ) {
+    // Identité issue du token : impossible d'épingler le matériel d'autrui (C2.2.3)
+    return this.gearService.setLoadout(user.userId, id, dto.inLoadout);
   }
 }

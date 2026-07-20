@@ -1,6 +1,6 @@
 # Infrastructure de développement local — SkillHunt
-# Pour l'instant : PostgreSQL + PostGIS (SH-6). MongoDB, Redis et les services
-# applicatifs seront ajoutés lors de la dockerisation complète (SH-2).
+# PostgreSQL + PostGIS (SH-6) + LocalStack/S3 (SH-31) + Redis (SH-14).
+# MongoDB et les services applicatifs seront ajoutés lors de la dockerisation complète (SH-2).
 #
 # Démarrer :  docker compose up -d
 # Les identifiants sont volontairement ceux de DEV (à surcharger par .env en staging/prod).
@@ -26,5 +26,159 @@ services:
       timeout: 5s
       retries: 5
 
+  # Stockage objet S3 émulé en local (SH-31) — aucun compte AWS requis en dev/test.
+  # Permet de développer/tester l'upload de certifications (SH-10) et médias (SH-17)
+  # sans coût cloud, et de garder la CI hermétique.
+  localstack:
+    image: localstack/localstack:3
+    container_name: skillhunt-localstack
+    restart: unless-stopped
+    environment:
+      # On n'active que S3 : surface minimale, démarrage rapide.
+      SERVICES: s3
+      # Identifiants de DEV factices (LocalStack ignore leur valeur réelle).
+      AWS_DEFAULT_REGION: ${AWS_REGION:-eu-west-3}
+    ports:
+      # Edge port unique de LocalStack (toutes les API S3 passent par 4566).
+      - "${AWS_S3_PORT:-4566}:4566"
+    volumes:
+      - skillhunt_localstack:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: skillhunt-redis
+    restart: unless-stopped
+    ports:
+      # Port HÔTE 6380 par défaut : 6379 est occupé par un Redis personnel hors projet
+      # sur le poste de dev, et backend-core/.env pointe déjà sur redis://localhost:6380.
+      - "${REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - skillhunt_redis:/data
+
+  # MongoDB (SH-24) — persistance du chat (brique NoSQL de l'archi §2/§3).
+  mongo:
+    image: mongo:7
+    container_name: skillhunt-mongo
+    restart: unless-stopped
+    ports:
+      # Port HÔTE 27018 : 27017 est occupé par un service personnel hors projet
+      # sur le poste de dev (même convention que Redis 6380).
+      - "${MONGO_PORT:-27018}:27017"
+    volumes:
+      - skillhunt_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------------
+  # Services applicatifs (SH-2) — profil "app" : `docker compose --profile app up -d --build`.
+  # Sans profil, seule l'INFRA démarre (workflow dev inchangé : npm run start:dev, uvicorn).
+  # Environnements (12-factor) : mêmes images, seule la config (env vars) change —
+  # les valeurs ci-dessous sont celles de DEV, à surcharger en staging/prod.
+  # ------------------------------------------------------------------
+
+  backend-core:
+    build: ./backend-core
+    container_name: skillhunt-backend
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      # Réseau Docker interne : noms de services, ports INTERNES (5432/6379)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-skillhunt}
+      DB_PASSWORD: ${DB_PASSWORD:-skillhunt}
+      DB_NAME: ${DB_NAME:-skillhunt}
+      REDIS_URL: redis://redis:6379
+      MONGODB_URL: mongodb://mongo:27017/skillhunt
+      MATCHING_SERVICE_URL: http://matching-service:8000
+      # Derrière la gateway (SH-5), front et API partagent l'origine 8088 : CORS devient
+      # une défense en profondeur. 5173 reste listée pour le dev Vite hors conteneur.
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8088,http://localhost:5173}
+      AWS_REGION: ${AWS_REGION:-eu-west-3}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-skillhunt-media}
+      AWS_S3_ENDPOINT: http://localstack:4566
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
+      # Schéma versionné par migrations : appliquées au boot en dev/staging (cf. entrypoint)
+      RUN_MIGRATIONS: "true"
+      # JWT_PRIVATE_KEY/JWT_PUBLIC_KEY : absents en dev => paire éphémère (warning au boot).
+      # En staging/prod : injectés par le gestionnaire de secrets, JAMAIS commités (§8).
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+    # AUCUN port hôte (SH-5) : la gateway est le point d'entrée unique (archi §2).
+    # Swagger et gen:api restent accessibles via http://localhost:8088/api/docs.
+    # Le dev direct (npm run start:dev sur 3001) est inchangé hors conteneur.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+
+  matching-service:
+    build: ./matching-service
+    container_name: skillhunt-matching
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USERNAME:-skillhunt}:${DB_PASSWORD:-skillhunt}@postgres:5432/${DB_NAME:-skillhunt}
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_CORE_URL: http://backend-core:3001
+    # AUCUN port hôte (archi §2) : service interne, seul le proxy backend-core (SH-22)
+    # l'atteint via le réseau Docker privé — le navigateur ne peut pas le contourner.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend-web:
+    build:
+      context: ./frontend-web
+      args:
+        # Cuite dans le bundle au build (contrainte Vite) : l'URL vue DEPUIS LE NAVIGATEUR.
+        # Même origine que la gateway (SH-5) => l'app tourne en same-origin.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8088}
+    container_name: skillhunt-frontend
+    profiles: ["app"]
+    restart: unless-stopped
+    # AUCUN port hôte (SH-5) : servi exclusivement à travers la gateway.
+    depends_on:
+      - backend-core
+
+  gateway:
+    build: ./gateway
+    container_name: skillhunt-gateway
+    profiles: ["app"]
+    restart: unless-stopped
+    # SEUL port publié du profil app (SH-5) : point d'entrée unique, rate-limiting
+    # par IP sur /api/v1/auth (mitigation R7/R9). TLS : SH-4 (hardening).
+    ports:
+      - "${GATEWAY_PORT:-8088}:80"
+    depends_on:
+      - backend-core
+      - frontend-web
+
 volumes:
   skillhunt_pgdata:
+  skillhunt_localstack:
+  skillhunt_redis:
+  skillhunt_mongo:

@@ -1,0 +1,184 @@
+import pytest
+
+BASE_PAYLOAD = {
+    "skills": ["drone-dgac", "fpv"],
+    "location": [43.6, 1.44],
+    "radius_km": 50.0,
+}
+
+
+def test_match_rejects_missing_body(client):
+    response = client.post("/match", json={})
+    assert response.status_code == 422
+
+
+def test_match_rejects_empty_skills(client):
+    payload = {**BASE_PAYLOAD, "skills": []}
+    response = client.post("/match", json=payload)
+    assert response.status_code == 422
+
+
+def test_match_rejects_blank_skill(client):
+    payload = {**BASE_PAYLOAD, "skills": [""]}
+    response = client.post("/match", json=payload)
+    assert response.status_code == 422
+
+
+def test_match_rejects_negative_radius(client):
+    payload = {**BASE_PAYLOAD, "radius_km": -1.0}
+    response = client.post("/match", json=payload)
+    assert response.status_code == 422
+
+
+def test_match_rejects_zero_radius(client):
+    payload = {**BASE_PAYLOAD, "radius_km": 0.0}
+    response = client.post("/match", json=payload)
+    assert response.status_code == 422
+
+
+def test_match_rejects_out_of_bounds_location(client):
+    payload = {**BASE_PAYLOAD, "location": [999.0, 999.0]}
+    response = client.post("/match", json=payload)
+    assert response.status_code == 422
+
+
+# --- Tests d'intégration de l'endpoint (scoring réel via DI mockée) ---
+from unittest.mock import AsyncMock, patch  # noqa: E402
+from uuid import UUID  # noqa: E402
+from main import app  # noqa: E402
+from app.db.database import get_db  # noqa: E402
+from app.services.scoring import FreelancerProfile  # noqa: E402
+
+FREELANCE_A = UUID("aaaaaaaa-e89b-12d3-a456-426614174000")
+FREELANCE_B = UUID("bbbbbbbb-e89b-12d3-a456-426614174001")
+
+
+# C2.2.2 — Isolation : les tests unitaires de scoring ne doivent jamais dépendre d'un vrai
+# Redis. Sans ce patch, un Redis accessible (service CI, docker local) rend le cache actif
+# et le résultat du premier test est resservi aux suivants (même payload ⇒ même clé).
+# Les tests dédiés au cache (section C2.2.2 ci-dessous) le re-patchent explicitement.
+@pytest.fixture(autouse=True)
+def _neutralize_match_cache():
+    with patch("app.routers.matching.get_cached", new=AsyncMock(return_value=None)), \
+         patch("app.routers.matching.set_cached", new=AsyncMock()):
+        yield
+
+
+async def _override_get_db():
+    yield None  # Session non utilisée — get_candidates est mocké
+
+
+def test_match_returns_scored_freelance(client):
+    profiles = [FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5)]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    results = response.json()
+    assert len(results) == 1
+    assert results[0]["freelance_id"] == str(FREELANCE_A)
+    assert results[0]["score"] > 0.0
+
+
+def test_match_excludes_zero_score(client):
+    # ROBOTICS ne couvre pas "drone-dgac" → skills_score=0.0, mais location=1.0 donc score=0.2 > 0
+    # Pour score=0.0, il faudrait que skills ET gear soient 0 ET location=0 — impossible avec location stub=1.0
+    # On teste donc qu'un profil sans gear ET sans skills match a un score faible mais non nul (0.2)
+    profiles = [FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=[])]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    results = response.json()
+    # distance_km défaut 0.0 → score_location(0,50)=1.0 ; score = 0.5*0 + 0.3*0 + 0.2*1.0 = 0.2 → inclus car > 0
+    assert len(results) == 1
+    assert results[0]["score"] == pytest.approx(0.2)
+
+
+def test_match_results_sorted_by_score_desc(client):
+    profiles = [
+        FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=[], distance_km=40.0),
+        FreelancerProfile(freelance_id=FREELANCE_B, gear_categories=["DRONE"] * 5, distance_km=5.0),
+    ]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    results = response.json()
+    assert len(results) == 2
+    assert results[0]["score"] >= results[1]["score"]
+    assert results[0]["freelance_id"] == str(FREELANCE_B)
+
+
+def test_match_exposes_real_distance(client):
+    profiles = [FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5, distance_km=12.34)]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()[0]["distance_km"] == pytest.approx(12.34)
+
+
+def test_match_tiebreak_by_distance_when_scores_equal(client):
+    # Scores identiques (compute_composite_score forcé constant) → le départage
+    # se fait uniquement par distance croissante : le plus proche d'abord.
+    near = FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5, distance_km=5.0)
+    far = FreelancerProfile(freelance_id=FREELANCE_B, gear_categories=["DRONE"] * 5, distance_km=45.0)
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=[far, near])), \
+         patch("app.routers.matching.compute_composite_score", return_value=0.5):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    results = response.json()
+    assert [r["freelance_id"] for r in results] == [str(FREELANCE_A), str(FREELANCE_B)]
+
+
+def test_match_returns_empty_list_when_no_freelances(client):
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=[])):
+        payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+# --- Tests du cache Redis autour de l'endpoint /match (C2.2.2) ---
+
+def test_match_returns_cache_hit_without_scoring(client):
+    # Un hit renvoie le cache tel quel, sans jamais appeler le scoring (get_candidates)
+    cached = [{"freelance_id": str(FREELANCE_A), "score": 0.8, "distance_km": 1.0}]
+    from app.models.schemas import MatchResult
+    hit = [MatchResult(**cached[0])]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_cached", new=AsyncMock(return_value=hit)), \
+         patch("app.routers.matching.get_candidates", new=AsyncMock()) as candidates:
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json() == cached
+    candidates.assert_not_called()  # scoring court-circuité par le cache
+
+
+def test_match_miss_computes_and_sets_cache(client):
+    # Un miss (cache = None) recalcule puis écrit le résultat dans le cache
+    profiles = [FreelancerProfile(freelance_id=FREELANCE_A, gear_categories=["DRONE"] * 5)]
+    payload = {"skills": ["drone-dgac"], "location": [43.6, 1.44], "radius_km": 50.0}
+    app.dependency_overrides[get_db] = _override_get_db
+    with patch("app.routers.matching.get_cached", new=AsyncMock(return_value=None)), \
+         patch("app.routers.matching.set_cached", new=AsyncMock()) as setter, \
+         patch("app.routers.matching.get_candidates", new=AsyncMock(return_value=profiles)):
+        response = client.post("/match", json=payload)
+    app.dependency_overrides.clear()
+    assert response.status_code == 200
+    setter.assert_awaited_once()  # le résultat recalculé est mis en cache

@@ -1,15 +1,41 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
-import { GearStatus, UserRole } from '../common/enums';
+import { GearCategory, GearStatus, UserRole } from '../common/enums';
 import { Gear } from './gear.entity';
 import { User } from '../users/user.entity';
 import { AddGearDto } from './dto/add-gear.dto';
 import { QueryGearDto } from './dto/query-gear.dto';
+import { PublicQueryGearDto } from './dto/public-query-gear.dto';
+import { EventPublisherService, DomainEventType } from '../common/events/event-publisher.service';
+
+// Nombre maximum d'équipements épinglables au loadout (spec SH-21c §4)
+export const LOADOUT_MAX_SLOTS = 4;
 
 // Résultat paginé générique de l'Armurerie
 export interface PaginatedGear {
   items: Gear[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/**
+ * Équipement vu par un RECRUTEUR (SH-39) : projection par ALLOWLIST — jamais de
+ * `serialNumber` (donnée sensible) ni de `freelanceId` (redondant avec la route).
+ */
+export interface PublicGearView {
+  id: string;
+  brand: string;
+  model: string;
+  category: GearCategory;
+  status: GearStatus;
+  createdAt: Date;
+  isInLoadout: boolean;
+}
+
+export interface PaginatedPublicGear {
+  items: PublicGearView[];
   total: number;
   page: number;
   limit: number;
@@ -22,6 +48,7 @@ export class GearService {
     private readonly gearRepo: Repository<Gear>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly events: EventPublisherService,
   ) {}
 
   /** Déclaration d'un équipement par un Freelance (statut initial : en attente de validation). */
@@ -55,6 +82,43 @@ export class GearService {
     return this.paginate(where, query);
   }
 
+  /**
+   * Vue publique du casier pour un RECRUTEUR (SH-39) : matériel VALIDATED uniquement,
+   * projeté sans donnée sensible. Le statut est imposé ICI, jamais dérivé du client (C2.2.3).
+   */
+  async getPublicFreelanceGear(
+    freelanceId: string,
+    query: PublicQueryGearDto,
+  ): Promise<PaginatedPublicGear> {
+    const target = await this.usersRepo.findOne({ where: { id: freelanceId } });
+    // 404 uniforme (cible inconnue OU non-freelance) : pas d'énumération du rôle des comptes
+    if (!target || target.role !== UserRole.FREELANCE) {
+      throw new NotFoundException('Profil Freelance introuvable');
+    }
+
+    const where: FindOptionsWhere<Gear> = { freelanceId, status: GearStatus.VALIDATED };
+    if (query.category) {
+      where.category = query.category;
+    }
+    const { items, total, page, limit } = await this.paginate(where, query);
+
+    // Minimisation (CLAUDE.md §8) : projection par ALLOWLIST, pas de suppression après coup —
+    // un champ ajouté à l'entité Gear ne peut PAS fuiter ici par inadvertance.
+    return { items: items.map(GearService.toPublicGearView), total, page, limit };
+  }
+
+  private static toPublicGearView(gear: Gear): PublicGearView {
+    return {
+      id: gear.id,
+      brand: gear.brand,
+      model: gear.model,
+      category: gear.category,
+      status: gear.status,
+      createdAt: gear.createdAt,
+      isInLoadout: gear.isInLoadout,
+    };
+  }
+
   /** File de validation admin : équipements en attente (PENDING), tous freelances confondus. */
   listPendingForValidation(query: QueryGearDto): Promise<PaginatedGear> {
     const where: FindOptionsWhere<Gear> = { status: GearStatus.PENDING };
@@ -62,6 +126,35 @@ export class GearService {
       where.category = query.category;
     }
     return this.paginate(where, query);
+  }
+
+  /**
+   * Épingle/retire un équipement du loadout (SH-21c). Étanchéité : le gear est cherché
+   * PAR (id, freelanceId du token) → le casier d'autrui répond 404, pas d'énumération (C2.2.3).
+   */
+  async setLoadout(freelanceId: string, gearId: string, inLoadout: boolean): Promise<Gear> {
+    const gear = await this.gearRepo.findOne({ where: { id: gearId, freelanceId } });
+    if (!gear) {
+      throw new NotFoundException('Équipement introuvable');
+    }
+
+    if (inLoadout) {
+      // Le loadout est une vitrine de PREUVE : seul le matériel validé s'y épingle
+      if (gear.status !== GearStatus.VALIDATED) {
+        throw new BadRequestException('Seul un équipement validé peut rejoindre le loadout');
+      }
+      if (!gear.isInLoadout) {
+        const pinned = await this.gearRepo.count({ where: { freelanceId, isInLoadout: true } });
+        if (pinned >= LOADOUT_MAX_SLOTS) {
+          throw new BadRequestException(
+            `Le loadout est complet (${LOADOUT_MAX_SLOTS} emplacements maximum)`,
+          );
+        }
+      }
+    }
+
+    gear.isInLoadout = inLoadout;
+    return this.gearRepo.save(gear);
   }
 
   /** Décision admin sur un équipement : PENDING -> VALIDATED | REJECTED (transition unique, tracée). */
@@ -75,7 +168,22 @@ export class GearService {
     }
 
     gear.status = decision;
-    return this.gearRepo.save(gear);
+
+    // Cohérence loadout (SH-21c) : un équipement rejeté ne reste jamais en vitrine
+    if (decision === GearStatus.REJECTED) {
+      gear.isInLoadout = false;
+    }
+
+    const saved = await this.gearRepo.save(gear);
+
+    // Émission best-effort : notifie le matching-service pour invalider son cache (SH-14)
+    const type =
+      decision === GearStatus.VALIDATED
+        ? DomainEventType.GEAR_VALIDATED
+        : DomainEventType.GEAR_REJECTED;
+    await this.events.publish(type, { gearId: saved.id, freelanceId: saved.freelanceId });
+
+    return saved;
   }
 
   /** Helper de pagination commun (tri par date de création décroissante). */
@@ -83,7 +191,8 @@ export class GearService {
     const { page, limit } = query;
     const [items, total] = await this.gearRepo.findAndCount({
       where,
-      order: { createdAt: 'DESC' },
+      // Loadout d'abord (SH-21c), puis du plus récent au plus ancien
+      order: { isInLoadout: 'DESC', createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });

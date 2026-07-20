@@ -21,3 +21,18 @@ export enum GearCategory {
   SENSOR = 'SENSOR',
   OTHER = 'OTHER',
 }
+
+// Types de certifications professionnelles vérifiables (SH-10).
+export enum CertificationType {
+  DGAC_DRONE = 'DGAC_DRONE', // brevet télépilote DGAC
+  ELEC_HABILITATION = 'ELEC_HABILITATION', // habilitation électrique
+  OTHER = 'OTHER',
+}
+
+// Statut du workflow de validation d'une certification (SH-10).
+// Valeurs identiques à GearStatus mais enum DÉDIÉ (découplage : on ne modifie pas SH-9).
+export enum CertificationStatus {
+  PENDING = 'PENDING',
+  VALIDATED = 'VALIDATED',
+  REJECTED = 'REJECTED',
+}

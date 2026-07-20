@@ -1,0 +1,79 @@
+**Titre du Ticket :** [SH-34] Position freelance obligatoire à l'onboarding (CHECK conditionnel par rôle)
+**Type :** Feature
+**Priorité :** High
+**Estimation :** 3 Story Points (Fibonacci)
+**Compétences RNCP visées :** C2.2.3 (validation stricte des entrées + contrainte d'intégrité), C2.2.2 (tests de validation & RBAC)
+**Lot :** Lot 1 (Web MVP)
+
+> Prérequis de qualité de donnée pour le **matching géospatial (SH-13)** : un freelance sans
+> `location` est **invisible** dans toute recherche par rayon d'action. Aujourd'hui la colonne
+> `users.location` est `nullable` (SH-6/SH-13) → on referme cette faille au niveau **applicatif
+> (DTO)** *et* **base (CHECK conditionnel)**. Spec géo : `docs/tickets/SH-13-geolocalisation-postgis.md`.
+
+### 0. Definition of Ready (DoR)
+- [x] **Valeur Claire :** un freelance créé sans position ne pourra jamais matcher → règle métier « pas de position, pas de profil freelance ».
+- [x] **Specs Complètes :** Gherkin ci-dessous (cas passant freelance/recruteur + cas d'erreur + non-régression données existantes).
+- [x] **UX/UI :** champ position à l'onboarding freelance (carte / géoloc navigateur) — maquette à lier côté SH-20 (parcours auth web).
+- [x] **Faisabilité Technique :** validation `class-validator` conditionnelle par rôle + migration TypeORM `CHECK (role <> 'FREELANCE' OR location IS NOT NULL)`.
+- [x] **Estimé :** 3 SP.
+
+### 1. User Story
+**En tant que** plateforme (et recruteur en aval),
+**Je veux** que tout compte **Freelance** déclare une position géographique dès l'onboarding,
+**Afin de** garantir qu'il soit éligible au matching par rayon d'action (aucun profil « fantôme » hors de la carte).
+
+*(Un **Recruteur** ou un **Admin** n'a pas de position obligatoire : la contrainte est conditionnée au rôle.)*
+
+### 2. Contexte & Valeur Business
+- **Pourquoi maintenant ?** SH-13 a livré la recherche géospatiale PostGIS ; sans donnée de position fiable, le moteur exclut silencieusement les freelances → dégrade le KPI de mise en relation (R4). La qualité de la donnée d'entrée est *critique* (cf. principe Armurerie, CLAUDE.md §1).
+- **KPI impacté :** couverture du matching (part des freelances géolocalisés = cible 100 %), pertinence des résultats (R4).
+
+### 3. Critères d'Acceptation (Gherkin - BDD)
+
+**Scénario 1 : Onboarding freelance avec position (passant)**
+* **GIVEN** un utilisateur s'enregistre avec le rôle `FREELANCE`
+* **WHEN** il fournit une `location` valide (lat ∈ [-90,90], lon ∈ [-180,180])
+* **THEN** le compte est créé et le point est stocké en `GEOGRAPHY(Point,4326)`.
+
+**Scénario 2 : Onboarding freelance sans position (rejet applicatif)**
+* **GIVEN** un enregistrement de rôle `FREELANCE`
+* **WHEN** la `location` est absente ou hors bornes
+* **THEN** la requête est rejetée en **400/422** (DTO `class-validator`), message en français, avant tout accès base.
+
+**Scénario 3 : Recruteur sans position (passant)**
+* **GIVEN** un enregistrement de rôle `RECRUITER`
+* **WHEN** aucune `location` n'est fournie
+* **THEN** le compte est créé normalement (contrainte non applicable à ce rôle).
+
+**Scénario 4 : Garde-fou base (défense en profondeur)**
+* **GIVEN** une tentative d'insertion directe d'un `FREELANCE` sans `location` (contournant l'API)
+* **THEN** la contrainte `CHECK` PostgreSQL rejette la ligne (intégrité au niveau donnée).
+
+**Scénario 5 : Non-régression des données existantes**
+* **GIVEN** des freelances déjà en base sans `location` (créés avant SH-34)
+* **WHEN** la migration s'applique
+* **THEN** la stratégie de reprise est explicite (backfill ou fenêtre de complétion) — la migration ne casse pas au déploiement. *(À trancher en implémentation : voir §4.)*
+
+### 4. Spécifications Techniques
+
+* **Backend (NestJS) — validation applicative (1ʳᵉ ligne) :**
+    * DTO d'enregistrement : `location` **obligatoire si `role === FREELANCE`**, optionnelle sinon (validation conditionnelle `class-validator`, ex. `@ValidateIf(o => o.role === UserRole.FREELANCE)` + `@IsDefined()` + bornes lat/lon).
+    * Identité et rôle jamais dérivés d'un `{id}` client — cf. CLAUDE.md §8.
+* **Base (PostgreSQL) — garde-fou (défense en profondeur) :**
+    * Migration TypeORM ajoutant `CHECK (role <> 'FREELANCE' OR location IS NOT NULL)` sur `users`.
+    * ✅ **Reprise des données existantes (Scénario 5) — décision (D4, spec 2026-07-06) :**
+      **aucune reprise**. Pas de prod (projet académique), bases dev/CI reconstruites par
+      migrations → contrainte appliquée directement en VALID. Base dev locale contenant des
+      freelances de test sans position → `docker compose down -v` + re-migrer (documenté
+      dans la migration). Le dilemme backfill vs `NOT VALID` est clos.
+* **Cohérence :** conserver `users.location` en `GEOGRAPHY(Point,4326)` (pas de changement de type) ; seule la nullabilité devient conditionnelle.
+* **Aucune requête brute** : passer par le repository TypeORM ; la contrainte vit dans une migration versionnée.
+
+### 5. Definition of Done (DoD)
+- [x] DTO : validation conditionnelle de `location` par rôle (freelance obligatoire) + tests unitaires (passant/rejet/rôle non concerné).
+- [x] Migration TypeORM : `CHECK` conditionnel + stratégie de reprise des données existantes documentée et testée (la migration s'applique sans casse).
+- [x] **Tests d'étanchéité** : un recruteur reste créable sans position ; un freelance sans position est refusé aux deux niveaux (API + base).
+- [x] CI verte (lint + audit + tests + build) ; Swagger à jour (schéma d'enregistrement, C2.4.1) — confirmée sur la PR.
+- [x] Aucun secret en dur ; messages utilisateur en français.
+- [x] Backlog mis à jour (la nullabilité de `location` n'est pas décrite dans `CLAUDE.md` §5 — rien à y changer).
+- [x] **Complément front (reprise du 2026-07-16)** : champ « Ville d'activité » au Register (rôle FREELANCE uniquement, villes partagées avec SH-22 dans `lib/cities.ts`), payload `{latitude, longitude}`, masqué/omis pour un RECRUTEUR — testé RTL ; `schema.d.ts` régénéré (`LocationDto`). **Vérifié en réel** : 400 sans position, 201 recruteur, violation `CHK` en SQL direct, GeoJSON `POINT(4.8357 45.764)` persisté, freelance immédiatement matchable (score 0.2 à Lyon).
