@@ -70,89 +70,99 @@ export default function Login() {
 
   if (twoFactorToken) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
-        <h1 className="text-2xl font-bold">Vérification en deux étapes</h1>
-        <p className="text-muted-foreground max-w-sm text-center text-sm">
-          Saisis le code à 6 chiffres de ton application d'authentification, ou un de tes codes de
-          secours.
-        </p>
+      <div className="flex flex-1 items-center justify-center p-4">
+        <div className="border-hud-border bg-hud-card flex w-full max-w-md flex-col items-center gap-6 rounded-xl border p-8">
+          <h1 className="text-2xl font-bold text-white">Vérification en deux étapes</h1>
+          <p className="text-hud-muted max-w-sm text-center text-sm">
+            Saisis le code à 6 chiffres de ton application d'authentification, ou un de tes codes de
+            secours.
+          </p>
 
-        <form onSubmit={handleVerify} className="flex w-full max-w-sm flex-col gap-4" noValidate>
+          <form onSubmit={handleVerify} className="flex w-full max-w-sm flex-col gap-4" noValidate>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="twofa-code" className="text-white">
+                Code de vérification
+              </label>
+              <input
+                id="twofa-code"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                aria-describedby={error ? 'login-error' : undefined}
+                className="border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white"
+              />
+            </div>
+
+            {error && (
+              <p id="login-error" role="alert" className="text-hud-rejected text-sm">
+                {error}
+              </p>
+            )}
+
+            <Button type="submit" disabled={submitting}>
+              Valider le code
+            </Button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 items-center justify-center p-4">
+      <div className="border-hud-border bg-hud-card flex w-full max-w-md flex-col items-center gap-6 rounded-xl border p-8">
+        <h1 className="text-2xl font-bold text-white">Connexion</h1>
+
+        <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1">
-            <label htmlFor="twofa-code">Code de vérification</label>
+            <label htmlFor="email" className="text-white">
+              Email
+            </label>
             <input
-              id="twofa-code"
-              autoComplete="one-time-code"
-              inputMode="numeric"
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               aria-describedby={error ? 'login-error' : undefined}
-              className="rounded-md border px-3 py-2"
+              className="border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="password" className="text-white">
+              Mot de passe
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              aria-describedby={error ? 'login-error' : undefined}
+              className="border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white"
             />
           </div>
 
           {error && (
-            <p id="login-error" role="alert" className="text-sm text-red-500">
+            <p id="login-error" role="alert" className="text-hud-rejected text-sm">
               {error}
             </p>
           )}
 
           <Button type="submit" disabled={submitting}>
-            Valider le code
+            Se connecter
           </Button>
         </form>
-      </main>
-    );
-  }
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
-      <h1 className="text-2xl font-bold">Connexion</h1>
-
-      <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4" noValidate>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            aria-describedby={error ? 'login-error' : undefined}
-            className="rounded-md border px-3 py-2"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="password">Mot de passe</label>
-          <input
-            id="password"
-            type="password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            aria-describedby={error ? 'login-error' : undefined}
-            className="rounded-md border px-3 py-2"
-          />
-        </div>
-
-        {error && (
-          <p id="login-error" role="alert" className="text-sm text-red-500">
-            {error}
-          </p>
-        )}
-
-        <Button type="submit" disabled={submitting}>
-          Se connecter
-        </Button>
-      </form>
-
-      <p className="text-muted-foreground text-sm">
-        Pas encore de compte ?{' '}
-        <Link to="/register" className="underline">
-          Créer un compte
-        </Link>
-      </p>
-    </main>
+        <p className="text-hud-muted text-sm">
+          Pas encore de compte ?{' '}
+          <Link to="/register" className="text-hud-positive underline">
+            Créer un compte
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 }

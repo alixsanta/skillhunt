@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { BadgeGrid } from '@/features/gamification/BadgeGrid';
 import { useFreelanceGamification } from '@/features/gamification/useGamification';
 import { GearCategoryChips } from '@/features/gear/GearCategoryChips';
@@ -20,9 +21,17 @@ import { useFreelanceGear } from '@/features/gear/useFreelanceGear';
  */
 export default function FreelanceGear() {
   const { freelanceId } = useParams<{ freelanceId: string }>();
+  const location = useLocation();
   const { data, isPending, isError, error, refetch } = useFreelanceGear(freelanceId ?? '');
   const gamification = useFreelanceGamification(freelanceId ?? '');
   const [category, setCategory] = useState<GearCategory | null>(null);
+
+  // Le nom vient de l'état de navigation posé par `SearchResultCard` (SH-46) — la vue
+  // publique n'a aucun DTO exposant de username, seul l'UUID de route est garanti. Un accès
+  // direct par URL (favori, lien partagé) n'a pas cet état : on affiche alors un libellé
+  // neutre honnête plutôt que l'UUID brut, qui n'est pas un nom.
+  const username = (location.state as { username?: string } | null)?.username ?? null;
+  const displayName = username ?? 'Profil freelance';
 
   const items = useMemo(() => data?.items ?? [], [data]);
   // Loadout (SH-21c) : mis en avant au-dessus de la grille — dérivé du casier déjà chargé,
@@ -43,18 +52,27 @@ export default function FreelanceGear() {
   const status = error?.response?.status;
 
   return (
-    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
+    <div className="p-4 lg:p-8">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <header className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
-              Armurerie du freelance
-            </h1>
-            {!isPending && !isError && (
-              <p className="text-hud-muted text-sm">
-                {`${total} équipement${total > 1 ? 's' : ''} validé${total > 1 ? 's' : ''}`}
-              </p>
-            )}
+        {/* En-tête de profil (SH-46) : avatar + nom + niveau, réutilisant les données déjà
+            chargées (loadout/gamification) — aucun appel réseau supplémentaire. */}
+        <header className="border-hud-border bg-hud-card flex flex-wrap items-center justify-between gap-6 rounded-xl border p-6">
+          <div className="flex flex-wrap items-center gap-6">
+            <InitialsAvatar name={displayName} size="lg" />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-2xl font-bold tracking-widest text-white uppercase">
+                {displayName}
+              </h1>
+              {!isPending && !isError && (
+                <p className="text-hud-muted text-sm">
+                  {`${total} équipement${total > 1 ? 's' : ''} validé${total > 1 ? 's' : ''}`}
+                </p>
+              )}
+              {/* Niveau (SH-21c) : jamais d'XP chiffré en vue publique, le libellé suffit. */}
+              {gamification.data && (
+                <p className="text-hud-positive font-semibold">{gamification.data.levelLabel}</p>
+              )}
+            </div>
           </div>
           {/* Mise en relation (SH-24) : le « chat contextuel » démarre depuis le profil.
               Masqué sur erreur (403 : pas recruteur ; 404 : profil inexistant). */}
@@ -102,18 +120,12 @@ export default function FreelanceGear() {
 
         {!isPending && !isError && items.length > 0 && (
           <>
-            {/* Gamification (SH-21c) : loadout en tête, niveau + badges obtenus — vue publique,
-                aucun contrôle d'épinglage (LoadoutRow sans onUnpin) et pas d'XP chiffré. */}
+            {/* Gamification (SH-21c) : loadout en tête, badges obtenus — vue publique, aucun
+                contrôle d'épinglage (LoadoutRow sans onUnpin) et pas d'XP chiffré. Le niveau
+                (levelLabel) est déjà affiché dans l'en-tête de profil ci-dessus. */}
             {pinnedItems.length > 0 && <LoadoutRow items={pinnedItems} />}
-            {gamification.data && (
-              <>
-                <p className="font-bold tracking-widest text-white uppercase">
-                  {gamification.data.levelLabel}
-                </p>
-                {gamification.data.badges.length > 0 && (
-                  <BadgeGrid badges={gamification.data.badges} />
-                )}
-              </>
+            {gamification.data && gamification.data.badges.length > 0 && (
+              <BadgeGrid badges={gamification.data.badges} />
             )}
             <GearCategoryChips
               categories={presentCategories}
@@ -130,6 +142,6 @@ export default function FreelanceGear() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

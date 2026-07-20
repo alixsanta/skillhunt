@@ -35,7 +35,7 @@ export default function MessageThread() {
   }
 
   return (
-    <main className="bg-hud-bg flex min-h-screen flex-col p-4 lg:p-8">
+    <div className="flex flex-1 flex-col p-4 lg:p-8">
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4">
         <header className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold tracking-widest text-white uppercase">Conversation</h1>
@@ -78,10 +78,8 @@ export default function MessageThread() {
                     return (
                       <li
                         key={message.id}
-                        className={`flex max-w-[85%] flex-col gap-0.5 rounded-lg border p-3 ${
-                          isMine
-                            ? 'border-hud-border self-end bg-white/10'
-                            : 'border-hud-border bg-hud-bg self-start'
+                        className={`border-hud-border flex max-w-[85%] flex-col gap-0.5 rounded-lg border p-3 ${
+                          isMine ? 'bg-hud-icon/20 self-end' : 'bg-hud-card self-start'
                         }`}
                       >
                         <span className="text-hud-muted text-xs tracking-widest uppercase">
@@ -89,6 +87,12 @@ export default function MessageThread() {
                         </span>
                         <span className="break-words whitespace-pre-wrap text-white">
                           {message.body}
+                        </span>
+                        <span className="text-hud-muted text-xs">
+                          {new Date(message.createdAt).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </span>
                       </li>
                     );
@@ -118,6 +122,6 @@ export default function MessageThread() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

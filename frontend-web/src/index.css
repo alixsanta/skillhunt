@@ -138,6 +138,30 @@
   --color-hud-muted: #7b8794; /* texte secondaire, labels meta */
 }
 
+/* SH-46 — Le thème sombre de l'application EST la palette HUD. Ce bloc surcharge les
+   jetons shadcn générés (qu'on ne modifie pas à la main) pour que tout composant shadcn
+   hérite de la direction artistique sans couleur en dur. */
+.dark {
+  --background: var(--color-hud-bg);
+  --foreground: #f1f5f9;
+  --card: var(--color-hud-card);
+  --card-foreground: #f1f5f9;
+  --popover: var(--color-hud-card);
+  --popover-foreground: #f1f5f9;
+  --primary: var(--color-hud-positive);
+  --primary-foreground: var(--color-hud-bg);
+  --secondary: var(--color-hud-pill);
+  --secondary-foreground: #f1f5f9;
+  --muted: var(--color-hud-pill);
+  --muted-foreground: var(--color-hud-muted);
+  --accent: var(--color-hud-pill);
+  --accent-foreground: #f1f5f9;
+  --destructive: var(--color-hud-rejected);
+  --border: var(--color-hud-border);
+  --input: var(--color-hud-border);
+  --ring: var(--color-hud-icon);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -173,4 +197,12 @@
   stroke: var(--color-hud-positive);
   fill: var(--color-hud-positive);
   fill-opacity: 0.55;
+}
+/* Survol d'une fiche de résultat côté liste (SH-46) : le marqueur correspondant ressort
+   sans dépendre uniquement du rayon (déjà agrandi côté composant) — accessibilité couleur
+   + forme, cohérent avec R6. */
+.map-freelance-marker--highlighted {
+  stroke: var(--color-hud-positive);
+  stroke-width: 3;
+  fill-opacity: 0.85;
 }

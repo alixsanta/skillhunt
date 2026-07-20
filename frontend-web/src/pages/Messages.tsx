@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { useConversations } from '@/features/chat/useConversations';
 
 /**
@@ -12,7 +13,7 @@ export default function Messages() {
   const conversations = data ?? [];
 
   return (
-    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
+    <div className="p-4 lg:p-8">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
         <header>
           <h1 className="text-2xl font-bold tracking-widest text-white uppercase">Messages</h1>
@@ -45,16 +46,19 @@ export default function Messages() {
               <li key={conversation.conversationId}>
                 <Link
                   to={`/messages/${conversation.with.id}`}
-                  className="border-hud-border bg-hud-card hover:border-hud-muted flex flex-col gap-1 rounded-lg border p-4 transition-colors"
+                  className="border-hud-border bg-hud-card hover:border-hud-muted flex items-center gap-3 rounded-lg border p-4 transition-colors"
                 >
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="font-semibold text-white">{conversation.with.username}</span>
-                    <span className="text-hud-muted text-xs tracking-widest uppercase">
-                      {conversation.with.role === 'FREELANCE' ? 'Freelance' : 'Recruteur'}
+                  <InitialsAvatar name={conversation.with.username} size="sm" />
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold text-white">{conversation.with.username}</span>
+                      <span className="text-hud-muted text-xs tracking-widest uppercase">
+                        {conversation.with.role === 'FREELANCE' ? 'Freelance' : 'Recruteur'}
+                      </span>
                     </span>
-                  </span>
-                  <span className="text-hud-muted truncate text-sm">
-                    {conversation.lastMessage.body}
+                    <span className="text-hud-muted truncate text-sm">
+                      {conversation.lastMessage.body}
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -62,6 +66,6 @@ export default function Messages() {
           </ul>
         )}
       </div>
-    </main>
+    </div>
   );
 }

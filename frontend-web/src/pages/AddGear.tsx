@@ -95,8 +95,8 @@ export default function AddGear() {
   }
 
   return (
-    <main className="bg-hud-bg min-h-screen p-4 lg:p-8">
-      <div className="mx-auto flex max-w-xl flex-col gap-6">
+    <div className="flex flex-1 items-center justify-center p-4 lg:p-8">
+      <div className="border-hud-border bg-hud-card w-full max-w-xl rounded-xl border p-8">
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
             Déclarer un équipement
@@ -107,7 +107,7 @@ export default function AddGear() {
           </p>
         </header>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-1">
             <label htmlFor="category" className="text-white">
               Catégorie
@@ -200,6 +200,6 @@ export default function AddGear() {
           </div>
         </form>
       </div>
-    </main>
+    </div>
   );
 }
