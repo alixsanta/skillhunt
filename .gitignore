@@ -9,6 +9,8 @@ db.sqlite3
 .env.development.local
 .env.test.local
 .env.production.local
+.env.staging
+.env.production
 *.env
 *.pem
 *.key

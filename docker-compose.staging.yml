@@ -1,0 +1,197 @@
+# SH-30 — Stack de staging (VM unique, images pré-construites via GHCR).
+# Les secrets viennent de .env.staging ; ce fichier compose fait aussi de l'interpolation
+# ${VAR} pour ne pas dupliquer les identifiants Postgres/Mongo entre les services.
+# ⚠️ Lancer avec --env-file explicite (sinon Compose ne lit QUE le fichier nommé ".env") :
+#
+#   docker compose --env-file .env.staging -f docker-compose.staging.yml pull
+#   docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
+#
+# Pas de domaine/TLS ce soir (démo jury sur IP publique nue) : gateway en HTTP:80 seul.
+name: skillhunt-staging
+
+networks:
+  skillhunt-private-net:
+    driver: bridge
+
+volumes:
+  skillhunt_pgdata:
+  skillhunt_redis:
+  skillhunt_mongo:
+  skillhunt_localstack:
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: skillhunt-postgres-staging
+    restart: unless-stopped
+    env_file: .env.staging
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - skillhunt_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: skillhunt-redis-staging
+    restart: unless-stopped
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - skillhunt_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mongo:
+    image: mongo:7
+    container_name: skillhunt-mongo-staging
+    restart: unless-stopped
+    env_file: .env.staging
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - skillhunt_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Stockage S3 émulé (SH-31) : évite un vrai compte AWS pour la démo, zéro coût,
+  # aucun changement de code côté backend-core (bascule uniquement par AWS_S3_ENDPOINT).
+  localstack:
+    image: localstack/localstack:3
+    container_name: skillhunt-localstack-staging
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: eu-west-3
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - skillhunt_localstack:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend-core:
+    image: ghcr.io/alixsanta/skillhunt/backend-core:latest
+    container_name: skillhunt-backend-staging
+    restart: unless-stopped
+    env_file: .env.staging
+    environment:
+      NODE_ENV: production
+      # Migrations TypeORM appliquées au boot (docker-entrypoint.sh, SH-2) — pas d'étape
+      # de déploiement séparée ce soir.
+      RUN_MIGRATIONS: "true"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/${MONGO_INITDB_DATABASE}?authSource=admin
+      MATCHING_SERVICE_URL: http://matching-service:8000
+      AWS_S3_ENDPOINT: http://localstack:4566
+      AWS_S3_BUCKET: skillhunt-staging
+      AWS_REGION: eu-west-3
+    networks:
+      - skillhunt-private-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  matching-service:
+    image: ghcr.io/alixsanta/skillhunt/matching-service:latest
+    container_name: skillhunt-matching-staging
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_CORE_URL: http://backend-core:3001
+    networks:
+      - skillhunt-private-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # VITE_API_URL est CUIT dans le bundle au build (Vite) : rien à passer au runtime ici,
+  # l'image doit avoir été construite avec le bon --build-arg (cf. workflow CI).
+  frontend-web:
+    image: ghcr.io/alixsanta/skillhunt/frontend-web:latest
+    container_name: skillhunt-frontend-staging
+    restart: unless-stopped
+    networks:
+      - skillhunt-private-net
+    depends_on:
+      - backend-core
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  gateway:
+    image: ghcr.io/alixsanta/skillhunt/gateway:latest
+    container_name: skillhunt-gateway-staging
+    restart: unless-stopped
+    networks:
+      - skillhunt-private-net
+    ports:
+      # Seul port publié (archi §2) — pas de domaine/certificat TLS pour la démo de ce soir.
+      - "80:80"
+    depends_on:
+      - backend-core
+      - frontend-web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
