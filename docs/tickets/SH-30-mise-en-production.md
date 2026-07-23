@@ -112,17 +112,29 @@
    ```bash
    docker compose --env-file .env.staging -f docker-compose.staging.yml pull
    docker compose --env-file .env.staging -f docker-compose.staging.yml up -d
-   docker compose -f docker-compose.staging.yml ps   # attendre "healthy" partout
+   # ⚠️ TOUJOURS répéter --env-file .env.staging, y compris pour `ps`/`logs` : Compose ne
+   # charge automatiquement QUE le fichier nommé `.env`. Sans le flag, toutes les variables
+   # (POSTGRES_*, MONGO_*…) sont vides et Postgres/Mongo s'initialisent avec des identifiants
+   # blancs — purger les volumes et relancer AVEC le flag si ça arrive au premier `up`.
+   docker compose --env-file .env.staging -f docker-compose.staging.yml ps
    ```
 9. Vérifier depuis un poste externe : `http://<IP_VM>/api/docs` (Swagger) puis la boucle démo.
 10. **Après la soutenance** : supprimer l'instance et le projet Public Cloud (Manager OVHcloud)
     pour éviter toute facturation une fois l'essai terminé.
 
+**Dette connue (non bloquante, vérifié en prod le 2026-07-23) :** les conteneurs `frontend-web`
+et `gateway` affichent `unhealthy` alors qu'ils servent correctement le trafic. Cause : leur
+HEALTHCHECK teste `http://localhost:80` que `wget` (Alpine/BusyBox) résout d'abord en IPv6
+`::1`, mais leurs `nginx.conf` ne déclarent que `listen 80;` (IPv4). Node (backend-core) écoute
+en dual-stack et n'est donc pas affecté. Aucun `depends_on: condition: service_healthy` ne
+dépend de ces deux services → purement cosmétique. Correctif propre (hors soutenance) : ajouter
+`listen [::]:80;` dans les deux `nginx.conf`, **ou** cibler `127.0.0.1` dans les HEALTHCHECK.
+
 ### 5. Definition of Done (DoD)
 - [x] Fichiers de config staging corrigés et cohérents avec le code réel (variables d'env vérifiées module par module).
 - [x] Workflow CI de publication GHCR créé.
-- [ ] VM OVHcloud Public Cloud créée (action utilisatrice).
-- [ ] Images publiées et rendues publiques sur GHCR.
-- [ ] Stack `up` sur la VM, 7 conteneurs `healthy`.
-- [ ] Boucle démo vérifiée depuis un poste externe à l'IP publique.
-- [ ] `docs/BACKLOG.md` mis à jour (statut SH-30).
+- [x] VM OVHcloud Public Cloud créée (b2-7, Ubuntu 22.04, IP `147.135.230.140`).
+- [x] Images publiées et rendues publiques sur GHCR (run du 2026-07-23, 4 jobs `success`).
+- [x] Stack `up` sur la VM : 6/8 conteneurs `healthy`, les 2 restants (`frontend-web`/`gateway`) servent le trafic malgré un HEALTHCHECK IPv6 défaillant (dette documentée §4).
+- [x] Boucle démo vérifiée depuis un poste externe à l'IP publique (SPA + `/api/docs` + parcours métier OK le 2026-07-23).
+- [x] `docs/BACKLOG.md` mis à jour (statut SH-30).
