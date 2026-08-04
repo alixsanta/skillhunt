@@ -127,12 +127,13 @@ Les Conventional Commits sont déjà en place (CLAUDE.md §11) : `git log v1.0.0
 
 ### 5. Definition of Done (DoD)
 
-- [ ] `CHANGELOG.md` créé à la racine, format Keep a Changelog + SemVer, rédigé en français.
-- [ ] Entrée **`v1.0.0`** complète et fidèle à la mise en production du 2026-07-23 (fonctionnalités, correctifs, **limitations connues** — dont l'anomalie IPv6 non corrigée à cette date).
-- [ ] **SHA de l'image publiée relevé dans le run `publish-staging` du 23/07** (vérifié, non supposé) et tag annoté `v1.0.0` posé dessus puis poussé.
-- [ ] Table de correspondance §4.2 renseignée (version ↔ tag ↔ image ↔ environnement ↔ tickets).
-- [ ] `docs/exploitation/PROCESS_RELEASE.md` rédigé, incluant le cas du rollback.
-- [ ] Section `[Unreleased]` en place et alimentée au fil des tickets suivants.
-- [ ] Section annexe « historique des jalons » clairement marquée **pré-production** (aucune version fictive présentée comme déployée).
-- [ ] `git tag -l` renvoie au moins `v1.0.0` — le critère « exemplaire réel » du référentiel est satisfait.
-- [ ] `docs/BACKLOG.md` mis à jour.
+- [x] `CHANGELOG.md` créé à la racine, format Keep a Changelog + SemVer, rédigé en français.
+- [x] Entrée **`v1.0.0`** complète et fidèle à la mise en production du 2026-07-23 (fonctionnalités, correctifs, **limitations connues** — dont l'anomalie IPv6 non corrigée à cette date).
+- [x] **SHA de l'image publiée relevé dans le run `publish-staging`** (vérifié, non supposé) : run `29958054529` du 2026-07-22 21:08 UTC, `headSha` `a94568ab5e564cc64ad71b43cefa92e776802b60` — le merge de la PR #42 sur `main`.
+- [x] Table de correspondance §4.2 renseignée (version ↔ date ↔ tag ↔ commit ↔ image ↔ environnement ↔ tickets).
+- [x] `docs/exploitation/PROCESS_RELEASE.md` rédigé, incluant le cas du rollback et ses trois limites vérifiées (ref du `workflow_dispatch`, migrations non réversibles par un rollback d'images, URL d'API cuite dans le bundle frontend).
+- [x] Section `[Unreleased]` en place et alimentée au fil des tickets suivants.
+- [x] Section annexe « historique des jalons » clairement marquée **pré-production** (aucune version fictive présentée comme déployée).
+- [x] **CI** — *sans objet* : cette branche ne touche que `CHANGELOG.md` et `docs/**`, qui ne correspondent à aucun filtre `paths` des 4 workflows. Aucun run ne se déclenche sur la PR #44 ; le « all checks passed » y serait vert par vacuité et ne constitue pas une preuve.
+- [ ] **Tag annoté `v1.0.0` posé sur `main` (commit `a94568a`) puis poussé** — `git tag -l` doit renvoyer `v1.0.0` pour satisfaire le critère « exemplaire réel » du référentiel. *Action laissée à la mainteneuse : le tag se pose sur `main`, pas sur cette branche.*
+- [x] `docs/BACKLOG.md` mis à jour.
