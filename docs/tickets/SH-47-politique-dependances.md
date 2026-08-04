@@ -152,7 +152,9 @@ production, mais exécutée à chaque PR) :
 - [x] **Vulnérabilités révélées par la mise en place corrigées** (§4.5) : `starlette` (7 avis) via `fastapi` → `0.141.1` + épinglage `starlette==1.3.1` ; puis `pytest` (`PYSEC-2026-1845`) → `9.1.1`, entraînant `pytest-asyncio` → `1.4.0` et `pytest-cov` → `7.1.0`.
 - [x] `pip-audit` sans aucun avis sur `requirements.txt` **et** `requirements-dev.txt` — vérifié en local le 2026-08-04 (`pip-audit 2.10.1` : « No known vulnerabilities found », code de sortie 0).
 - [x] `docs/exploitation/POLITIQUE_DEPENDANCES.md` rédigé, couvrant explicitement **fréquence (§1) / périmètre (§2) / type automatique ou manuel (§3)**, plus critères de merge, grille d'impact et axes d'amélioration.
-- [ ] **CI verte** sur la branche du ticket — notamment `python-ci` : c'est elle qui valide la montée de FastAPI (73 tests, PostgreSQL + Redis).
+- [x] **Suite de tests validée en local sous Python 3.11** (même version que la CI), dans un environnement isolé reconstruit depuis les nouveaux `requirements` : **73 tests collectés sans erreur**, puis **67 passés / 6 ignorés / 0 échec**. Les 6 ignorés sont les tests d'intégration qui s'auto-skippent sans PostgreSQL/Redis — la CI les provisionne et les exécutera.
+- [x] **Dépréciation relevée et tracée** (politique §7) : `starlette 1.3.1` déprécie `httpx` au profit de `httpx2` dans son `TestClient`, utilisé par `tests/conftest.py`. Non bloquant, mais à traiter avant la prochaine montée majeure de `starlette`.
+- [ ] **CI verte** sur la branche du ticket — notamment `python-ci`, qui exécutera en plus les 6 tests d'intégration ignorés en local.
 - [ ] `npm audit --audit-level=high` toujours à 0 vulnérabilité (non-régression SH-32).
 - [ ] **Preuve d'exécution Dependabot** : au moins un cycle réellement déclenché, des PR ouvertes, CI passée — capture d'écran archivée. *Nécessite que le fichier soit mergé sur `develop` : à faire après la PR.* Le dossier doit montrer le processus **en fonctionnement**, pas seulement sa configuration.
 - [ ] Entrée `Sécurité` au `CHANGELOG.md` pour la correction `starlette` — *à ajouter après le merge de SH-48, qui crée le fichier.*
