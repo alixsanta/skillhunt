@@ -1,6 +1,12 @@
-pytest==8.3.4
-pytest-cov==6.0.0
-pytest-asyncio==0.24.0
+# SH-47 — pytest 8.3.4 portait PYSEC-2026-1845 (correctif en 9.0.3). La montée de `pytest`
+# entraîne celle de `pytest-asyncio` (0.24.0 exige pytest<9) et, par cohérence, de `pytest-cov`.
+# Risque évalué faible : pytest.ini déclare déjà `asyncio_default_fixture_loop_scope`, l'option
+# introduite en 0.24 pour préparer la 1.x, et aucun test ne surcharge la fixture `event_loop`
+# (principale suppression cassante de pytest-asyncio 1.0).
+pytest==9.1.1
+pytest-cov==7.1.0
+pytest-asyncio==1.4.0
 httpx==0.28.1
 flake8==7.1.1
 bandit==1.8.0
+pip-audit==2.10.1
