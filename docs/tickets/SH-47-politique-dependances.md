@@ -141,6 +141,40 @@ production, mais exécutée à chaque PR) :
   * 73 tests couvrent le service, avec PostgreSQL et Redis provisionnés en CI. **La CI fait foi** :
     c'est elle qui valide les montées, pas une inspection visuelle.
 
+#### 4.6 Extension de périmètre — la dérive npm bloquait déjà les deux CI Node
+
+*Constat fait le 2026-08-04 au démarrage de SH-29, intégré ici sur décision : le sujet est
+l'hygiène des dépendances, donc ce ticket.*
+
+Une simple installation de dépendances sur `backend-core` a révélé **5 vulnérabilités, dont 2
+`high`**. Audit du lockfile de `develop` extrait par `git show`, sans modification : **elles y
+étaient déjà**. `frontend-web` était pire — **12 vulnérabilités, dont 9 `high`**.
+
+`npm audit --audit-level=high` étant bloquant, **`node-ci` et `frontend-ci` échouaient déjà sur
+`develop`** : toute PR touchant ces services était rouge d'avance. Invisible jusque-là parce
+qu'aucune PR n'avait touché ces répertoires depuis le 20 juillet et que les filtres `paths`
+empêchaient les workflows de tourner. Aucun code n'avait régressé — ce sont les avis publiés qui
+avaient bougé.
+
+| Service | Avant | Après | Moyen |
+|---|---|---|---|
+| `backend-core` | 5 (2 `high`) | **0** | `npm audit fix` + override **scopé** `@nestjs/swagger → js-yaml ^5.2.3` |
+| `frontend-web` | 12 (9 `high`) | **0 bloquante** | `npm audit fix` (14 paquets) + une exception documentée |
+
+**Deux enseignements de méthode, tracés dans la politique :**
+
+* **Override scopé vs large** (politique §2.2). Un override large `js-yaml` force la copie *racine*
+  et laisse intacte la copie *imbriquée* sous `@nestjs/swagger` — l'audit restait rouge. Quand le
+  paquet fautif apparaît sous `node_modules/<parent>/node_modules/<paquet>`, seul un override scopé
+  sur le parent l'atteint.
+* **Mécanisme d'exception** (politique §3.3). `GHSA-qwww-vcr4-c8h2` sur `react-router` vise le mode
+  **RSC** ; `frontend-web` est une SPA Vite en routage client, sans aucun usage de RSC. Aucune
+  version corrigée n'existe vers l'avant et npm ne propose qu'une **redescente en 7.11.0**
+  qualifiée de rupture. `npm audit` ne sachant pas exclure un avis, `frontend-web` passe à
+  **`audit-ci`** (`npm run audit:deps`) : seuil `high` toujours bloquant, exceptions nommées,
+  justifiées et **datées** dans `frontend-web/audit-ci.jsonc`, et journalisées à chaque run — donc
+  jamais silencieuses. `backend-core` garde `npm audit`, n'ayant aucune exception.
+
 ---
 
 ### 5. Definition of Done (DoD)
@@ -155,7 +189,10 @@ production, mais exécutée à chaque PR) :
 - [x] **Suite de tests validée en local sous Python 3.11** (même version que la CI), dans un environnement isolé reconstruit depuis les nouveaux `requirements` : **73 tests collectés sans erreur**, puis **67 passés / 6 ignorés / 0 échec**. Les 6 ignorés sont les tests d'intégration qui s'auto-skippent sans PostgreSQL/Redis — la CI les provisionne et les exécutera.
 - [x] **Dépréciation relevée et tracée** (politique §7) : `starlette 1.3.1` déprécie `httpx` au profit de `httpx2` dans son `TestClient`, utilisé par `tests/conftest.py`. Non bloquant, mais à traiter avant la prochaine montée majeure de `starlette`.
 - [x] **CI verte** — run [`30904983219`](https://github.com/alixsanta/skillhunt/actions/runs/30904983219) sur la PR #45, conclusion `success` : `pip-audit` → « No known vulnerabilities found », PyTest → **73 passés** en 1,09 s. Les 6 tests d'intégration ignorés en local (PostGIS, bus Redis) ont bien tourné avec les services provisionnés : aucune régression de la montée `fastapi`/`starlette`/`pytest-asyncio`. L'étape `pip-audit` s'exécute en ~12 s, sans alourdir la pipeline.
-- [x] `npm audit --audit-level=high` : **sans objet ici** — ce ticket ne modifie aucun `package.json` ni `package-lock.json`, les workflows `node-ci`/`frontend-ci` ne se sont donc pas déclenchés (filtres `paths`). L'hygiène SH-32 est préservée par construction. *Le critère reste actif pour les futures PR Dependabot npm, où il devra être vérifié réellement.*
+- [x] **Dérive npm résorbée** (§4.6) : `backend-core` **5 (2 high) → 0** (`npm audit fix` + override scopé `@nestjs/swagger → js-yaml ^5.2.3`) ; `frontend-web` **12 (9 high) → 0 bloquante** (`npm audit fix` sur 14 paquets + une exception documentée). Vérifié en local : `npm audit --audit-level=high` sort en 0 sur `backend-core`, `npm run audit:deps` passe sur `frontend-web`.
+- [x] **Mécanisme d'exception outillé et documenté** : `audit-ci` en devDependency du front, `frontend-web/audit-ci.jsonc` versionné (avis, justification de non-exploitabilité, date d'ouverture, **date de réexamen au 2026-11-04**), étape `frontend-ci` bascule sur `npm run audit:deps`. Les exceptions actives sont journalisées à chaque run.
+- [x] **Non-régression backend vérifiée** : suite Jest complète, **180 tests passés**. Les 3 échecs locaux sont des dépassements du délai de 5 s dans le spec 2FA (Argon2id ~35 s/test sur ce poste) — relancés à 60 s, **11/11 passent**. Lenteur d'environnement, pas régression.
+- [x] **Non-régression frontend vérifiée** : lint ✅, `format:check` ✅, `build` ✅ (18,4 s, bundle inchangé), Vitest **129/130** puis les tests concernés **5/5 en isolation**. Les échecs locaux sont des `Test timed out in 5000ms` accompagnés de 11 `Failed to start forks worker` : deux exécutions successives ont échoué sur des tests **différents** (non-déterminisme = saturation de ressources, pas régression), et la même sélection passe intégralement avec un délai relevé. Poste très lent (2011 s pour 5 tests) ; la CI Ubuntu fait foi.
 - [ ] **Preuve d'exécution Dependabot** : au moins un cycle réellement déclenché, des PR ouvertes, CI passée — capture d'écran archivée. *Nécessite que le fichier soit mergé sur `develop` : à faire après la PR.* Le dossier doit montrer le processus **en fonctionnement**, pas seulement sa configuration.
 - [ ] Entrée `Sécurité` au `CHANGELOG.md` pour la correction `starlette` — *à ajouter après le merge de SH-48, qui crée le fichier.*
 - [x] `docs/BACKLOG.md` mis à jour.
