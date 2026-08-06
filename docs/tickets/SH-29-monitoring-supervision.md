@@ -48,14 +48,45 @@
 **Scénario 1 : Détection d'indisponibilité et signalement**
 * **GIVEN** la stack `app` + le profil `obs` démarrés et un état nominal (toutes les sondes vertes)
 * **WHEN** j'arrête le conteneur `matching-service` (`docker compose stop matching-service`)
-* **THEN** la sonde de disponibilité passe à `up == 0`
-* **AND** en moins de **2 minutes**, une alerte de sévérité `CRITIQUE` est émise
-* **AND** un mail est reçu dans Mailpit, contenant le service concerné, l'indicateur, la valeur mesurée, le seuil franchi et un lien vers le dashboard.
+* **THEN** la sonde de disponibilité passe à `up == 0` en moins de **30 secondes**
+* **AND** en moins de **4 minutes** sur un hôte non saturé, une alerte de sévérité `CRITIQUE` est émise
+* **AND** un mail est reçu dans Mailpit, contenant le service concerné, l'indicateur, la valeur mesurée face à son seuil, la sonde d'origine et la conduite à tenir.
+
+> **Correction du critère — 2026-08-06.** Ce scénario annonçait initialement « moins de
+> **2 minutes** ». Ce seuil a été écrit **avant** le choix des paramètres d'alerte, et il
+> est structurellement inatteignable avec eux :
+>
+> | Poste | Délai |
+> |---|---|
+> | Intervalle de scrape Prometheus | ≤ 15 s |
+> | Persistance `for` de la règle S1 | 2 min |
+> | Intervalle d'évaluation de la règle | ≤ 1 min |
+> | `group_wait` avant notification | 30 s |
+> | **Plancher théorique** | **≈ 2 min 45 s** |
+>
+> Le budget est donc revu à **4 minutes**, et non l'inverse. Abaisser la persistance sous
+> 2 minutes tiendrait la promesse d'origine, mais ferait alerter à **chaque
+> redéploiement** — un conteneur met 30 à 60 s à revenir. Une alerte qui se déclenche sans
+> incident est filtrée par son destinataire en quelques jours, et c'est la panne suivante
+> qu'on rate : mauvais échange. Le paramétrage est conservé, le critère corrigé.
+>
+> **Mesures réelles** (poste de développement, 13 conteneurs) : **3 min 04 s** au premier
+> cycle, **4 min 50 s** au second, à configuration identique. L'écart vient de la charge
+> de l'hôte : Grafana journalise lui-même `Tick dropped because alert rule evaluation is
+> too slow`. Le critère des 4 minutes vaut donc **pour un hôte non saturé** ; sur un poste
+> chargé, compter jusqu'à 5 minutes. À revalider sur la VM OVHcloud, dimensionnée pour.
 
 **Scénario 2 : Retour à la normale (résolution)**
 * **GIVEN** une alerte `CRITIQUE` active
 * **WHEN** je redémarre le conteneur
-* **THEN** l'alerte repasse à `Resolved` et un **mail de résolution** est émis (preuve du cycle complet, exigé par « garantir une disponibilité permanente »).
+* **THEN** l'alerte repasse à `Resolved` et un **mail de résolution** est émis (preuve du cycle complet, exigé par « garantir une disponibilité permanente »)
+* **AND** le **sujet** du mail distingue la résolution du déclenchement (préfixe `[RÉSOLU]`).
+
+> **Ajout du critère de sujet — 2026-08-06.** Le premier cycle de bout en bout a montré
+> que les deux mails d'un même incident portaient un sujet **identique** : un destinataire
+> parcourant sa boîte ne pouvait pas distinguer « la plateforme est tombée » de « elle est
+> revenue ». Le signalement informait qu'il s'était passé quelque chose, sans dire quoi.
+> Corrigé dans le modèle de sujet ; le critère est ajouté ici pour qu'il soit vérifié.
 
 **Scénario 3 : Corrélation d'une requête de bout en bout**
 * **GIVEN** les logs structurés JSON activés sur `backend-core` et `matching-service`
