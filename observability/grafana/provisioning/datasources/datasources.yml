@@ -1,0 +1,35 @@
+# SH-29 — Sources de données Grafana, provisionnées AS-CODE (C4.1.2).
+#
+# Aucune configuration par l'interface : le scénario 6 du ticket exige qu'un poste vierge
+# obtienne, après un seul `docker compose --profile app --profile obs up -d`, un Grafana
+# déjà opérationnel. Une source créée à la main serait perdue au prochain volume recréé,
+# et surtout invérifiable — le jury ne peut pas relire des clics.
+
+apiVersion: 1
+
+datasources:
+  # ── Métriques : disponibilité (S1), latence (S2), erreurs (S3), saturation (S4/S5) ───
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      # Doit rester >= au scrape_interval de Prometheus : plus bas, Grafana afficherait
+      # des trous entre deux points là où il n'y a qu'une absence de mesure.
+      timeInterval: 15s
+
+  # ── Logs : erreurs applicatives (S6), 429 d'authentification (S7) ────────────────────
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      # Relie une ligne de log à sa trace : en cliquant sur un `requestId` dans Grafana,
+      # on saute directement à toutes les lignes des DEUX services qui le portent. C'est
+      # l'usage concret de la corrélation posée au chantier A.
+      derivedFields:
+        - name: requestId
+          matcherRegex: '"requestId":"([^"]+)"'
+          url: '/explore?left={"datasource":"Loki","queries":[{"expr":"{plateforme=\"skillhunt\"} |= \"$${__value.raw}\""}]}'
+          datasourceUid: loki

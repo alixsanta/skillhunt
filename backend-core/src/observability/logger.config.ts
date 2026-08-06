@@ -58,6 +58,21 @@ export function buildLoggerParams(): Params {
       // agrège plusieurs services.
       base: { service: 'backend-core' },
 
+      // Niveau en TEXTE (« info », « error ») et non en numérique — le défaut de pino.
+      //
+      // Sans ce formateur, `backend-core` émet `"level":30` là où le `matching-service`
+      // (python-json-logger) émet `"level":"info"`. Alloy promeut ce champ en label Loki :
+      // le vocabulaire du label devient alors incohérent entre les deux services, et la
+      // sonde S6 — qui interroge `{level="error"}` — ne remonterait JAMAIS une erreur du
+      // monolithe, dont les lignes porteraient `level="50"`. Une alerte muette sur la
+      // moitié de la plateforme, et rien pour le signaler.
+      //
+      // Défaut constaté en exécutant réellement la stack (SH-29, chantier B) : les tests
+      // unitaires ne pouvaient pas le voir, ils n'observent pas l'étiquetage de Loki.
+      formatters: {
+        level: (label: string) => ({ level: label }),
+      },
+
       // Identifiant de corrélation, posé par RequestIdMiddleware et propagé jusqu'au
       // matching-service. C'est la clé de jointure entre les deux journaux.
       genReqId: (req: IncomingMessage) => {

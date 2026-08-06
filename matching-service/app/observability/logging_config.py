@@ -90,3 +90,11 @@ def configure_logging(level: str = "INFO") -> None:
         logger = logging.getLogger(nom)
         logger.handlers = []
         logger.propagate = True
+
+    # Journal d'accès d'uvicorn ramené à WARNING : il est émis par sa couche protocole,
+    # HORS de la pile de middlewares Starlette, donc après la réinitialisation de la
+    # ContextVar — ses lignes portent toujours `requestId: "-"` et sont inexploitables
+    # pour la corrélation. `RequestIdMiddleware` émet à la place une ligne d'accès
+    # complète (méthode, chemin, statut, durée) DANS le contexte de la requête.
+    # Le laisser à INFO produirait deux lignes par requête, dont une inutile.
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

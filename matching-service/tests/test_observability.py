@@ -70,6 +70,33 @@ class TestCorrelationHttp:
         assert "\r" not in recu and "\n" not in recu
         uuid.UUID(recu)
 
+    def test_emet_une_ligne_d_acces_portant_le_requestId(self, client, caplog):
+        """Sans cette ligne, la corrélation existe dans l'en-tête HTTP mais dans AUCUN
+        log : une requête LogQL sur l'identifiant ne ramènerait que le monolithe, et le
+        scénario 3 du ticket serait infaisable. Le journal d'accès d'uvicorn ne peut pas
+        servir — il est émis hors du contexte de la requête, avec `requestId: "-"`."""
+        with caplog.at_level(logging.INFO, logger="skillhunt.access"):
+            client.post(
+                "/match",
+                headers={REQUEST_ID_HEADER: "correlation-e2e-1"},
+                json={"skills": ["drone"], "location": [43.6, 1.44], "radius_km": 50},
+            )
+
+        acces = [r for r in caplog.records if r.name == "skillhunt.access"]
+        assert acces, "aucune ligne d'accès émise"
+        assert acces[-1].path == "/match"
+        assert acces[-1].method == "POST"
+        assert hasattr(acces[-1], "durationMs")
+
+    def test_n_emet_pas_de_ligne_d_acces_pour_les_sondes(self, client, caplog):
+        """Les sondes battent toutes les quelques secondes : les journaliser noierait les
+        lignes utiles et gonflerait le stockage Loki. Elles restent mesurées par Prometheus."""
+        with caplog.at_level(logging.INFO, logger="skillhunt.access"):
+            client.get("/health")
+            client.get("/metrics")
+
+        assert [r for r in caplog.records if r.name == "skillhunt.access"] == []
+
     def test_reinitialise_le_contexte_entre_deux_requetes(self, client):
         """Sans `reset`, l'identifiant d'une requête fuiterait sur la suivante servie par
         la même tâche — des logs faussement corrélés, pire que pas de corrélation."""

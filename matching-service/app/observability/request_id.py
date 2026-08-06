@@ -1,12 +1,21 @@
 """Corrélation des requêtes entre le monolithe et le microservice (SH-29, C4.1.2)."""
 
+import logging
 import re
+import time
 import uuid
 from contextvars import ContextVar
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+
+logger = logging.getLogger("skillhunt.access")
+
+#: Chemins exclus de la journalisation d'accès : les sondes battent toutes les quelques
+#: secondes et noieraient les lignes utiles, pour un coût de stockage Loki inutile. Elles
+#: restent MESURÉES par Prometheus — c'est la métrique qui porte la disponibilité.
+_CHEMINS_SILENCIEUX = frozenset({"/metrics", "/health", "/health/ready"})
 
 #: En-tête portant l'identifiant de corrélation — MÊME nom que côté backend-core.
 REQUEST_ID_HEADER = "x-request-id"
@@ -44,13 +53,33 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request_id = incoming if is_safe_request_id(incoming) else str(uuid.uuid4())
 
         token = request_id_ctx.set(request_id)
+        debut = time.perf_counter()
         try:
             response = await call_next(request)
+            response.headers[REQUEST_ID_HEADER] = request_id
+
+            # Ligne d'accès émise ICI, à l'intérieur du contexte de la requête.
+            #
+            # On ne peut PAS se reposer sur le journal d'accès d'uvicorn : il est produit
+            # par sa couche protocole, en dehors de la pile de middlewares Starlette,
+            # donc APRÈS le `reset` ci-dessous. Ses lignes portaient `requestId: "-"` —
+            # la corrélation existait dans l'en-tête HTTP mais ne se retrouvait dans
+            # AUCUNE ligne de log, ce qui rendait le scénario 3 du ticket infaisable :
+            # une requête LogQL sur un identifiant ne ramenait que le monolithe.
+            # Constaté en exécutant la stack (SH-29, chantier B).
+            if request.url.path not in _CHEMINS_SILENCIEUX:
+                logger.info(
+                    "requête traitée",
+                    extra={
+                        "method": request.method,
+                        "path": request.url.path,
+                        "statusCode": response.status_code,
+                        "durationMs": round((time.perf_counter() - debut) * 1000, 2),
+                    },
+                )
+            return response
         finally:
             # Réinitialisation systématique : sans elle, une ContextVar laissée en place
             # ferait fuiter l'identifiant d'une requête sur la suivante servie par la
             # même tâche — des logs faussement corrélés, pire que pas de corrélation.
             request_id_ctx.reset(token)
-
-        response.headers[REQUEST_ID_HEADER] = request_id
-        return response

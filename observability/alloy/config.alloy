@@ -1,0 +1,67 @@
+// SH-29 — Collecte des logs de conteneurs vers Loki (C4.1.2).
+//
+// Décision tracée (ticket §2) : Grafana Alloy PLUTÔT que Promtail. Promtail est passé en
+// LTS puis en fin de support, Alloy étant son successeur officiel. Retenir un composant
+// en fin de vie dans un dossier dont le sujet est le maintien en condition opérationnelle
+// — et dont C4.1.1 porte sur la mise à jour des dépendances — serait incohérent.
+
+// Découverte de TOUS les conteneurs via le socket Docker, monté en LECTURE SEULE.
+discovery.docker "conteneurs" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "15s"
+}
+
+// Étiquetage : les labels sont la seule chose que Loki indexe, donc la seule sur
+// laquelle on peut filtrer efficacement. On garde le nom du conteneur et celui du
+// service Compose — et RIEN d'autre : chaque combinaison de labels crée un flux
+// distinct, et une valeur à forte cardinalité (un identifiant de requête, par exemple)
+// ferait exploser l'index. Le requestId reste dans le CORPS de la ligne, où LogQL sait
+// le filtrer à la volée.
+discovery.relabel "conteneurs" {
+	targets = discovery.docker.conteneurs.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "conteneur"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+		target_label  = "service"
+	}
+}
+
+loki.source.docker "conteneurs" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.conteneurs.output
+	labels     = {plateforme = "skillhunt"}
+	forward_to = [loki.process.json.receiver]
+}
+
+// Extraction du niveau de log depuis le JSON applicatif.
+//
+// `backend-core` (pino) et `matching-service` (python-json-logger) émettent tous deux du
+// JSON avec un champ `level` — c'est tout l'intérêt d'avoir aligné leurs formats au
+// chantier A. Promouvoir `level` en label permet d'écrire `{level="error"}` plutôt que
+// de scanner le texte, ce dont dépend la sonde S6.
+//
+// `stage.json` ignore silencieusement les lignes non-JSON : nginx et les bases de
+// données continuent d'être collectés, simplement sans ce label.
+loki.process "json" {
+	stage.json {
+		expressions = {level = "level"}
+	}
+
+	stage.labels {
+		values = {level = ""}
+	}
+
+	forward_to = [loki.write.defaut.receiver]
+}
+
+loki.write "defaut" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

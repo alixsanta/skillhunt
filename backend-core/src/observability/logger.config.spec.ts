@@ -96,5 +96,20 @@ describe('Redaction des logs (SH-29 — scénario 4, critère bloquant)', () => 
       const { pinoHttp } = buildLoggerParams() as { pinoHttp: { base: { service: string } } };
       expect(pinoHttp.base.service).toBe('backend-core');
     });
+
+    // Régression constatée en exécutant la stack : pino émet les niveaux en NUMÉRIQUE par
+    // défaut (30 = info, 50 = error) là où le matching-service les écrit en toutes lettres.
+    // Alloy promeut ce champ en label Loki — le vocabulaire devenait donc incohérent entre
+    // les deux services, et la sonde S6 (`{level="error"}`) restait muette sur le monolithe.
+    it('émet le niveau en TEXTE, pour un label Loki commun aux deux services', () => {
+      const { pinoHttp } = buildLoggerParams() as {
+        pinoHttp: { formatters: { level: (label: string) => Record<string, unknown> } };
+      };
+
+      expect(pinoHttp.formatters.level('info')).toEqual({ level: 'info' });
+      expect(pinoHttp.formatters.level('error')).toEqual({ level: 'error' });
+      // Le vocabulaire doit coïncider avec celui de python-json-logger côté Python.
+      expect(pinoHttp.formatters.level('warn')).toEqual({ level: 'warn' });
+    });
   });
 });
