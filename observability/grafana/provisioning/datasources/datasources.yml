@@ -11,6 +11,11 @@ datasources:
   # ── Métriques : disponibilité (S1), latence (S2), erreurs (S3), saturation (S4/S5) ───
   - name: Prometheus
     type: prometheus
+    # UID EXPLICITE et stable : sans lui, Grafana en génère un aléatoire à la création.
+    # Les règles d'alerte et les tableaux de bord référencent la source par UID — un UID
+    # généré les casserait toutes (« data source not found »), et changerait à chaque
+    # volume recréé. Constaté à l'exécution (SH-29, chantier C).
+    uid: prometheus
     access: proxy
     url: http://prometheus:9090
     isDefault: true
@@ -22,6 +27,7 @@ datasources:
   # ── Logs : erreurs applicatives (S6), 429 d'authentification (S7) ────────────────────
   - name: Loki
     type: loki
+    uid: loki
     access: proxy
     url: http://loki:3100
     jsonData:

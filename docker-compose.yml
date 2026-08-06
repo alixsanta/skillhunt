@@ -320,6 +320,10 @@ services:
       GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-alertes@skillhunt.local}
       GF_SMTP_FROM_NAME: SkillHunt Supervision
       GF_SMTP_SKIP_VERIFY: "true"
+      # Destinataire des alertes. Le défaut est porté ICI et non dans le fichier de
+      # provisioning : Grafana n'y comprend pas la syntaxe `${VAR:-defaut}` et rejetterait
+      # tout le fichier si la variable n'était pas résolue.
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-exploitation@skillhunt.local}
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - skillhunt_grafana:/var/lib/grafana

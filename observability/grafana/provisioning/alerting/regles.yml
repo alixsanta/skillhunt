@@ -1,0 +1,329 @@
+# SH-29 — Sondes, indicateurs et seuils (C4.1.2).
+#
+# Traduction directe du tableau §4.3 du ticket. Le référentiel exige que « les sondes
+# mises en place ET LEUR FINALITÉ soient explicitées » : chaque règle porte donc, en
+# annotation, la sonde dont elle dérive, le constat qu'elle formule et la conduite à
+# tenir. Ce fichier est le livrable central du dossier — il se lit tel quel.
+#
+# Aucune règle n'est définie par l'interface : une alerte créée à la souris disparaît
+# avec le volume Grafana et ne se relit pas en revue.
+
+apiVersion: 1
+
+groups:
+  # ══════════════════════════════════════════════════════════════════════════════════
+  # Disponibilité — l'exigence explicite de C4.1.2
+  # ══════════════════════════════════════════════════════════════════════════════════
+  - orgId: 1
+    name: disponibilite
+    folder: SkillHunt
+    interval: 1m
+    rules:
+      - uid: sh29-s1-service-indisponible
+        title: Service applicatif indisponible
+        condition: seuil
+        # 2 min de persistance : un scrape isolé peut échouer sur un redéploiement ou une
+        # micro-latence réseau. Alerter au premier échec produirait des faux positifs à
+        # chaque `docker compose up`, et une alerte qui crie pour rien finit ignorée.
+        for: 2m
+        labels:
+          severite: critique
+        annotations:
+          sonde: 'S1 — Prometheus `up` + /health/ready'
+          summary: '{{ $labels.job }} ne répond plus depuis 2 minutes.'
+          runbook: >-
+            Vérifier `docker compose ps`, puis les logs du service
+            (`docker compose logs --tail=100 {{ $labels.job }}`). Si les dépendances sont
+            en cause, interroger /health/ready : il désigne laquelle est tombée.
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: up{job=~"backend-core|matching-service"}
+              instant: true
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+              refId: seuil
+        noDataState: Alerting
+        # NoData = Alerting, délibérément : si Prometheus ne reçoit plus rien d'une cible,
+        # c'est un symptôme d'indisponibilité, pas une absence d'information. Le régler sur
+        # OK rendrait la sonde muette exactement quand elle doit parler.
+        execErrState: Alerting
+
+  # ══════════════════════════════════════════════════════════════════════════════════
+  # Performance et erreurs — « les critères de qualité et de performance sont décrits »
+  # ══════════════════════════════════════════════════════════════════════════════════
+  - orgId: 1
+    name: performance
+    folder: SkillHunt
+    interval: 1m
+    rules:
+      - uid: sh29-s2-latence-p95
+        title: Latence p95 dégradée
+        condition: seuil
+        for: 5m
+        labels:
+          severite: avertissement
+        annotations:
+          sonde: 'S2 — histogramme http_request_duration_seconds'
+          summary: 'p95 au-dessus de 500 ms sur {{ $labels.job }} (cible d''architecture : < 50 ms).'
+          runbook: >-
+            Comparer avec le trafic : une latence qui monte AVEC la charge est une
+            saturation, une latence qui monte SANS charge est une dépendance lente.
+            Corréler par requestId les requêtes les plus lentes dans Loki.
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              # `and on(job) (… > 0)` : n'évalue la latence QUE sur les services ayant du
+              # trafic. Sans ce garde, `histogram_quantile` sur un `rate` vide rend NaN,
+              # et comparer NaN à un seuil donne un état imprévisible — la règle se
+              # déclenchait sur un service AU REPOS. Constaté à l'exécution : le
+              # matching-service rendait p95=NaN entre deux recherches.
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job)) and on(job) (sum(rate(http_requests_total[5m])) by (job) > 0)
+              instant: true
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [0.5] }
+              refId: seuil
+        noDataState: OK
+        # NoData = OK ici, à l'inverse de S1 : aucune requête ne signifie aucun trafic,
+        # pas une panne. Alerter sur l'absence de latence réveillerait la nuit pour un
+        # service au repos.
+        execErrState: Alerting
+
+      - uid: sh29-s3-taux-erreur
+        title: Taux d'erreur serveur trop élevé
+        condition: seuil
+        for: 5m
+        labels:
+          severite: critique
+        annotations:
+          sonde: 'S3 — compteur http_requests_total ventilé par statut'
+          summary: 'Plus de 2 % de réponses 5xx sur {{ $labels.job }}.'
+          runbook: >-
+            Filtrer Loki sur `{level="error"}` pour le service concerné, relever un
+            requestId et reconstituer la requête complète à travers les deux services.
+            Si la montée suit un déploiement, consulter le CHANGELOG et envisager le
+            rollback (docs/exploitation/PROCESS_RELEASE.md §4).
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              # clamp_min évite la division par zéro quand il n'y a aucun trafic : sans
+              # lui, l'expression rend NaN et la règle bascule en erreur d'exécution.
+              expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (job) / clamp_min(sum(rate(http_requests_total[5m])) by (job), 0.001)
+              instant: true
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [0.02] }
+              refId: seuil
+        noDataState: OK
+        execErrState: Alerting
+
+  # ══════════════════════════════════════════════════════════════════════════════════
+  # Ressources — anticiper la panne plutôt que la constater
+  # ══════════════════════════════════════════════════════════════════════════════════
+  - orgId: 1
+    name: ressources
+    folder: SkillHunt
+    interval: 1m
+    rules:
+      - uid: sh29-s4-saturation-memoire
+        title: Saturation mémoire d'un conteneur
+        condition: seuil
+        for: 10m
+        labels:
+          severite: avertissement
+        annotations:
+          sonde: 'S4 — cAdvisor, mémoire utilisée rapportée à la limite'
+          summary: '{{ $labels.name }} dépasse 85 % de sa limite mémoire depuis 10 minutes.'
+          runbook: >-
+            Contrainte réelle : la VM de production est une b2-7 (7 Go) pour 8 conteneurs
+            applicatifs plus 6 de supervision. Vérifier les `mem_limit` du compose, et
+            envisager b2-15 pendant les phases d'observation.
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              # `/ (limite > 0)` et NON `clamp_min(limite, 1)` : les conteneurs du profil
+              # `app` n'ont pas de `mem_limit`, donc leur limite vaut 0. Le clamp la
+              # ramenait à 1 et le « ratio » devenait le nombre d'octets utilisés —
+              # toujours supérieur à 0,85. La règle alertait donc en permanence sur les 8
+              # conteneurs applicatifs. Le filtre `> 0` les écarte : on ne peut pas parler
+              # de saturation d'une limite qui n'existe pas.
+              expr: container_memory_working_set_bytes{name=~"skillhunt-.*"} / (container_spec_memory_limit_bytes{name=~"skillhunt-.*"} > 0)
+              instant: true
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [0.85] }
+              refId: seuil
+        noDataState: OK
+        execErrState: OK
+
+      - uid: sh29-s5-crash-loop
+        title: Conteneur instable (redémarrages répétés)
+        condition: seuil
+        for: 0m
+        labels:
+          severite: critique
+        annotations:
+          sonde: 'S5 — cAdvisor, container_start_time_seconds'
+          summary: '{{ $labels.name }} a redémarré plus de 2 fois en 15 minutes.'
+          runbook: >-
+            `restart: unless-stopped` masque un crash-loop : le service paraît sain entre
+            deux morts. Lire les logs juste AVANT chaque redémarrage
+            (`docker compose logs --tail=200`), la cause y est presque toujours.
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: count_over_time(changes(container_start_time_seconds{name=~"skillhunt-.*"}[15m])[15m:1m]) > 0 and changes(container_start_time_seconds{name=~"skillhunt-.*"}[15m]) > 2
+              instant: true
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+              refId: seuil
+        noDataState: OK
+        execErrState: OK
+
+  # ══════════════════════════════════════════════════════════════════════════════════
+  # Logs et sécurité — ce que les métriques ne voient pas
+  # ══════════════════════════════════════════════════════════════════════════════════
+  - orgId: 1
+    name: logs-et-securite
+    folder: SkillHunt
+    interval: 1m
+    rules:
+      - uid: sh29-s6-erreurs-applicatives
+        title: Rafale d'erreurs applicatives
+        condition: seuil
+        for: 5m
+        labels:
+          severite: avertissement
+        annotations:
+          sonde: 'S6 — Loki, LogQL sur le label level'
+          summary: 'Plus de 10 erreurs applicatives par minute.'
+          runbook: >-
+            Complète S3 : une erreur métier peut être journalisée en `error` tout en
+            renvoyant un HTTP 200 — invisible pour le taux de 5xx. Identifier le service
+            puis le requestId, et remonter la chaîne.
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: loki
+            model:
+              # Ce label `level` n'a de sens que parce que les DEUX services émettent
+              # désormais leur niveau en toutes lettres (correctif du chantier B) : pino
+              # écrivait « 30 » là où python-json-logger écrit « info », et cette règle
+              # serait restée aveugle sur le monolithe.
+              expr: sum(count_over_time({plateforme="skillhunt", level="error"}[1m]))
+              queryType: instant
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [10] }
+              refId: seuil
+        noDataState: OK
+        execErrState: OK
+
+      - uid: sh29-s7-brute-force-auth
+        title: Pression anormale sur l'authentification
+        condition: seuil
+        for: 2m
+        labels:
+          severite: securite
+        annotations:
+          sonde: 'S7 — Loki, 429 émis par la gateway sur /api/v1/auth'
+          summary: 'Plus de 20 rejets 429 par minute sur l''authentification.'
+          runbook: >-
+            Le rate-limiting de SH-5 BLOQUE déjà la tentative ; cette sonde la SIGNALE.
+            Sans elle, une attaque est repoussée sans que personne n'en soit informé.
+            Relever l'IP dans les logs de la gateway ; si la pression persiste, envisager
+            un blocage en amont (R7/R9).
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: loki
+            model:
+              expr: sum(count_over_time({service="gateway"} |= " 429 " |= "/api/v1/auth" [1m]))
+              queryType: instant
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [20] }
+              refId: seuil
+        noDataState: OK
+        execErrState: OK
+
+      - uid: sh29-s8-lag-consumer-bus
+        title: Retard du consumer du bus d'événements
+        condition: seuil
+        for: 5m
+        labels:
+          severite: avertissement
+          service: matching-service
+        annotations:
+          sonde: 'S8 — Redis Streams, retard du consumer de matching (SH-14)'
+          summary: 'Le consumer accumule du retard : les résultats de matching décrochent du temps réel.'
+          runbook: >-
+            Panne silencieuse par excellence : l'API répond 200, mais sur des données
+            périmées. Vérifier que le consumer tourne, puis la PEL Redis
+            (`XPENDING`). Dette connue et bornée : ticket SH-35.
+        data:
+          - refId: requete
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: loki
+            model:
+              expr: sum(count_over_time({service="matching-service"} |= "consumer" |= "retard" [5m]))
+              queryType: instant
+              refId: requete
+          - refId: seuil
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: requete
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+              refId: seuil
+        noDataState: OK
+        execErrState: OK
