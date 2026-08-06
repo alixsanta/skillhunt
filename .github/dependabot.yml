@@ -1,0 +1,157 @@
+# SH-47 — Veille automatisée sur les dépendances (C4.1.1).
+#
+# Complète les garde-fous existants : `npm audit --audit-level=high` (node-ci.yml, frontend-ci.yml)
+# et `pip-audit` (python-ci.yml) DÉTECTENT les vulnérabilités connues ; Dependabot SURVEILLE les
+# nouvelles versions et ouvre les PR. Détection ≠ veille : sans ce fichier, chaque CVE publiée
+# devenait un blocage surprise au moment le plus inopportun.
+#
+# Politique détaillée (fréquence, périmètre, type automatique/manuel, critères de merge) :
+# docs/exploitation/POLITIQUE_DEPENDANCES.md
+#
+# ⚠️ `target-branch: develop` est OBLIGATOIRE sur chaque entrée : par défaut Dependabot cible la
+# branche par défaut du dépôt. L'omettre ferait ouvrir des PR sur `main`, en violation du Gitflow
+# du projet (CLAUDE.md §11 : aucune PR de feature ne cible `main` directement).
+#
+# ⚠️ Aucun `automerge` n'est configuré : décision assumée, argumentée dans la politique §3.
+
+version: 2
+
+updates:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Monolithe NestJS (Node 20 / TypeScript)
+  # ────────────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/backend-core"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "backend-core"]
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    target-branch: "develop"
+    groups:
+      # Correctifs et versions mineures regroupés : une seule PR à relire par semaine.
+      backend-core-mineur:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    # Les montées MAJEURES restent hors groupe → une PR chacune, impact évalué une par une.
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # SPA React / Vite
+  # ────────────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/frontend-web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "frontend-web"]
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    target-branch: "develop"
+    groups:
+      frontend-web-mineur:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Microservice FastAPI (Python 3.11) — requirements.txt ET requirements-dev.txt
+  # ────────────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/matching-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "matching-service"]
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    target-branch: "develop"
+    groups:
+      matching-service-mineur:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Images de base des Dockerfiles — vecteur de CVE le plus souvent oublié :
+  # une image `node:20-alpine` non rafraîchie accumule des failles système que
+  # ni npm audit ni pip-audit ne voient (ils n'analysent que les dépendances applicatives).
+  # ────────────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "docker"
+    directory: "/backend-core"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(deps)"
+    target-branch: "develop"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend-web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(deps)"
+    target-branch: "develop"
+
+  - package-ecosystem: "docker"
+    directory: "/matching-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(deps)"
+    target-branch: "develop"
+
+  - package-ecosystem: "docker"
+    directory: "/gateway"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "chore(deps)"
+    target-branch: "develop"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Actions GitHub tierces — surface d'attaque « supply chain » : une action
+  # compromise s'exécute avec les droits du workflow (`packages: write` pour
+  # publish-staging.yml, donc capacité de publier des images).
+  # ────────────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "ci(deps)"
+    target-branch: "develop"
+    groups:
+      actions-mineur:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

@@ -1,0 +1,39 @@
+// SH-47 — Garde-fou de vulnérabilités du frontend (C4.1.1).
+//
+// Remplace `npm audit --audit-level=high`, qui n'offre AUCUN moyen d'exclure un avis
+// précis : c'est tout ou rien. Or un scanner signale une plage de versions, pas une
+// exploitabilité — et refuser d'en tenir compte conduit soit à dégrader le produit,
+// soit à désactiver le contrôle en entier. `audit-ci` permet la seule réponse tenable :
+// une exception NOMMÉE, JUSTIFIÉE et DATÉE, le reste du garde-fou restant bloquant.
+//
+// Politique complète : docs/exploitation/POLITIQUE_DEPENDANCES.md
+{
+  // Seuil identique à l'ancien `--audit-level=high` : échoue sur `high` et `critical`.
+  "high": true,
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // EXCEPTIONS — chaque entrée doit porter : l'avis, le paquet, la justification
+  // technique de non-exploitabilité, la date d'ouverture et la date de réexamen.
+  // Une exception sans date de réexamen est une dette silencieuse : interdit.
+  // ─────────────────────────────────────────────────────────────────────────────
+  "allowlist": [
+    // GHSA-qwww-vcr4-c8h2 — react-router / react-router-dom
+    // « RSC Mode CSRF Bypass Allows Action Execution Before 400 Response »
+    //
+    // NON APPLICABLE à SkillHunt :
+    //   - l'avis vise le mode RSC (React Server Components) de React Router ;
+    //   - `frontend-web` est une SPA Vite en routage 100 % client : aucun usage de RSC,
+    //     `createStaticHandler` ni d'aucune API serveur de React Router (vérifié par
+    //     recherche sur `frontend-web/src` le 2026-08-04) ;
+    //   - il n'existe aucune version corrigée vers l'avant : 7.18.2 est la dernière
+    //     publiée et la plage vulnérable couvre tout depuis 7.12.0-pre.0. Le seul
+    //     « correctif » proposé par npm est une REDESCENTE en 7.11.0, qualifiée de
+    //     rupture — soit une régression fonctionnelle réelle contre une faille
+    //     inatteignable ici.
+    //
+    // Ouverte le : 2026-08-04 (SH-47)
+    // À réexaminer le : 2026-11-04, ou plus tôt si une 7.19+ corrigée paraît.
+    // Levée dès que possible : cette exception n'est pas un acquis.
+    "GHSA-qwww-vcr4-c8h2",
+  ],
+}

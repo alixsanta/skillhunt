@@ -34,8 +34,12 @@ jobs:
       - name: 📦 Installation propre des dépendances (ci)
         run: npm ci
 
+      # SH-47 — `audit-ci` remplace `npm audit --audit-level=high`, qui ne sait pas exclure
+      # un avis précis : c'est tout ou rien. Le seuil `high` reste bloquant ; les exceptions
+      # sont NOMMÉES, JUSTIFIÉES et DATÉES dans frontend-web/audit-ci.jsonc, et audit-ci les
+      # journalise à chaque run — une exception reste donc visible, jamais silencieuse.
       - name: 🛡️ Audit de sécurité des dépendances NPM
-        run: npm audit --audit-level=high
+        run: npm run audit:deps
 
       - name: 🔍 Analyse statique du code (Lint)
         run: npm run lint

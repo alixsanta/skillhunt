@@ -66,7 +66,17 @@ jobs:
           pip install -r matching-service/requirements.txt
           pip install -r matching-service/requirements-dev.txt
 
-      # Étape 4 : Analyse de sécurité statique (Compétence C2.2.3 - Sécurité OWASP)
+      # Étape 4 : Audit des DÉPENDANCES — BLOQUANT (SH-47, compétence C4.1.1)
+      # Le pendant Python de `npm audit --audit-level=high` (node-ci.yml) : jusqu'ici le
+      # matching-service était le SEUL service sans garde-fou sur ses dépendances. Bandit
+      # (étape 5) analyse NOTRE code ; pip-audit confronte les versions épinglées aux
+      # bases de vulnérabilités publiées (PyPI Advisory / OSV).
+      # Politique associée : docs/exploitation/POLITIQUE_DEPENDANCES.md
+      - name: 🛡️ Audit de sécurité des dépendances Python (pip-audit)
+        run: |
+          pip-audit -r matching-service/requirements.txt -r matching-service/requirements-dev.txt
+
+      # Étape 5 : Analyse de sécurité statique (Compétence C2.2.3 - Sécurité OWASP)
       - name: 🛡️ Audit de sécurité statique du code (Bandit)
         run: |
           # Bandit analyse le code Python pour traquer les failles (injections, eval(), assert...)
@@ -74,16 +84,16 @@ jobs:
           bandit -r matching-service/ -x matching-service/tests/ -ll
         continue-on-error: true # Permet de loguer les failles sans bloquer complètement la compilation au début
 
-      # Étape 5 : Linter Python - Validation du style (Compétence C2.1.2 - PEP 8)
+      # Étape 6 : Linter Python - Validation du style (Compétence C2.1.2 - PEP 8)
       - name: 🔍 Analyse statique du style (Flake8 - PEP8)
         run: |
           # Vérifie la conformité du code avec les standards du langage (PEP 8)
-          # Étape 5a : Échoue s'il y a des erreurs de syntaxe, de typage ou des variables indéfinies
+          # Étape 6a : Échoue s'il y a des erreurs de syntaxe, de typage ou des variables indéfinies
           flake8 matching-service/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Étape 5b : Avertit sans bloquer pour les légers défauts cosmétiques (complexité, longueur des lignes)
+          # Étape 6b : Avertit sans bloquer pour les légers défauts cosmétiques (complexité, longueur des lignes)
           flake8 matching-service/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      # Étape 6 : Lancer les tests unitaires et de matching géospatial (Compétence C2.2.2 - Harnais de test)
+      # Étape 7 : Lancer les tests unitaires et de matching géospatial (Compétence C2.2.2 - Harnais de test)
       - name: 🧪 Exécution des tests unitaires et couverture (PyTest)
         env:
           DATABASE_URL: postgresql+asyncpg://skillhunt:skillhunt@localhost:5432/skillhunt_test

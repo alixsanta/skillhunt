@@ -45,7 +45,10 @@
         "typeorm": "^1.0.0"
     },
     "overrides": {
-        "multer": "^2.2.0"
+        "multer": "^2.2.0",
+        "@nestjs/swagger": {
+            "js-yaml": "^5.2.3"
+        }
     },
     "devDependencies": {
         "@eslint/js": "^9.39.4",

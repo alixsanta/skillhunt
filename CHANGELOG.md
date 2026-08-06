@@ -31,8 +31,39 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ## [Non publié]
 
+### Sécurité
+- **25 avis de sécurité résorbés sur les trois services** (SH-47), dont **7 qui tournaient en
+  production** depuis le 2026-07-23 :
+  - `matching-service` — `starlette` 0.41.3 → **1.3.1** (7 avis : PYSEC-2026-161/248/249/1941/1942/
+    2280/2281), via `fastapi` 0.115.5 → 0.141.1. `starlette` est désormais **épinglée
+    explicitement**, `fastapi` ne déclarant qu'une borne basse. Puis `pytest` 8.3.4 → 9.1.1
+    (PYSEC-2026-1845), entraînant `pytest-asyncio` → 1.4.0 et `pytest-cov` → 7.1.0.
+  - `backend-core` — 5 avis (dont 2 `high`) résorbés : `typeorm` 1.0.0 → 1.1.0, `body-parser`
+    2.2.2 → 2.3.0, `js-yaml` 4.1.1 → 4.3.1, `brace-expansion` 1.1.15 → 1.1.18, plus un override
+    **scopé** `@nestjs/swagger → js-yaml ^5.2.3` (un override large n'atteignait pas la copie
+    imbriquée).
+  - `frontend-web` — 12 avis (dont 9 `high`) résorbés sur 14 paquets, dont `react-router`,
+    `undici`, `postcss` et `nanoid`.
+
 ### Ajouté
 - Journal des versions déployées : ce fichier, table de correspondance et process de release (SH-48).
+- **Veille automatisée des dépendances** (SH-47) : `.github/dependabot.yml`, 8 entrées couvrant
+  npm ×2, pip, docker ×4 et github-actions, toutes ciblant `develop`.
+- **`pip-audit` bloquant** dans `python-ci` — le `matching-service` était jusque-là le seul service
+  sans garde-fou sur ses dépendances.
+- **Mécanisme d'exception documenté** pour les avis non exploitables (SH-47) : `frontend-web` passe
+  de `npm audit` à `audit-ci`, qui conserve le seuil `high` bloquant tout en acceptant des
+  exceptions nommées, justifiées et **datées**, journalisées à chaque exécution.
+- Politique de mise à jour des dépendances : `docs/exploitation/POLITIQUE_DEPENDANCES.md`.
+
+### Modifié
+- `docs/BACKLOG.md` — décision de cadrage du dossier BLOC 4 : périmètre fonctionnel gelé,
+  EP04 maintenu hors scope.
+
+> ⚠️ **Exception de sécurité active** : `GHSA-qwww-vcr4-c8h2` (`react-router`) est allowlistée.
+> L'avis vise le mode RSC, non utilisé par cette SPA ; aucune version corrigée n'existe vers
+> l'avant et le seul correctif proposé serait une redescente de 7 versions mineures.
+> **Réexamen au 2026-11-04.** Détail : `docs/exploitation/POLITIQUE_DEPENDANCES.md` §3.3.
 
 ---
 
