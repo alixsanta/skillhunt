@@ -13,3 +13,6 @@ sqlalchemy==2.0.36
 asyncpg==0.30.0
 geoalchemy2==0.16.0
 redis==5.2.1
+# SH-29 — Instrumentation (C4.1.2) : métriques Prometheus et logs JSON structurés.
+prometheus-fastapi-instrumentator==8.1.0
+python-json-logger==4.1.0
