@@ -142,9 +142,30 @@
 > [SH-30 §4](SH-30-mise-en-production.md#L125) — `frontend-web` et `gateway` marqués `unhealthy`
 > parce que leur HEALTHCHECK résout `localhost` en IPv6 `::1` alors que leur `nginx.conf` ne
 > déclare que `listen 80;` — **doit rester ouverte**. Elle est le support de C4.2.1 (fiche de
-> consignation) et C4.2.2 (correctif déployé via la CI/CD) : la supervision mise en place ici
-> doit d'abord **la détecter**, ce qui prouve que le système fonctionne. Le correctif fera
-> l'objet d'un ticket `fix/` distinct, après la mise en service de SH-29.
+> consignation) et C4.2.2 (correctif déployé via la CI/CD). Le correctif fera l'objet d'un
+> ticket `fix/` distinct, après la mise en service de SH-29.
+>
+> **Correction de la prémisse — 2026-08-06.** Ce paragraphe affirmait initialement que « la
+> supervision doit d'abord **la détecter**, ce qui prouve que le système fonctionne ».
+> **Cette affirmation est fausse et a été retirée.** Vérification faite après la mise en
+> service :
+>
+> - **AN-01 n'est pas une panne** : le conteneur sert correctement le trafic (`HTTP 200`
+>   vérifié sur la gateway). C'est sa *sonde* qui est fausse. Une supervision par métriques
+>   observe le service, pas la justesse de ses propres sondes.
+> - **Aucune des 397 métriques disponibles n'expose l'état de santé d'un conteneur** :
+>   cAdvisor fournit des métriques de ressources, pas l'état des `HEALTHCHECK` Docker.
+> - **L'anomalie ne se reproduit pas en local** : sous Docker Desktop/WSL, `gateway` et
+>   `frontend-web` sont `healthy`. Elle est spécifique à l'Ubuntu 22.04 de la VM.
+>
+> Construire une sonde dédiée à surveiller les healthchecks pour attraper AN-01 reviendrait à
+> ajouter de la complexité pour observer un défaut qu'il faut simplement corriger. Le
+> traitement correct d'AN-01 relève de **C4.2.2**, pas de C4.1.2.
+>
+> Cette vérification a néanmoins produit un résultat utile : elle a révélé que **la gateway
+> n'est couverte par aucune sonde de disponibilité**, alors qu'elle est le point d'entrée
+> unique de la plateforme. Consigné comme **sonde S9** dans les axes d'amélioration de
+> [`SUPERVISION.md`](../exploitation/SUPERVISION.md) §8.
 
 #### 4.2 Chantier B — Stack d'observabilité (profil compose `obs`)
 
@@ -213,7 +234,7 @@ Nouveau profil `obs` dans `docker-compose.yml`, activable indépendamment (`--pr
 - [ ] **Cycle d'alerte prouvé de bout en bout** : arrêt de service → mail `CRITIQUE` dans Mailpit en < 2 min → redémarrage → mail `Resolved`. **Captures d'écran archivées** (preuve jury).
 - [ ] **Scénario 5 vérifié** : `/metrics`, `/loki`, `/prometheus` renvoient 404 à travers la gateway.
 - [ ] **Déployé sur la VM OVHcloud** et laissé en observation avec du trafic réel — condition pour que C4.2.1 porte sur des anomalies « détectées en production » et non simulées.
-- [ ] **L'anomalie IPv6 de SH-30 est effectivement détectée par la supervision** (elle n'a pas été corrigée en douce dans ce ticket).
+- [x] **L'anomalie IPv6 de SH-30 n'a pas été corrigée en douce dans ce ticket** — elle reste ouverte pour servir de support à C4.2.1/C4.2.2. *Le critère « est effectivement détectée par la supervision » est retiré : il reposait sur une prémisse fausse, corrigée et documentée au §4.1. La vérification a produit à la place la sonde S9 (couverture de la gateway), consignée en axe d'amélioration.*
 - [ ] `SUPERVISION.md`, `RUNBOOK.md` et `FICHE_ANOMALIE.md` rédigés.
 - [ ] Aucun secret en dur ; `SMTP_*` et `GRAFANA_ADMIN_PASSWORD` en variables d'env, absents du dépôt.
 - [ ] **CI verte** : lint + audit sécurité + tests + build sur les deux services instrumentés.
