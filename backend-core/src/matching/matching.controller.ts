@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -34,7 +35,9 @@ export class MatchingController {
     description: 'Résultats triés (score décroissant, distance croissante), enrichis du username',
   })
   @ApiBadGatewayResponse({ description: 'Matching-service indisponible (502)' })
-  search(@Body() dto: SearchMatchDto) {
-    return this.matchingService.search(dto);
+  // `@Req()` uniquement pour relayer l'identifiant de corrélation (SH-29) : l'identité de
+  // l'utilisateur reste dérivée du token via les guards, jamais de la requête brute (§8).
+  search(@Body() dto: SearchMatchDto, @Req() req: Request) {
+    return this.matchingService.search(dto, req.requestId);
   }
 }

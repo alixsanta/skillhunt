@@ -123,6 +123,22 @@ services:
     # AUCUN port hôte (SH-5) : la gateway est le point d'entrée unique (archi §2).
     # Swagger et gen:api restent accessibles via http://localhost:8088/api/docs.
     # Le dev direct (npm run start:dev sur 3001) est inchangé hors conteneur.
+    # SH-29 — sonde de vivacité du monolithe (absente jusqu'ici : son état de santé
+    # n'était pas mesurable). Cible EXPLICITEMENT 127.0.0.1 et non `localhost` : c'est
+    # la résolution de `localhost` en IPv6 `::1` qui rend `frontend-web` et `gateway`
+    # « unhealthy » en production depuis SH-30 (anomalie ouverte, cf. CHANGELOG §1.0.0).
+    # On interroge /health (vivacité) et non /health/ready : une dépendance tombée ne
+    # doit pas faire redémarrer en boucle un monolithe sain.
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "require(''node:http'').get({host:''127.0.0.1'',port:3001,path:''/api/v1/health''},r=>process.exit(r.statusCode===200?0:1)).on(''error'',()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy

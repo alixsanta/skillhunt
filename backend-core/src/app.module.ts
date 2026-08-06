@@ -28,6 +28,7 @@ import { ChatGateway } from './chat/chat.gateway';
 import { ChatController } from './chat/chat.controller';
 import { GamificationService } from './gamification/gamification.service';
 import { GamificationController } from './gamification/gamification.controller';
+import { ObservabilityModule } from './observability/observability.module';
 
 @Module({
   imports: [
@@ -36,6 +37,10 @@ import { GamificationController } from './gamification/gamification.controller';
 
     // Client Redis partagé (SH-14) — fourni globalement via le token REDIS_CLIENT (C2.2.3)
     RedisModule,
+
+    // Instrumentation (SH-29) : logs JSON corrélés et expurgés, métriques Prometheus,
+    // sondes /health et /health/ready. Alimente la stack de supervision (C4.1.2).
+    ObservabilityModule,
 
     // Persistance réelle PostgreSQL + PostGIS via TypeORM (SH-6, remplace DbState en mémoire)
     TypeOrmModule.forRootAsync({
