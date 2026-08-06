@@ -46,6 +46,32 @@
 
 ---
 
+## 🎯 Décision de cadrage — dossier BLOC 4 (rendu 17–21/08/2026)
+
+> Actée le 2026-08-04. Bloc évalué : **« Maintenir l'application logicielle en condition
+> opérationnelle »** (RNCP 39583). Livrable = dossier écrit, 20 pages max, 7 compétences
+> dont **3 éliminatoires** (C4.1.2, C4.2.1, C4.3.2).
+
+**Périmètre fonctionnel GELÉ jusqu'au rendu.** Aucune compétence C4.x ne demande de
+fonctionnalité supplémentaire : le bloc évalue l'exploitation d'un logiciel *déjà développé*.
+**EP04 (média/portfolio, `SH-15`→`SH-18`) reste donc hors périmètre** — 14 J/H pour 13 jours
+de soirées, et sa seule plus-value pour le dossier (métriques de traitement asynchrone) est
+déjà couverte par le bus Redis Streams de `SH-14`. Ajouter de la surface non instrumentée à
+T-13 jours irait contre l'objet même du bloc.
+
+**Priorisé pour le rendu** : `SH-48` (éliminatoire, acquis nul → à faire en premier) ·
+`SH-47` (meilleur rapport valeur/effort) · `SH-29` (éliminatoire, cœur du dossier) ·
+puis un ticket `fix/` sur l'anomalie IPv6 de `SH-30` (support de C4.2.1 + C4.2.2).
+
+**Hors code, à lancer immédiatement** (temps calendaire, pas temps de dev) : collecte de
+retours utilisateurs réels sur la démo publique (C4.3.1) et traçabilité d'une situation de
+support (C4.3.3) — ce sont les deux compétences sans aucun acquis à ce jour.
+
+**Actif à préserver :** la VM OVHcloud reste active jusqu'à fin août. C'est ce qui permet à
+C4.2.1 de porter sur des anomalies réellement *détectées en production*, et non simulées.
+
+---
+
 ## EP01 — Architecture, DevOps & Sécurité · *14 J/H* · 🎯 J1
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
@@ -118,7 +144,9 @@
 | [SH-27](tickets/SH-27-audit-accessibilite.md) | Audit accessibilité WCAG en CI (Lighthouse, bloquant < 90) — *pages publiques à 100/100 au merge* | 🟢 Terminé | 3 | C2.1.2 | R6 |
 | [SH-45](tickets/SH-45-dette-gamification-loadout.md) | Dette gamification/loadout post-revue SH-21c (TOCTOU max-4, sweep Swagger 400, test frontière de seuil, nettoyage types, PublicLevelBadge) — tous différables, décision « épinglés visibles 2× » actée | 🟡 Prêt | 2 | C2.2.2, C2.4.1, C2.1.2 | — |
 | [SH-28](tickets/SH-28-eco-conception-ci.md) | Éco-conception en CI (EcoIndex, poids des pages, requêtes HTTP) | 🔵 Backlog | 3 | C2.1.2 | — |
-| [SH-29](tickets/SH-29-monitoring-elk.md) | Monitoring & alerting (stack ELK + webhooks) | 🔵 Backlog | 5 | C2.2.2 | R5 |
+| [SH-29](tickets/SH-29-monitoring-supervision.md) | Système de supervision et d'alerte (Grafana + Loki + Prometheus, signalement mail) — *décision tracée **Loki plutôt qu'ELK** (empreinte mémoire de la VM) ; 3 chantiers : instrumentation, stack `obs`, sondes & alerting* | 🟡 Prêt | 5 → **8** | **C4.1.2** ⚠️, C4.2.1, C4.3.1, C2.2.2 | R5 |
+| [SH-47](tickets/SH-47-politique-dependances.md) | Politique de mise à jour des dépendances + Dependabot (5 écosystèmes, `pip-audit`) — *complète le garde-fou `npm audit` de SH-32 par une veille* | 🟡 Prêt | 2 | **C4.1.1**, C2.1.2, C2.2.3 | — |
+| [SH-48](tickets/SH-48-journal-versions.md) | Journal des versions déployées (`CHANGELOG.md` + tags Git + process de release) — *acquis nul : `git tag` vide, aucun changelog* | 🟡 Prêt | 2 | **C4.3.2** ⚠️, C4.2.2, C2.4.1 | — |
 | [SH-30](tickets/SH-30-mise-en-production.md) | Mise en production V1.0 (staging démo jury, VM OVHcloud Public Cloud) + PCA (rollback < 5 min) — *déployé sur `147.135.230.140`, images GHCR publiques, boucle démo vérifiée en prod* | 🟢 Terminé | 5 | C2.2.2 | — |
 
 ---
@@ -150,4 +178,5 @@
 1. **✅ Socle livré** : EP02 & EP03 (auth/RBAC, Armurerie backend, certifications, scoring géospatial, bus Redis) + boucle démo front fermée (`SH-19`→`SH-23`, `SH-39`, `SH-41`, `SH-27`, `SH-43`, `SH-44`).
 2. **✅ `SH-24` livré** (2026-07-17) : chat contextuel temps réel (MongoDB + socket.io + gateway WS + pages `/messages`) — branche `feature/SH-24-chat-temps-reel`, e2e vérifié sur la stack conteneurisée.
 3. **✅ `SH-21c` livré** (2026-07-17) : gamification de l'Armurerie (XP dérivé, 6 niveaux, 7 badges, loadout 4 emplacements) — **EP05 Lot 1 complet**. Dette tracée non bloquante : `SH-35` ; `SH-33` si le temps le permet.
-4. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
+4. **▶️ En cours — dossier BLOC 4** (rendu 17–21/08/2026, cf. décision de cadrage ci-dessus) : `SH-48` → `SH-47` → `SH-29`, puis correctif de l'anomalie IPv6 de `SH-30`. Périmètre fonctionnel gelé.
+5. Mettre à jour le statut ici à chaque changement (🔵 → 🟡 → 🟠 → 🟢).
