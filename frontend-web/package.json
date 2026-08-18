@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "gen:api": "openapi-typescript http://localhost:3001/api/docs-json -o src/api/schema.d.ts",
-    "audit:a11y": "lhci autorun"
+    "audit:a11y": "lhci autorun",
+    "audit:deps": "audit-ci --config audit-ci.jsonc"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
@@ -44,6 +45,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "audit-ci": "^7.1.0",
     "eslint": "^10.6.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.3",
