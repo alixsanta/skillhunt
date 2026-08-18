@@ -2,7 +2,7 @@
 # Multi-stage : les outils de build (tsc, devDependencies) n'entrent jamais dans l'image finale.
 
 # --- Étape 1 : build TypeScript ---
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
@@ -13,7 +13,7 @@ RUN npm run build \
     && npm prune --omit=dev
 
 # --- Étape 2 : image d'exécution minimale ---
-FROM node:20-alpine
+FROM node:26-alpine
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
