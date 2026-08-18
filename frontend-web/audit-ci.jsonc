@@ -1,0 +1,54 @@
+// SH-47 — Garde-fou de vulnérabilités du frontend (C4.1.1).
+//
+// Remplace `npm audit --audit-level=high`, qui n'offre AUCUN moyen d'exclure un avis
+// précis : c'est tout ou rien. Or un scanner signale une plage de versions, pas une
+// exploitabilité — et refuser d'en tenir compte conduit soit à dégrader le produit,
+// soit à désactiver le contrôle en entier. `audit-ci` permet la seule réponse tenable :
+// une exception NOMMÉE, JUSTIFIÉE et DATÉE, le reste du garde-fou restant bloquant.
+//
+// Politique complète : docs/exploitation/POLITIQUE_DEPENDANCES.md
+{
+  // Seuil identique à l'ancien `--audit-level=high` : échoue sur `high` et `critical`.
+  "high": true,
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // EXCEPTIONS — chaque entrée doit porter : l'avis, le paquet, la justification
+  // technique de non-exploitabilité, la date d'ouverture et la date de réexamen.
+  // Une exception sans date de réexamen est une dette silencieuse : interdit.
+  // ─────────────────────────────────────────────────────────────────────────────
+  "allowlist": [
+    // GHSA-jmr9-qjv8-65gv — extract-zip
+    // « unvalidated symlink path traversal »
+    //
+    // Chaîne : @lhci/cli > lighthouse > puppeteer-core > @puppeteer/browsers > extract-zip
+    //
+    // NON EXPLOITABLE dans cet usage :
+    //   - `@lhci/cli` est une dépendance de DÉVELOPPEMENT, utilisée uniquement par
+    //     l'audit d'accessibilité en CI (SH-27) ;
+    //   - elle ne part JAMAIS en production : le Dockerfile du front construit puis ne
+    //     copie que `dist/` dans l'image finale — aucune de ces dépendances n'atteint
+    //     l'image servie aux utilisateurs ;
+    //   - l'avis vise l'extraction d'une archive contenant des liens symboliques
+    //     malveillants. Ici l'unique archive extraite est le binaire Chrome téléchargé
+    //     par Lighthouse depuis les serveurs Google : elle n'est pas contrôlable par un
+    //     tiers, ce qui supprime le vecteur ;
+    //   - AUCUNE version corrigée n'existe : la plage vulnérable est `*`. Le seul
+    //     remède proposé par npm est `--force`, qui rétrograderait `@lhci/cli` et
+    //     casserait l'audit d'accessibilité — bloquant sous 90/100 en CI. Sacrifier une
+    //     preuve du bloc 2 contre une faille inatteignable serait un mauvais échange.
+    //
+    // Ouverte le : 2026-08-18 (relecture des PR #46/#47/#48)
+    // À réexaminer le : 2026-11-18, ou dès qu'une version corrigée d'`extract-zip` paraît.
+    "GHSA-jmr9-qjv8-65gv",
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // LEVÉE le 2026-08-18 : GHSA-qwww-vcr4-c8h2 (react-router).
+    //
+    // `audit-ci` signalait « Consider not allowlisting advisory » — il ne trouvait plus
+    // de chemin vulnérable après la montée de dépendances. L'exception est donc retirée
+    // plutôt que conservée « au cas où » : une exception devenue inutile masque la
+    // réapparition éventuelle de l'avis, et c'est exactement la dette silencieuse que
+    // la politique interdit. Elle aura tenu 14 jours, sur les 3 mois prévus.
+    // ─────────────────────────────────────────────────────────────────────────────
+  ],
+}
