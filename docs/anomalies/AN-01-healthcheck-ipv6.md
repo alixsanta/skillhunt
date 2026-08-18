@@ -9,7 +9,7 @@
 | **Environnement** | ☑ Production (VM OVHcloud `147.135.230.140`, Ubuntu 22.04) |
 | **Version déployée** | `v1.0.0` — SHA `a94568ab5e564cc64ad71b43cefa92e776802b60` |
 | **Composant** | `gateway` et `frontend-web` (images `nginx:1.27-alpine`) |
-| **Statut** | ☑ Corrigée |
+| **Statut** | ☑ **Correctif écrit** — ☐ vérifié en production (voir §7) |
 | **Ticket de correction** | `fix/SH-49-healthcheck-ipv6` |
 
 ---
