@@ -17,23 +17,38 @@
   // Une exception sans date de réexamen est une dette silencieuse : interdit.
   // ─────────────────────────────────────────────────────────────────────────────
   "allowlist": [
-    // GHSA-qwww-vcr4-c8h2 — react-router / react-router-dom
-    // « RSC Mode CSRF Bypass Allows Action Execution Before 400 Response »
+    // GHSA-jmr9-qjv8-65gv — extract-zip
+    // « unvalidated symlink path traversal »
     //
-    // NON APPLICABLE à SkillHunt :
-    //   - l'avis vise le mode RSC (React Server Components) de React Router ;
-    //   - `frontend-web` est une SPA Vite en routage 100 % client : aucun usage de RSC,
-    //     `createStaticHandler` ni d'aucune API serveur de React Router (vérifié par
-    //     recherche sur `frontend-web/src` le 2026-08-04) ;
-    //   - il n'existe aucune version corrigée vers l'avant : 7.18.2 est la dernière
-    //     publiée et la plage vulnérable couvre tout depuis 7.12.0-pre.0. Le seul
-    //     « correctif » proposé par npm est une REDESCENTE en 7.11.0, qualifiée de
-    //     rupture — soit une régression fonctionnelle réelle contre une faille
-    //     inatteignable ici.
+    // Chaîne : @lhci/cli > lighthouse > puppeteer-core > @puppeteer/browsers > extract-zip
     //
-    // Ouverte le : 2026-08-04 (SH-47)
-    // À réexaminer le : 2026-11-04, ou plus tôt si une 7.19+ corrigée paraît.
-    // Levée dès que possible : cette exception n'est pas un acquis.
-    "GHSA-qwww-vcr4-c8h2",
+    // NON EXPLOITABLE dans cet usage :
+    //   - `@lhci/cli` est une dépendance de DÉVELOPPEMENT, utilisée uniquement par
+    //     l'audit d'accessibilité en CI (SH-27) ;
+    //   - elle ne part JAMAIS en production : le Dockerfile du front construit puis ne
+    //     copie que `dist/` dans l'image finale — aucune de ces dépendances n'atteint
+    //     l'image servie aux utilisateurs ;
+    //   - l'avis vise l'extraction d'une archive contenant des liens symboliques
+    //     malveillants. Ici l'unique archive extraite est le binaire Chrome téléchargé
+    //     par Lighthouse depuis les serveurs Google : elle n'est pas contrôlable par un
+    //     tiers, ce qui supprime le vecteur ;
+    //   - AUCUNE version corrigée n'existe : la plage vulnérable est `*`. Le seul
+    //     remède proposé par npm est `--force`, qui rétrograderait `@lhci/cli` et
+    //     casserait l'audit d'accessibilité — bloquant sous 90/100 en CI. Sacrifier une
+    //     preuve du bloc 2 contre une faille inatteignable serait un mauvais échange.
+    //
+    // Ouverte le : 2026-08-18 (relecture des PR #46/#47/#48)
+    // À réexaminer le : 2026-11-18, ou dès qu'une version corrigée d'`extract-zip` paraît.
+    "GHSA-jmr9-qjv8-65gv",
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // LEVÉE le 2026-08-18 : GHSA-qwww-vcr4-c8h2 (react-router).
+    //
+    // `audit-ci` signalait « Consider not allowlisting advisory » — il ne trouvait plus
+    // de chemin vulnérable après la montée de dépendances. L'exception est donc retirée
+    // plutôt que conservée « au cas où » : une exception devenue inutile masque la
+    // réapparition éventuelle de l'avis, et c'est exactement la dette silencieuse que
+    // la politique interdit. Elle aura tenu 14 jours, sur les 3 mois prévus.
+    // ─────────────────────────────────────────────────────────────────────────────
   ],
 }
