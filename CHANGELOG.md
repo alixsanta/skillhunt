@@ -19,6 +19,7 @@ Règle appliquée au projet : `MAJOR` = rupture d'API publique · `MINOR` = nouv
 |---|---|---|---|---|---|---|
 | [1.0.0](#100--2026-07-23) | 2026-07-23 | `v1.0.0` | [`a94568a`](https://github.com/alixsanta/skillhunt/commit/a94568ab5e564cc64ad71b43cefa92e776802b60) (PR #42, `develop` → `main`) | `ghcr.io/alixsanta/skillhunt/{backend-core,matching-service,frontend-web,gateway}:a94568ab5e564cc64ad71b43cefa92e776802b60` (+ `:latest`) | Production — VM OVHcloud `147.135.230.140` | SH-1 → SH-46 |
 | [1.0.1](#101--2026-08-18) | 2026-08-18 | `v1.0.1` | [`bfadcff`](https://github.com/alixsanta/skillhunt/commit/bfadcff21f8355a42958f6ce643420af6c0543dc) (PR #50, `develop` → `main`) | `ghcr.io/alixsanta/skillhunt/{backend-core,matching-service,frontend-web,gateway}:bfadcff21f8355a42958f6ce643420af6c0543dc` (+ `:latest`) | Production — VM OVHcloud `147.135.230.140` | SH-47, SH-48, SH-49 |
+| [1.1.0](#110--2026-08-19) | *à compléter après déploiement* | `v1.1.0` | *à compléter* | *à compléter* | Production — VM OVHcloud `147.135.230.140` | SH-29 |
 
 > ℹ️ Le workflow `publish-staging.yml` étiquette les images avec `${{ github.sha }}`, c'est-à-dire
 > le **SHA complet sur 40 caractères** — pas la forme abrégée. Le tag d'image à reporter dans un
@@ -33,6 +34,74 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 ## [Non publié]
 
 *Rien pour le moment.*
+
+---
+
+## [1.1.0] — 2026-08-19
+
+Première version **fonctionnelle** depuis la mise en production : elle rend la plateforme
+observable. Avant elle, SkillHunt tournait sur une VM publique sans aucun moyen de savoir
+si elle était disponible, lente ou en erreur — le délai de détection d'un incident n'était
+pas long, il était **non borné**.
+
+`MINOR` et non `PATCH` : l'instrumentation ajoute de vrais endpoints au produit déployé
+(`/api/v1/health`, `/api/v1/health/ready`, `/metrics` sur les deux services).
+
+### Ajouté
+
+**Instrumentation des services** (SH-29)
+- **Logs structurés JSON** sur `backend-core` (pino) et `matching-service`
+  (`python-json-logger`), aux champs alignés : `service`, `level`, `timestamp`, `requestId`.
+- **Corrélation inter-services** par `X-Request-Id` : posé par le monolithe, relayé par son
+  proxy de matching, réinjecté par le microservice. Une requête LogQL sur un identifiant
+  reconstitue le trajet complet d'une recherche à travers les deux services.
+- **Redaction obligatoire** des mots de passe, jetons, en-têtes `Authorization`, cookies,
+  secret TOTP, codes de secours et **numéros de série** (minimisation RGPD) — la clé est
+  conservée, la valeur remplacée par `[Redacted]`.
+- **Métriques Prometheus** : histogramme de latence et compteur par statut, étiquetés par
+  gabarit de route et jamais par URL brute (cardinalité bornée).
+- **Sondes de santé** : `/health` (vivacité, n'interroge aucune dépendance) et
+  `/health/ready` (PostgreSQL, Redis, MongoDB — **503** si l'une tombe, ce qui rend
+  l'indisponibilité mesurable donc alertable).
+- `healthcheck` du conteneur `backend-core`, absent jusque-là.
+
+**Stack de supervision** (SH-29) — profil `obs`, activable indépendamment de l'application,
+présent dans les composes de **développement et de production** :
+Grafana, Prometheus, Loki, Grafana Alloy, cAdvisor et Mailpit, **intégralement provisionnés
+as-code** (sources de données, tableaux de bord et règles d'alerte versionnés).
+
+**8 sondes et leur alerting par mail** (SH-29) : disponibilité, latence p95, taux d'erreur
+5xx, saturation mémoire, instabilité de conteneur, erreurs applicatives, pression sur
+l'authentification, retard du bus d'événements. Chaque règle porte en annotation la sonde
+dont elle dérive et la conduite à tenir.
+
+**Documentation d'exploitation** (SH-29) : `SUPERVISION.md` (périmètre, architecture,
+tableau des sondes, budget de détection, limites), `RUNBOOK.md` (une section par alerte,
+écrit pour être lu *pendant* l'incident) et le gabarit `FICHE_ANOMALIE.md`.
+
+### Sécurité
+- Les endpoints d'observabilité ne sont **jamais routés par la gateway** : `/metrics`, Loki
+  et Prometheus restent sur le réseau Docker privé.
+- En production, **Grafana et Mailpit sont liés à `127.0.0.1`** — accessibles uniquement par
+  tunnel SSH. La VM n'ayant ni TLS ni durcissement (SH-4), les publier donnerait accès à
+  l'état interne de la plateforme et au contenu des logs, identifiants en clair.
+- Socket Docker monté en **lecture seule** pour Alloy et cAdvisor.
+
+### Limitations connues à la date de publication
+
+| Limitation | Impact | Suite |
+|---|---|---|
+| **La gateway et `frontend-web` ne sont couvertes par aucune sonde de disponibilité** | Le point d'entrée unique peut tomber pendant que les 8 sondes restent vertes | Sonde **S9** (`blackbox-exporter`), consignée en axe d'amélioration |
+| Aucune sonde ne lit l'**état des healthchecks Docker** | Un `HEALTHCHECK` faux passe inaperçu — c'était le cas d'AN-01 | Exportateur d'état Docker, à arbitrer |
+| `cadvisor` tourne en **`privileged`** avec montages système | Surface d'hôte élevée sur une VM sans durcissement | Restreindre les capacités, lié à SH-4 |
+| Grafana **sans TLS** | Mitigé par le tunnel SSH, mais non résolu | SH-4 |
+| Le dossier `observability/` doit être **copié à la main** sur la VM | Étape de déploiement supplémentaire, oubliable | Contrepartie assumée d'une source de vérité unique |
+
+> **Six défauts ont été trouvés en exécutant la chaîne complète**, dont aucun n'était
+> détectable par un test unitaire — les 68 tests d'instrumentation étaient verts pendant
+> qu'ils existaient. Trois auraient produit une **supervision silencieusement partielle**.
+> Une relecture ultérieure en a trouvé trois de plus, dont une **règle d'alerte morte** qui
+> filtrait un mot jamais journalisé. Détail : [`SUPERVISION.md`](docs/exploitation/SUPERVISION.md) §7.
 
 ---
 
