@@ -18,6 +18,11 @@ volumes:
   skillhunt_redis:
   skillhunt_mongo:
   skillhunt_localstack:
+  # SH-29 — profil obs
+  skillhunt_prometheus:
+  skillhunt_loki:
+  skillhunt_alloy:
+  skillhunt_grafana:
 
 services:
   postgres:
@@ -190,6 +195,210 @@ services:
     depends_on:
       - backend-core
       - frontend-web
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ══════════════════════════════════════════════════════════════════════════════════
+  # SH-29 — Profil `obs` : supervision en PRODUCTION (C4.1.2)
+  #
+  #   docker compose --env-file .env.staging -f docker-compose.staging.yml --profile obs up -d
+  #
+  # ⚠️ PRÉREQUIS — copier le dossier `observability/` sur la VM, à côté du compose :
+  #
+  #   scp -r observability ubuntu@<IP_VM>:~/
+  #
+  # Contrairement aux services applicatifs, qui tirent des images pré-construites depuis
+  # GHCR, ces conteneurs montent leurs fichiers de configuration depuis le disque. Sans ce
+  # dossier, Docker créerait des répertoires vides à la place des fichiers attendus, et
+  # Prometheus, Loki, Alloy et Grafana démarreraient sans configuration.
+  #
+  # Ce choix garde une SOURCE DE VÉRITÉ UNIQUE pour les sondes, seuils et tableaux de bord :
+  # les mêmes fichiers servent en développement et en production. Les embarquer dans des
+  # images dédiées supprimerait cette étape de copie, au prix d'une divergence possible
+  # entre les deux environnements — et d'un cycle de publication à chaque seuil ajusté.
+  #
+  # ── Trois différences assumées avec le profil `obs` de développement ────────────────
+  #
+  # 1. AUCUN service n'est exposé publiquement. Grafana et Mailpit sont liés à 127.0.0.1 :
+  #    ils ne sont atteignables QUE par tunnel SSH.
+  #
+  #      ssh -L 3030:127.0.0.1:3030 -L 8025:127.0.0.1:8025 ubuntu@<IP_VM>
+  #
+  #    En développement, ces deux interfaces sont publiées sur l'hôte. Ici la VM n'a ni TLS
+  #    ni durcissement (SH-4 non fait) : exposer Grafana en HTTP nu sur une IP publique
+  #    donnerait accès à l'état interne de la plateforme ET au contenu des logs. Le tunnel
+  #    supprime cette surface sans rien coûter à l'exploitation.
+  #
+  # 2. Budget mémoire plafonné. La VM est une b2-7 (7 Go) hébergeant déjà 8 conteneurs ;
+  #    ces 6 services ajoutent ~1,8 Go bornés. Pour une phase d'observation prolongée,
+  #    passer en b2-15 plutôt que de rogner les limites — un conteneur de supervision tué
+  #    par l'OOM, c'est une supervision aveugle au pire moment.
+  #
+  # 3. Rétention à 7 jours, identique au développement : suffisant pour la fenêtre
+  #    d'observation, et borné sur le disque d'une VM de démonstration.
+  # ══════════════════════════════════════════════════════════════════════════════════
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: skillhunt-prometheus-staging
+    profiles: ["obs"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - skillhunt_prometheus:/prometheus
+    mem_limit: 512m
+    healthcheck:
+      # 127.0.0.1 et non `localhost` : c'est cette résolution en IPv6 qui a produit AN-01.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: skillhunt-loki-staging
+    profiles: ["obs"]
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - skillhunt_loki:/loki
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  alloy:
+    image: grafana/alloy:v1.7.1
+    container_name: skillhunt-alloy-staging
+    profiles: ["obs"]
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      # Socket Docker en LECTURE SEULE : en écriture, il donnerait le contrôle du démon —
+      # donc de la VM entière — au collecteur de logs (CLAUDE.md §8).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - skillhunt_alloy:/var/lib/alloy/data
+    mem_limit: 256m
+    depends_on:
+      loki:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: skillhunt-cadvisor-staging
+    profiles: ["obs"]
+    restart: unless-stopped
+    # ⚠️ `privileged` et montages système : mode de fonctionnement normal de cAdvisor, mais
+    # surface d'hôte élevée sur une VM sans durcissement. Assumé et documenté dans
+    # SUPERVISION.md §8 — c'est le prix des sondes S4 et S5, qui couvrent les 6 conteneurs
+    # sans instrumentation applicative possible (bases, gateway, frontend).
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    mem_limit: 256m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mailpit:
+    image: axllent/mailpit:v1.22.3
+    container_name: skillhunt-mailpit-staging
+    profiles: ["obs"]
+    restart: unless-stopped
+    networks:
+      - skillhunt-private-net
+    ports:
+      # Lié à 127.0.0.1 : accessible uniquement par tunnel SSH (cf. en-tête du profil).
+      - "127.0.0.1:8025:8025"
+    mem_limit: 128m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: skillhunt-grafana-staging
+    profiles: ["obs"]
+    restart: unless-stopped
+    environment:
+      # Identifiants depuis .env.staging, JAMAIS en dur (CLAUDE.md §8-4).
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # Servi derrière un tunnel SSH : Grafana doit connaître son URL racine.
+      GF_SERVER_ROOT_URL: http://127.0.0.1:3030/
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${SMTP_HOST:-mailpit:1025}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-alertes@skillhunt.local}
+      GF_SMTP_FROM_NAME: SkillHunt Supervision
+      GF_SMTP_SKIP_VERIFY: "true"
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-exploitation@skillhunt.local}
+    networks:
+      - skillhunt-private-net
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - skillhunt_grafana:/var/lib/grafana
+    ports:
+      # Lié à 127.0.0.1 : la supervision expose l'état interne de la plateforme et le
+      # contenu des logs. Sans TLS ni durcissement (SH-4), le tunnel SSH est la seule
+      # exposition acceptable sur une IP publique.
+      - "127.0.0.1:3030:3000"
+    mem_limit: 512m
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:

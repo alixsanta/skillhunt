@@ -123,6 +123,22 @@ services:
     # AUCUN port hôte (SH-5) : la gateway est le point d'entrée unique (archi §2).
     # Swagger et gen:api restent accessibles via http://localhost:8088/api/docs.
     # Le dev direct (npm run start:dev sur 3001) est inchangé hors conteneur.
+    # SH-29 — sonde de vivacité du monolithe (absente jusqu'ici : son état de santé
+    # n'était pas mesurable). Cible EXPLICITEMENT 127.0.0.1 et non `localhost` : c'est
+    # la résolution de `localhost` en IPv6 `::1` qui rend `frontend-web` et `gateway`
+    # « unhealthy » en production depuis SH-30 (anomalie ouverte, cf. CHANGELOG §1.0.0).
+    # On interroge /health (vivacité) et non /health/ready : une dépendance tombée ne
+    # doit pas faire redémarrer en boucle un monolithe sain.
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "require(''node:http'').get({host:''127.0.0.1'',port:3001,path:''/api/v1/health''},r=>process.exit(r.statusCode===200?0:1)).on(''error'',()=>process.exit(1))"',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy
@@ -177,8 +193,160 @@ services:
       - backend-core
       - frontend-web
 
+  # ══════════════════════════════════════════════════════════════════════════════════
+  # SH-29 — Profil `obs` : stack de supervision (C4.1.2)
+  #
+  # Activable INDÉPENDAMMENT du profil applicatif :
+  #   docker compose --profile app --profile obs up -d
+  #
+  # Séparer les profils n'est pas cosmétique : la stack ajoute 5 conteneurs à une VM
+  # b2-7 (7 Go) qui en héberge déjà 8. Pouvoir lancer l'application sans la supervision
+  # — et l'inverse — évite d'imposer ce coût au développement quotidien.
+  #
+  # Aucun de ces services ne publie de port hôte, à l'exception de Grafana et Mailpit,
+  # qui sont des interfaces destinées à un humain. Prometheus, Loki, Alloy et cAdvisor
+  # restent strictement sur le réseau Docker privé.
+  # ══════════════════════════════════════════════════════════════════════════════════
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: skillhunt-prometheus
+    profiles: ["obs"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Rétention alignée sur Loki (7 jours) : borne l'usage disque sur une VM de démo.
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - skillhunt_prometheus:/prometheus
+    mem_limit: 512m
+    healthcheck:
+      # 127.0.0.1 explicite : `localhost` se résout d'abord en IPv6 `::1`, cause de
+      # l'anomalie « unhealthy » de SH-30 sur frontend-web et gateway.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:9090/-/healthy || exit 1']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: skillhunt-loki
+    profiles: ["obs"]
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - skillhunt_loki:/loki
+    mem_limit: 512m
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3100/ready || exit 1']
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  alloy:
+    image: grafana/alloy:v1.7.1
+    container_name: skillhunt-alloy
+    profiles: ["obs"]
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      # Socket Docker en LECTURE SEULE (CLAUDE.md §8) : Alloy n'a besoin que de LIRE la
+      # liste des conteneurs et leurs flux. Un montage en écriture équivaudrait à donner
+      # le contrôle du démon Docker — donc de l'hôte — au collecteur de logs.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - skillhunt_alloy:/var/lib/alloy/data
+    mem_limit: 256m
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: skillhunt-cadvisor
+    profiles: ["obs"]
+    restart: unless-stopped
+    # Métriques CPU/mémoire/redémarrages de TOUS les conteneurs, sans une ligne de code
+    # applicatif : couvre postgres, redis, mongo, localstack, gateway et frontend-web,
+    # qu'aucune instrumentation métier n'atteindrait (sondes S4 et S5).
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    privileged: true
+    mem_limit: 256m
+
+  mailpit:
+    image: axllent/mailpit:v1.22.3
+    container_name: skillhunt-mailpit
+    profiles: ["obs"]
+    restart: unless-stopped
+    # Capte les mails d'alerte RÉELLEMENT émis en SMTP par Grafana (chantier C).
+    # Décision tracée (ticket §2) : préférable à un relais SMTP réel, qui imposerait un
+    # secret dans le dépôt et rendrait la démonstration dépendante d'une boîte externe.
+    # Le passage en production ne change qu'une variable d'environnement.
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    mem_limit: 128m
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: skillhunt-grafana
+    profiles: ["obs"]
+    restart: unless-stopped
+    environment:
+      # Identifiants par variables d'env, JAMAIS en dur (CLAUDE.md §8-4).
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      # Aucune inscription ni accès anonyme : la supervision expose l'état interne de la
+      # plateforme et le contenu des logs.
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      # Alerting par mail (chantier C) — Mailpit en dev/staging, relais réel en prod.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${SMTP_HOST:-mailpit:1025}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-alertes@skillhunt.local}
+      GF_SMTP_FROM_NAME: SkillHunt Supervision
+      GF_SMTP_SKIP_VERIFY: "true"
+      # Destinataire des alertes. Le défaut est porté ICI et non dans le fichier de
+      # provisioning : Grafana n'y comprend pas la syntaxe `${VAR:-defaut}` et rejetterait
+      # tout le fichier si la variable n'était pas résolue.
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-exploitation@skillhunt.local}
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - skillhunt_grafana:/var/lib/grafana
+    ports:
+      # Port hôte 3030 et NON 3000, le port par défaut de Grafana : 3000 est l'un des
+      # ports les plus disputés d'un poste de développement (serveurs Node, Grafana
+      # installé nativement…). Même précaution que pour Redis, exposé sur 6380 plutôt
+      # que 6379. Le port INTERNE reste 3000 : seule la projection change.
+      - "${GRAFANA_PORT:-3030}:3000"
+    mem_limit: 512m
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+
 volumes:
   skillhunt_pgdata:
   skillhunt_localstack:
   skillhunt_redis:
   skillhunt_mongo:
+  # SH-29 — profil `obs`
+  skillhunt_prometheus:
+  skillhunt_loki:
+  skillhunt_alloy:
+  skillhunt_grafana:

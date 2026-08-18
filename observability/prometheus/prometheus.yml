@@ -1,0 +1,44 @@
+# SH-29 — Collecte des métriques (C4.1.2).
+#
+# Prometheus interroge les cibles sur le réseau Docker privé : aucune ne publie de port
+# hôte, et la gateway ne relaie pas /metrics (cf. metrics.controller.ts). L'exposition
+# reste donc interne, alors même que les métriques sont collectées en continu.
+
+global:
+  # 15 s : compromis entre réactivité de l'alerte et volume de séries. Le seuil S1
+  # (« up == 0 pendant 2 min ») a besoin d'au moins ~8 points pour ne pas déclencher sur
+  # un unique échec de scrape ; un intervalle plus long les rendrait trop rares.
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    environnement: dev
+
+scrape_configs:
+  # ── Monolithe NestJS : latence, taux d'erreur, saturation du process (S2, S3) ────────
+  - job_name: backend-core
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['backend-core:3001']
+        labels:
+          service: backend-core
+
+  # ── Microservice FastAPI : mêmes indicateurs sur le cœur métier différenciant ────────
+  - job_name: matching-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['matching-service:8000']
+        labels:
+          service: matching-service
+
+  # ── cAdvisor : CPU, mémoire et redémarrages de TOUS les conteneurs (S4, S5) ──────────
+  # Couvre les briques sans instrumentation applicative — postgres, redis, mongo,
+  # localstack, gateway, frontend-web — qu'aucune métrique métier n'atteindrait.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # ── Auto-supervision : une stack de supervision aveugle sur elle-même ne vaut rien ───
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

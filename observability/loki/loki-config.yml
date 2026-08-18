@@ -1,0 +1,59 @@
+# SH-29 — Stockage des logs (C4.1.2).
+#
+# Décision tracée : Loki PLUTÔT qu'ELK (ticket §2). Elasticsearch + Logstash + Kibana
+# demandent 2 à 4 Go de RAM en plus des 8 conteneurs existants ; la VM de production est
+# une b2-7 (7 Go). Loki n'indexe que les LABELS, pas le contenu des lignes — même valeur
+# d'exploitation pour environ 300 Mo. Le backlog mentionnait « ELK » : décision révisée.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  # Silence les lignes de service de Loki lui-même, qui noieraient les logs applicatifs.
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Rétention 7 jours : couvre largement la fenêtre d'observation du dossier tout en
+  # bornant la consommation disque sur une VM dimensionnée pour une démo.
+  retention_period: 168h
+  # Les conteneurs peuvent redémarrer avec un décalage d'horloge ; sans cette tolérance,
+  # Loki rejetterait leurs premières lignes — précisément celles d'un incident de
+  # démarrage, les plus utiles au diagnostic.
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+
+compactor:
+  working_directory: /loki/compactor
+  delete_request_store: filesystem
+  retention_enabled: true
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+
+analytics:
+  reporting_enabled: false

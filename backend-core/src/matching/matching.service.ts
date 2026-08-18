@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { SearchMatchDto } from './dto/search-match.dto';
 import { MatchResultDto } from './dto/match-result.dto';
+import { REQUEST_ID_HEADER } from '../observability/request-id.middleware';
 
 /** Réponse brute du matching-service (contrat Pydantic `MatchResult`). */
 interface RawMatchResult {
@@ -27,14 +28,23 @@ export class MatchingService {
     private readonly usersRepo: Repository<User>,
   ) {}
 
-  async search(dto: SearchMatchDto): Promise<MatchResultDto[]> {
+  /**
+   * @param requestId identifiant de corrélation relayé au microservice (SH-29). C'est lui
+   * qui permet, depuis une seule requête LogQL, de reconstituer le trajet complet d'une
+   * recherche à travers le monolithe ET le matching-service — condition pour qu'une
+   * anomalie de matching soit reproductible, donc consignable (C4.2.1).
+   */
+  async search(dto: SearchMatchDto, requestId?: string): Promise<MatchResultDto[]> {
     const baseUrl = process.env.MATCHING_SERVICE_URL ?? 'http://localhost:8000';
 
     let response: Response;
     try {
       response = await fetch(`${baseUrl}/match`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...(requestId ? { [REQUEST_ID_HEADER]: requestId } : {}),
+        },
         body: JSON.stringify({
           skills: dto.skills,
           // Contrat MatchRequest : location = (lat, lon) — le service inverse lui-même

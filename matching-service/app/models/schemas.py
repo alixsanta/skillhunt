@@ -8,6 +8,18 @@ class HealthResponse(BaseModel):
     service: str
 
 
+class ReadinessResponse(BaseModel):
+    """Contrat de la sonde de disponibilité (SH-29, C2.4.1).
+
+    `dependencies` porte le diagnostic : une 503 nue obligerait à fouiller les logs pour
+    savoir LAQUELLE des dépendances est tombée.
+    """
+
+    status: str
+    service: str
+    dependencies: dict[str, str]
+
+
 class MatchRequest(BaseModel):
     # C2.2.3 — Validation stricte des entrées (anti-injection, OWASP A03 ;
     # bornes anti-DoS : une liste de skills non bornée serait amplifiée par candidat lors du scoring)

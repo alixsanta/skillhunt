@@ -1,0 +1,121 @@
+{
+  "uid": "skillhunt-api-backend",
+  "title": "SkillHunt — API (latence, erreurs, trafic)",
+  "description": "Sondes S2, S3 et S7 du ticket SH-29 : critères de qualité et de performance des deux services applicatifs.",
+  "tags": ["skillhunt", "sh-29"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "S2 — Latence p95 par service",
+      "description": "Cible d'architecture : < 50 ms (CLAUDE.md §3). Seuil d'alerte : p95 > 500 ms sur 5 min. Les bornes des histogrammes sont calées sur ces deux valeurs — sans borne proche du seuil, le p95 serait interpolé dans un intervalle trop large pour alerter au bon moment.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job))",
+          "legendFormat": "p95 {{job}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job))",
+          "legendFormat": "médiane {{job}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "fillOpacity": 5 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.25 },
+              { "color": "red", "value": 0.5 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "S3 — Taux d'erreur serveur (5xx)",
+      "description": "Seuil d'alerte : > 2 % sur 5 min, sévérité CRITIQUE. C'est l'indicateur qui détecte une régression fonctionnelle en production — celle qu'aucun test n'a vue passer.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (job) / clamp_min(sum(rate(http_requests_total[5m])) by (job), 0.001)",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": { "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.02 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Trafic par route",
+      "description": "Les étiquettes portent le GABARIT de route, jamais l'URL brute : sinon un client pourrait créer autant de séries qu'il envoie d'URLs distinctes, jusqu'à saturer la mémoire (explosion de cardinalité).",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[5m])) by (route)",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "S7 — Rejets 429 sur l'authentification",
+      "description": "Seuil : > 20/min depuis une même IP, sévérité SÉCURITÉ. Complète le rate-limiting de SH-5 : celui-ci BLOQUE le brute-force, cette sonde le SIGNALE. Sans elle, une attaque est repoussée mais personne n'en est informé.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({service=\"gateway\"} |= \" 429 \" |= \"/api/v1/auth\" [1m]))",
+          "legendFormat": "429 sur /api/v1/auth",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "fillOpacity": 20 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
