@@ -4,7 +4,7 @@
 # principe « une image, N configs » documentée dans le ticket.
 
 # --- Étape 1 : build Vite ---
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 ARG VITE_API_URL=http://localhost:3001
 ENV VITE_API_URL=$VITE_API_URL
 WORKDIR /app
