@@ -1,5 +1,5 @@
 # SH-2 — Image de production du matching-service (FastAPI).
-FROM python:3.11-slim
+FROM python:3.14-slim
 WORKDIR /app
 
 # Dépendances d'abord (couche mise en cache tant que requirements.txt ne change pas)
