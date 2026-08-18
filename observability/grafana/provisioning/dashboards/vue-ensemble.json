@@ -1,0 +1,109 @@
+{
+  "uid": "skillhunt-vue-ensemble",
+  "title": "SkillHunt — Vue d'ensemble plateforme",
+  "description": "Sondes S1, S4 et S5 du ticket SH-29 : disponibilité des services, saturation mémoire et instabilité des conteneurs.",
+  "tags": ["skillhunt", "sh-29"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "S1 — Disponibilité des services applicatifs",
+      "description": "up == 0 pendant 2 min déclenche une alerte CRITIQUE. C'est l'indicateur central de C4.1.2 : « garantir une disponibilité permanente ».",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "up{job=~\"backend-core|matching-service\"}",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "textMode": "auto",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "HORS SERVICE", "color": "red", "index": 0 } } },
+            { "type": "value", "options": { "1": { "text": "EN SERVICE", "color": "green", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Taux de disponibilité sur la fenêtre",
+      "description": "Moyenne de `up` : lit les micro-coupures qu'un indicateur instantané masque.",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "avg_over_time(up{job=~\"backend-core|matching-service\"}[5m])",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "min": 0, "max": 1, "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "S4 — Mémoire utilisée par conteneur",
+      "description": "Seuil d'alerte : > 85 % de la limite pendant 10 min. Contrainte réelle : la VM de production est une b2-7 (7 Go) pour 8 conteneurs, plus la stack d'observabilité.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "container_memory_working_set_bytes{name=~\"skillhunt-.*\"}",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "S5 — Redémarrages de conteneurs",
+      "description": "Plus de 2 redémarrages en 15 min déclenche une alerte CRITIQUE. `restart: unless-stopped` masque sinon un crash-loop : le service paraît sain entre deux morts.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "increase(container_start_time_seconds{name=~\"skillhunt-.*\"}[15m]) > 0",
+          "legendFormat": "{{name}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "S6 — Erreurs applicatives récentes",
+      "description": "Plus de 10 erreurs/min sur 5 min déclenche une alerte. Le label `level` vient de l'extraction JSON d'Alloy, rendue possible par l'alignement des formats de log des deux services (chantier A).",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "expr": "{plateforme=\"skillhunt\", level=\"error\"}",
+          "refId": "A"
+        }
+      ],
+      "options": { "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true }
+    }
+  ]
+}

@@ -18,8 +18,8 @@ Règle appliquée au projet : `MAJOR` = rupture d'API publique · `MINOR` = nouv
 | Version | Déployée le | Tag Git | Commit publié | Image GHCR | Environnement | Tickets |
 |---|---|---|---|---|---|---|
 | [1.0.0](#100--2026-07-23) | 2026-07-23 | `v1.0.0` | [`a94568a`](https://github.com/alixsanta/skillhunt/commit/a94568ab5e564cc64ad71b43cefa92e776802b60) (PR #42, `develop` → `main`) | `ghcr.io/alixsanta/skillhunt/{backend-core,matching-service,frontend-web,gateway}:a94568ab5e564cc64ad71b43cefa92e776802b60` (+ `:latest`) | Production — VM OVHcloud `147.135.230.140` | SH-1 → SH-46 |
-
-| [1.0.1](#101--2026-08-18) | *à compléter après déploiement* | `v1.0.1` | *à compléter* | *à compléter* | Production — VM OVHcloud `147.135.230.140` | SH-47, SH-48, SH-49 |
+| [1.0.1](#101--2026-08-18) | 2026-08-18 | `v1.0.1` | [`bfadcff`](https://github.com/alixsanta/skillhunt/commit/bfadcff21f8355a42958f6ce643420af6c0543dc) (PR #50, `develop` → `main`) | `ghcr.io/alixsanta/skillhunt/{backend-core,matching-service,frontend-web,gateway}:bfadcff21f8355a42958f6ce643420af6c0543dc` (+ `:latest`) | Production — VM OVHcloud `147.135.230.140` | SH-47, SH-48, SH-49 |
+| [1.1.0](#110--2026-08-19) | *à compléter après déploiement* | `v1.1.0` | *à compléter* | *à compléter* | Production — VM OVHcloud `147.135.230.140` | SH-29 |
 
 > ℹ️ Le workflow `publish-staging.yml` étiquette les images avec `${{ github.sha }}`, c'est-à-dire
 > le **SHA complet sur 40 caractères** — pas la forme abrégée. Le tag d'image à reporter dans un
@@ -37,17 +37,86 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ---
 
+## [1.1.0] — 2026-08-19
+
+Première version **fonctionnelle** depuis la mise en production : elle rend la plateforme
+observable. Avant elle, SkillHunt tournait sur une VM publique sans aucun moyen de savoir
+si elle était disponible, lente ou en erreur — le délai de détection d'un incident n'était
+pas long, il était **non borné**.
+
+`MINOR` et non `PATCH` : l'instrumentation ajoute de vrais endpoints au produit déployé
+(`/api/v1/health`, `/api/v1/health/ready`, `/metrics` sur les deux services).
+
+### Ajouté
+
+**Instrumentation des services** (SH-29)
+- **Logs structurés JSON** sur `backend-core` (pino) et `matching-service`
+  (`python-json-logger`), aux champs alignés : `service`, `level`, `timestamp`, `requestId`.
+- **Corrélation inter-services** par `X-Request-Id` : posé par le monolithe, relayé par son
+  proxy de matching, réinjecté par le microservice. Une requête LogQL sur un identifiant
+  reconstitue le trajet complet d'une recherche à travers les deux services.
+- **Redaction obligatoire** des mots de passe, jetons, en-têtes `Authorization`, cookies,
+  secret TOTP, codes de secours et **numéros de série** (minimisation RGPD) — la clé est
+  conservée, la valeur remplacée par `[Redacted]`.
+- **Métriques Prometheus** : histogramme de latence et compteur par statut, étiquetés par
+  gabarit de route et jamais par URL brute (cardinalité bornée).
+- **Sondes de santé** : `/health` (vivacité, n'interroge aucune dépendance) et
+  `/health/ready` (PostgreSQL, Redis, MongoDB — **503** si l'une tombe, ce qui rend
+  l'indisponibilité mesurable donc alertable).
+- `healthcheck` du conteneur `backend-core`, absent jusque-là.
+
+**Stack de supervision** (SH-29) — profil `obs`, activable indépendamment de l'application,
+présent dans les composes de **développement et de production** :
+Grafana, Prometheus, Loki, Grafana Alloy, cAdvisor et Mailpit, **intégralement provisionnés
+as-code** (sources de données, tableaux de bord et règles d'alerte versionnés).
+
+**8 sondes et leur alerting par mail** (SH-29) : disponibilité, latence p95, taux d'erreur
+5xx, saturation mémoire, instabilité de conteneur, erreurs applicatives, pression sur
+l'authentification, retard du bus d'événements. Chaque règle porte en annotation la sonde
+dont elle dérive et la conduite à tenir.
+
+**Documentation d'exploitation** (SH-29) : `SUPERVISION.md` (périmètre, architecture,
+tableau des sondes, budget de détection, limites), `RUNBOOK.md` (une section par alerte,
+écrit pour être lu *pendant* l'incident) et le gabarit `FICHE_ANOMALIE.md`.
+
+### Sécurité
+- Les endpoints d'observabilité ne sont **jamais routés par la gateway** : `/metrics`, Loki
+  et Prometheus restent sur le réseau Docker privé.
+- En production, **Grafana et Mailpit sont liés à `127.0.0.1`** — accessibles uniquement par
+  tunnel SSH. La VM n'ayant ni TLS ni durcissement (SH-4), les publier donnerait accès à
+  l'état interne de la plateforme et au contenu des logs, identifiants en clair.
+- Socket Docker monté en **lecture seule** pour Alloy et cAdvisor.
+
+### Limitations connues à la date de publication
+
+| Limitation | Impact | Suite |
+|---|---|---|
+| **La gateway et `frontend-web` ne sont couvertes par aucune sonde de disponibilité** | Le point d'entrée unique peut tomber pendant que les 8 sondes restent vertes | Sonde **S9** (`blackbox-exporter`), consignée en axe d'amélioration |
+| Aucune sonde ne lit l'**état des healthchecks Docker** | Un `HEALTHCHECK` faux passe inaperçu — c'était le cas d'AN-01 | Exportateur d'état Docker, à arbitrer |
+| `cadvisor` tourne en **`privileged`** avec montages système | Surface d'hôte élevée sur une VM sans durcissement | Restreindre les capacités, lié à SH-4 |
+| Grafana **sans TLS** | Mitigé par le tunnel SSH, mais non résolu | SH-4 |
+| Le dossier `observability/` doit être **copié à la main** sur la VM | Étape de déploiement supplémentaire, oubliable | Contrepartie assumée d'une source de vérité unique |
+
+> **Six défauts ont été trouvés en exécutant la chaîne complète**, dont aucun n'était
+> détectable par un test unitaire — les 68 tests d'instrumentation étaient verts pendant
+> qu'ils existaient. Trois auraient produit une **supervision silencieusement partielle**.
+> Une relecture ultérieure en a trouvé trois de plus, dont une **règle d'alerte morte** qui
+> filtrait un mot jamais journalisé. Détail : [`SUPERVISION.md`](docs/exploitation/SUPERVISION.md) §7.
+
+---
+
 ## [1.0.1] — 2026-08-18
 
 Version **corrective** : aucune nouveauté fonctionnelle. Elle résorbe une anomalie de
 production consignée et deux vagues de dérive de dépendances, et outille la veille pour
 que la troisième ne passe plus inaperçue.
 
-> ⚠️ **AN-01 n'est pas encore confirmée.** Le correctif est écrit et la CI est verte, mais
-> l'anomalie **ne se manifeste que sur l'Ubuntu 22.04 de la VM** — sous Docker Desktop les
-> conteneurs sont `healthy` avant même le correctif, et `docker-ci` construit les images
-> sans exécuter leurs sondes. La ligne correspondante des limitations connues de la
-> `v1.0.0` ne sera retirée qu'après vérification par `docker compose ps` en production.
+> ✅ **AN-01 confirmée corrigée en production le 2026-08-18.** `docker compose ps` sur la VM
+> affiche `skillhunt-gateway-staging` et `skillhunt-frontend-staging` en **`healthy`**, après
+> quatre minutes de fonctionnement — soit huit exécutions de la sonde. Ils étaient `unhealthy`
+> depuis le 2026-07-23 tout en servant le trafic. C'est le seul environnement capable de
+> l'attester : sous Docker Desktop les conteneurs sont `healthy` avant même le correctif, et
+> `docker-ci` construit les images sans exécuter leurs sondes.
 
 ### Corrigé
 - **AN-01 — `gateway` et `frontend-web` marqués `unhealthy` alors qu'ils servaient le
@@ -103,10 +172,11 @@ que la troisième ne passe plus inaperçue.
 - `docs/BACKLOG.md` — décision de cadrage du dossier BLOC 4 : périmètre fonctionnel gelé,
   EP04 maintenu hors scope.
 
-> ⚠️ **Exception de sécurité active** : `GHSA-qwww-vcr4-c8h2` (`react-router`) est allowlistée.
-> L'avis vise le mode RSC, non utilisé par cette SPA ; aucune version corrigée n'existe vers
-> l'avant et le seul correctif proposé serait une redescente de 7 versions mineures.
-> **Réexamen au 2026-11-04.** Détail : `docs/exploitation/POLITIQUE_DEPENDANCES.md` §3.3.
+> ⚠️ **Exception de sécurité active** : `GHSA-jmr9-qjv8-65gv` (`extract-zip`) est allowlistée.
+> Dépendance de développement, absente de l'image de production, et l'unique archive extraite
+> est le Chrome téléchargé depuis les serveurs Google — non contrôlable par un tiers. Aucune
+> version corrigée n'existe (plage vulnérable `*`). **Réexamen au 2026-11-18.**
+> Détail : [`POLITIQUE_DEPENDANCES.md`](docs/exploitation/POLITIQUE_DEPENDANCES.md) §3.3.
 
 ---
 
@@ -213,7 +283,7 @@ multicritères → mise en relation par messagerie.
 
 | Limitation | Impact | Suite prévue |
 |---|---|---|
-| Les conteneurs `frontend-web` et `gateway` sont marqués `unhealthy` alors qu'ils servent le trafic. Leur HEALTHCHECK interroge `http://localhost:80`, que `wget` (BusyBox) résout d'abord en IPv6 `::1`, alors que leurs `nginx.conf` ne déclarent que `listen 80;` (IPv4). | Cosmétique — aucun `depends_on: service_healthy` ne s'appuie sur ces deux services. Mais l'état de santé réel est masqué. | **Anomalie ouverte**, à consigner et corriger. Correctif identifié : `listen [::]:80;` ou cibler `127.0.0.1`. |
+| Les conteneurs `frontend-web` et `gateway` sont marqués `unhealthy` alors qu'ils servent le trafic. Leur HEALTHCHECK interroge `http://localhost:80`, que `wget` (BusyBox) résout d'abord en IPv6 `::1`, alors que leurs `nginx.conf` ne déclarent que `listen 80;` (IPv4). | Cosmétique — aucun `depends_on: service_healthy` ne s'appuie sur ces deux services. Mais l'état de santé réel est masqué. | ✅ **Résolue en [`v1.0.1`](#101--2026-08-18)** (2026-08-18, ticket SH-49) : les HEALTHCHECK ciblent désormais `127.0.0.1`. L'alternative `listen [::]:80;` a été écartée — un correctif de sonde ne doit pas élargir la surface réseau du service qu'il surveille. Fiche : [`AN-01`](docs/anomalies/AN-01-healthcheck-ipv6.md). |
 | Pas de TLS : accès en HTTP nu sur l'IP publique | Trafic non chiffré. Dégradation assumée (aucun nom de domaine possédé au moment du déploiement). | SH-4 (hardening TLS 1.3, secrets, mTLS inter-services) |
 | Aucune supervision : ni logs structurés, ni métriques, ni sondes, ni alerte | Toute anomalie est découverte par hasard, pas détectée. | SH-29 |
 | `backend-core` n'expose aucun endpoint de santé et n'a pas de `healthcheck:` | La disponibilité du monolithe n'est pas mesurable. | SH-29 |

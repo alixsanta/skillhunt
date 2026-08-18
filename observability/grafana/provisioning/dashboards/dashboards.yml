@@ -1,0 +1,21 @@
+# SH-29 — Chargement des tableaux de bord depuis le disque (C4.1.2).
+#
+# Les définitions JSON sont VERSIONNÉES dans le dépôt : un tableau de bord construit à la
+# souris vit dans la base SQLite de Grafana, disparaît avec le volume et ne se relit pas
+# en revue. Versionné, il se diffe, se restaure et constitue une preuve consultable.
+
+apiVersion: 1
+
+providers:
+  - name: skillhunt
+    orgId: 1
+    folder: SkillHunt
+    type: file
+    disableDeletion: false
+    # Interdit la modification depuis l'interface : le fichier fait foi. Sans ce verrou,
+    # une retouche à la souris serait écrasée au prochain démarrage, en silence.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

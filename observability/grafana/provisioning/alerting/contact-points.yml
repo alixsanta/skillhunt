@@ -1,0 +1,74 @@
+# SH-29 — Modalité de signalement (C4.1.2 : « en configurant la modalité des signalements »).
+#
+# Décision tracée (ticket §2) : signalement par MAIL, capté par Mailpit en dev et staging.
+# Le mail est la modalité la plus universelle et la plus traçable ; Mailpit capte un mail
+# RÉELLEMENT émis en SMTP, ce qui donne une preuve consultable et reproductible SANS
+# aucun secret dans le dépôt (CLAUDE.md §8). Le passage en production ne change que
+# SMTP_HOST / SMTP_FROM dans l'environnement — le reste de cette configuration est
+# identique.
+
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: equipe-skillhunt
+    receivers:
+      - uid: mail-exploitation
+        type: email
+        settings:
+          # ⚠️ `$VAR` et NON `${VAR:-defaut}` : Grafana interpole les variables
+          # d'environnement dans ses fichiers de provisioning, mais ne comprend PAS la
+          # syntaxe shell de valeur par défaut — la variable reste alors non résolue,
+          # l'adresse est vide, et tout le fichier est rejeté (« could not find addresses
+          # in settings »). Le défaut est donc porté par le compose, qui le supporte.
+          addresses: $ALERT_EMAIL_TO
+          singleEmail: false
+          # Le sujet DOIT distinguer l'alerte de sa résolution. Sans la condition
+          # ci-dessous, les deux mails portaient un sujet identique — un destinataire
+          # parcourant sa boîte ne pouvait pas savoir si la plateforme venait de tomber
+          # ou de se rétablir, ce qui vide le signalement de son sens. Constaté au test
+          # de bout en bout (SH-29, chantier C).
+          subject: >-
+            {{ if .Alerts.Firing }}[{{ .CommonLabels.severite | toUpper }}]{{ else }}[RÉSOLU]{{ end }}
+            SkillHunt — {{ .CommonLabels.alertname }}
+          # Corps volontairement OPÉRATIONNEL : un mail d'alerte doit permettre de décider
+          # sans ouvrir Grafana. Il porte donc le service touché, l'indicateur, la valeur
+          # mesurée face à son seuil, et le renvoi au runbook — pas seulement « quelque
+          # chose ne va pas ».
+          message: |
+            {{ len .Alerts.Firing }} alerte(s) active(s), {{ len .Alerts.Resolved }} résolue(s).
+
+            {{ range .Alerts.Firing }}
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            🔴 {{ .Labels.alertname }}
+              Sévérité   : {{ .Labels.severite }}
+              Service    : {{ .Labels.service | default "plateforme" }}
+              Sonde      : {{ .Annotations.sonde }}
+              Constat    : {{ .Annotations.summary }}
+              Conduite   : {{ .Annotations.runbook }}
+              Depuis     : {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+            {{ end }}
+
+            {{ range .Alerts.Resolved }}
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ✅ RÉSOLU — {{ .Labels.alertname }} ({{ .Labels.service | default "plateforme" }})
+              Retour à la normale : {{ .EndsAt.Format "2006-01-02 15:04:05" }}
+            {{ end }}
+
+            Runbook complet : docs/exploitation/RUNBOOK.md
+
+policies:
+  - orgId: 1
+    receiver: equipe-skillhunt
+    # Regroupement par alerte ET par service : deux services qui tombent ensemble
+    # produisent deux mails distincts, chacun actionnable. Tout regrouper donnerait un
+    # mail unique et illisible au moment précis où il faut décider vite.
+    group_by: ['alertname', 'service']
+    # 30 s d'attente avant le premier envoi : absorbe les rafales d'un incident qui se
+    # propage (une base qui tombe entraîne ses consommateurs) sans retarder l'alerte.
+    group_wait: 30s
+    group_interval: 5m
+    # Rappel toutes les 4 h tant que l'incident dure : assez pour ne pas oublier, assez
+    # espacé pour ne pas désensibiliser. Une alerte qui se répète toutes les 5 minutes
+    # finit par être filtrée par son destinataire — et c'est ainsi qu'on rate la suivante.
+    repeat_interval: 4h

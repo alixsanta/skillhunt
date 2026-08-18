@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 // refusait de démarrer (« cookie_parser_1.default is not a function »), SH-20.
 import * as cookieParser from 'cookie-parser';
 import { resolveCorsOrigins } from './common/cors';
+import { requestIdMiddleware } from './observability/request-id.middleware';
 
 /**
  * Configuration UNIQUE de l'application (middlewares, CORS, validation, Swagger).
@@ -16,6 +17,11 @@ import { resolveCorsOrigins } from './common/cors';
  * divergeraient de nouveau (cause racine des deux bugs bloquants de SH-20).
  */
 export function configureApp(app: INestApplication): INestApplication {
+  // Identifiant de corrélation (SH-29) — EN PREMIER : le middleware de nestjs-pino est
+  // enregistré à l'import du module et lit `req.requestId` dans `genReqId`. Le poser ici,
+  // via app.use(), garantit qu'il précède toute la chaîne (cf. request-id.middleware.ts).
+  app.use(requestIdMiddleware);
+
   // Lecture du cookie de refresh (httpOnly) déposé au login (SH-20)
   app.use(cookieParser());
 
