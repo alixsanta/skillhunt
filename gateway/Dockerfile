@@ -1,5 +1,5 @@
 # SH-5 — Image de la Gateway (nginx, point d'entrée unique).
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 # SH-49 — Sonde locale ciblant explicitement 127.0.0.1, et NON `localhost`.
