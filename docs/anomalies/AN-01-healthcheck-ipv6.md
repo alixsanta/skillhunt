@@ -9,7 +9,7 @@
 | **Environnement** | ☑ Production (VM OVHcloud `147.135.230.140`, Ubuntu 22.04) |
 | **Version déployée** | `v1.0.0` — SHA `a94568ab5e564cc64ad71b43cefa92e776802b60` |
 | **Composant** | `gateway` et `frontend-web` (images `nginx:1.27-alpine`) |
-| **Statut** | ☑ **Correctif écrit** — ☐ vérifié en production (voir §7) |
+| **Statut** | ☑ **CORRIGÉE ET VÉRIFIÉE EN PRODUCTION** le 2026-08-18 (`v1.0.1`) |
 | **Ticket de correction** | `fix/SH-49-healthcheck-ipv6` |
 
 ---
@@ -121,10 +121,49 @@ conteneur, et c'est déjà l'interface sur laquelle nginx écoute.
 
 - [x] Ticket de correction créé : `fix/SH-49-healthcheck-ipv6`
 - [x] Correctif développé (les deux Dockerfiles)
-- [ ] CI verte — `docker-ci` se déclenche sur `gateway/**` et `frontend-web/Dockerfile`
-- [ ] Déployé — version `vX.Y.Z` ([`PROCESS_RELEASE.md`](../exploitation/PROCESS_RELEASE.md))
-- [ ] Vérifié **sur la VM** : `docker compose ps` affiche les deux conteneurs `healthy`
-      *(seul environnement où l'anomalie se manifeste — la vérification locale ne prouve rien)*
-- [ ] Entrée `Corrigé` au [`CHANGELOG.md`](../../CHANGELOG.md), avec renvoi à cette fiche, et
-      **retrait de la ligne correspondante des limitations connues de la `v1.0.0`**
+- [x] **CI verte** — 6 checks sur la PR #46, dont les 4 builds Docker et l'audit d'accessibilité
+- [x] **Déployé** — version [`v1.0.1`](../../CHANGELOG.md#101--2026-08-18), commit `bfadcff`,
+      images publiées depuis `main` le 2026-08-18 (run `32137476646`, 4 jobs `success`).
+      `headSha` du run vérifié identique au commit tagué — le piège de la ref du
+      `workflow_dispatch` a été contrôlé, pas supposé.
+- [x] **VÉRIFIÉ SUR LA VM** le 2026-08-18 : `docker compose ps` affiche
+      `skillhunt-gateway-staging` et `skillhunt-frontend-staging` en **`healthy`** après
+      quatre minutes de fonctionnement, soit huit exécutions de la sonde. Les 8 conteneurs
+      de la stack sont `healthy`.
+- [x] Entrée `Corrigé` au [`CHANGELOG.md`](../../CHANGELOG.md) avec renvoi à cette fiche
 - [x] **Supervision ajustée** : sonde S9 consignée en axe d'amélioration (§5, point 2)
+
+> **La ligne d'AN-01 n'a PAS été supprimée des limitations connues de la `v1.0.0`**, contrairement
+> à ce que prévoyait la version initiale de cette fiche. Cette section est explicitement intitulée
+> « limitations connues **à la date de publication** » : la limitation *était* réelle le
+> 2026-07-23, et l'effacer réécrirait l'histoire de cette version. Elle est donc **annotée
+> comme résolue en `v1.0.1`**, avec renvoi ici. Un journal de versions qu'on récrit a posteriori
+> perd la valeur probante qui justifie son existence.
+
+---
+
+## 8. Bilan — la chaîne complète
+
+| Étape | Date | Preuve |
+|---|---|---|
+| **Détection** | 2026-07-23 | Découverte fortuite dans `docker compose ps` — **aucune sonde ne couvrait ces conteneurs** (§5) |
+| **Consignation** | 2026-08-06 | Cette fiche, première utilisation du gabarit de SH-29 |
+| **Analyse** | 2026-08-06 | Cause racine reproduite : `::1` → connexion refusée, `127.0.0.1` → succès |
+| **Correctif** | 2026-08-06 | `HEALTHCHECK` ciblant `127.0.0.1`, alternative `listen [::]:80;` écartée et justifiée |
+| **Intégration** | 2026-08-18 | PR #46, 6 checks verts |
+| **Déploiement** | 2026-08-18 | `v1.0.1` via la CI/CD, SHA d'image vérifié conforme au tag |
+| **Vérification** | 2026-08-18 | `docker compose ps` en production : **`healthy`** |
+
+**Durée d'exposition : 26 jours.** Aucun utilisateur affecté — l'impact était diagnostique.
+
+**Ce que cette anomalie a appris**, au-delà de sa correction :
+
+1. **Un défaut peut n'exister que sur la cible de production.** Docker Desktop résout
+   `localhost` en IPv4 : le développement ne pouvait pas le voir. Une vérification locale
+   n'aurait rien prouvé — d'où le refus de clore cette fiche avant le déploiement réel.
+2. **La supervision ne couvrait pas la gateway**, pourtant point d'entrée unique de la
+   plateforme. Constat fait en cherchant à vérifier cette anomalie, et qui a produit la
+   sonde **S9** — une amélioration plus importante que l'anomalie elle-même.
+3. **La CI construit les images sans exécuter leurs sondes.** `docker-ci` ne pouvait pas
+   attraper ce défaut et ne le pourra pas davantage à l'avenir : c'est une limite connue,
+   désormais écrite.
