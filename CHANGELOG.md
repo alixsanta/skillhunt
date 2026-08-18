@@ -19,6 +19,8 @@ Règle appliquée au projet : `MAJOR` = rupture d'API publique · `MINOR` = nouv
 |---|---|---|---|---|---|---|
 | [1.0.0](#100--2026-07-23) | 2026-07-23 | `v1.0.0` | [`a94568a`](https://github.com/alixsanta/skillhunt/commit/a94568ab5e564cc64ad71b43cefa92e776802b60) (PR #42, `develop` → `main`) | `ghcr.io/alixsanta/skillhunt/{backend-core,matching-service,frontend-web,gateway}:a94568ab5e564cc64ad71b43cefa92e776802b60` (+ `:latest`) | Production — VM OVHcloud `147.135.230.140` | SH-1 → SH-46 |
 
+| [1.0.1](#101--2026-08-18) | *à compléter après déploiement* | `v1.0.1` | *à compléter* | *à compléter* | Production — VM OVHcloud `147.135.230.140` | SH-47, SH-48, SH-49 |
+
 > ℹ️ Le workflow `publish-staging.yml` étiquette les images avec `${{ github.sha }}`, c'est-à-dire
 > le **SHA complet sur 40 caractères** — pas la forme abrégée. Le tag d'image à reporter dans un
 > `docker-compose` de rollback est donc celui indiqué ci-dessus en entier.
@@ -30,6 +32,33 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 ---
 
 ## [Non publié]
+
+*Rien pour le moment.*
+
+---
+
+## [1.0.1] — 2026-08-18
+
+Version **corrective** : aucune nouveauté fonctionnelle. Elle résorbe une anomalie de
+production consignée et deux vagues de dérive de dépendances, et outille la veille pour
+que la troisième ne passe plus inaperçue.
+
+> ⚠️ **AN-01 n'est pas encore confirmée.** Le correctif est écrit et la CI est verte, mais
+> l'anomalie **ne se manifeste que sur l'Ubuntu 22.04 de la VM** — sous Docker Desktop les
+> conteneurs sont `healthy` avant même le correctif, et `docker-ci` construit les images
+> sans exécuter leurs sondes. La ligne correspondante des limitations connues de la
+> `v1.0.0` ne sera retirée qu'après vérification par `docker compose ps` en production.
+
+### Corrigé
+- **AN-01 — `gateway` et `frontend-web` marqués `unhealthy` alors qu'ils servaient le
+  trafic** (SH-49). `wget` (BusyBox/Alpine) résolvait `localhost` en IPv6 `::1` quand les
+  `nginx.conf` ne déclarent que `listen 80;`. Les `HEALTHCHECK` ciblent désormais
+  explicitement `127.0.0.1`. Fiche : [`AN-01`](docs/anomalies/AN-01-healthcheck-ipv6.md).
+  L'alternative `listen [::]:80;` a été écartée : un correctif de sonde ne doit pas
+  modifier le comportement réseau du service qu'il surveille.
+  *Impact diagnostique et non fonctionnel — aucun utilisateur affecté — mais un état de
+  santé faux désensibilise l'exploitant, interdit tout `depends_on: service_healthy` et
+  fausserait toute supervision lisant l'état Docker.*
 
 ### Sécurité
 - **25 avis de sécurité résorbés sur les trois services** (SH-47), dont **7 qui tournaient en
@@ -44,6 +73,20 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
     imbriquée).
   - `frontend-web` — 12 avis (dont 9 `high`) résorbés sur 14 paquets, dont `react-router`,
     `undici`, `postcss` et `nanoid`.
+- **Troisième vague de dérive résorbée** (SH-49), douze jours après la précédente, sur
+  `nanoid`, `brace-expansion`, `@redocly>js-yaml` et `@hono/node-server`. Elle est apparue
+  sur une PR ne touchant que deux Dockerfiles — illustration datée du phénomène décrit au
+  §0 de la [politique](docs/exploitation/POLITIQUE_DEPENDANCES.md) : *une CI reste verte
+  jusqu'à ce qu'une CVE paraisse sur une dépendance figée, et le blocage tombe sur une PR
+  sans rapport*.
+- **Exception de sécurité ouverte** : `GHSA-jmr9-qjv8-65gv` (`extract-zip`, sans version
+  corrigée). Dépendance de développement, absente de l'image de production, et l'unique
+  archive extraite est le Chrome téléchargé depuis les serveurs Google — non contrôlable
+  par un tiers. *Réexamen le 2026-11-18.*
+- **Exception de sécurité LEVÉE** : `GHSA-qwww-vcr4-c8h2` (`react-router`) — plus aucun
+  chemin vulnérable après montée. Retirée plutôt que conservée « au cas où » : une
+  exception devenue inutile masque la réapparition de l'avis. Elle aura tenu 14 jours sur
+  les 3 mois prévus.
 
 ### Ajouté
 - Journal des versions déployées : ce fichier, table de correspondance et process de release (SH-48).
