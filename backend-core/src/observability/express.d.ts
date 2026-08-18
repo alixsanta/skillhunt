@@ -7,8 +7,15 @@
 declare global {
   namespace Express {
     interface Request {
-      /** Identifiant de corrélation de la requête (cf. `RequestIdMiddleware`). */
+      /** Identifiant de corrélation de la requête (cf. `requestIdMiddleware`). */
       requestId?: string;
+
+      /**
+       * Gabarit de route résolu par `MetricsRouteInterceptor` (SH-29).
+       * Absent sur une route non résolue (404) : le middleware retombe alors sur
+       * une étiquette générique plutôt que de créer une série par URL reçue.
+       */
+      metricsRoute?: string;
     }
   }
 }

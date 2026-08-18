@@ -1,7 +1,24 @@
 """Métriques Prometheus du matching-service (SH-29, sondes S2/S3 — C4.1.2)."""
 
 from fastapi import FastAPI
+from prometheus_client import Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
+
+#: Nombre de messages lus mais non acquittés par le consumer du bus (sonde S8).
+#:
+#: Mesure la PEL (Pending Entries List) du consumer group Redis Streams. C'est
+#: l'indicateur d'une **panne silencieuse** : l'API continue de répondre 200, mais sur des
+#: résultats de matching calculés à partir de données périmées. Aucune autre sonde ne la
+#: verrait — ni la disponibilité, ni la latence, ni le taux d'erreur.
+#:
+#: Exposé en métrique et NON déduit des logs : la version initiale de S8 filtrait les
+#: journaux sur le mot « retard », qui n'est jamais écrit nulle part — la règle ne pouvait
+#: donc jamais se déclencher, tout en donnant l'apparence d'une couverture. Défaut relevé
+#: en relecture de la PR #47.
+consumer_pending_messages = Gauge(
+    "matching_consumer_pending_messages",
+    "Messages lus mais non acquittés par le consumer du bus d'événements (PEL Redis)",
+)
 
 #: Bornes de l'histogramme de latence, en secondes.
 #: Calées sur le KPI du service (`/match` < 250 ms, cf. CLAUDE.md du microservice) et sur

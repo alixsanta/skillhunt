@@ -74,18 +74,26 @@ class TestCorrelationHttp:
         """Sans cette ligne, la corrélation existe dans l'en-tête HTTP mais dans AUCUN
         log : une requête LogQL sur l'identifiant ne ramènerait que le monolithe, et le
         scénario 3 du ticket serait infaisable. Le journal d'accès d'uvicorn ne peut pas
-        servir — il est émis hors du contexte de la requête, avec `requestId: "-"`."""
+        servir — il est émis hors du contexte de la requête, avec `requestId: "-"`.
+
+        Interroge `/openapi.json`, servi par FastAPI lui-même : le test reste HERMÉTIQUE.
+        Sa première version appelait `/match`, qui a besoin de Redis et de PostgreSQL —
+        il passait tant que la stack tournait, puis échouait en `ConnectionRefusedError`
+        dès qu'elle s'arrêtait, sans que le middleware testé soit en cause. La corrélation
+        à travers la vraie route est de toute façon prouvée de bout en bout sur la stack
+        (deux flux Loki portant le même identifiant, scénario 3).
+
+        N'importe quelle route hors `_CHEMINS_SILENCIEUX` démontre le comportement visé :
+        que le middleware émette une ligne d'accès DANS le contexte de la requête.
+        """
         with caplog.at_level(logging.INFO, logger="skillhunt.access"):
-            client.post(
-                "/match",
-                headers={REQUEST_ID_HEADER: "correlation-e2e-1"},
-                json={"skills": ["drone"], "location": [43.6, 1.44], "radius_km": 50},
-            )
+            client.get("/openapi.json", headers={REQUEST_ID_HEADER: "correlation-e2e-1"})
 
         acces = [r for r in caplog.records if r.name == "skillhunt.access"]
         assert acces, "aucune ligne d'accès émise"
-        assert acces[-1].path == "/match"
-        assert acces[-1].method == "POST"
+        assert acces[-1].path == "/openapi.json"
+        assert acces[-1].method == "GET"
+        assert acces[-1].statusCode == 200
         assert hasattr(acces[-1], "durationMs")
 
     def test_n_emet_pas_de_ligne_d_acces_pour_les_sondes(self, client, caplog):

@@ -25,18 +25,32 @@ export class MetricsMiddleware implements NestMiddleware {
 }
 
 /**
- * Gabarit de route associé à la requête, à défaut une valeur générique.
+ * Gabarit de route de la requête, résolu en trois temps (SH-29).
  *
- * Express ne renseigne `req.route` qu'une fois le routeur passé ; sur une 404 il n'y a
- * aucune route. Retourner l'URL brute dans ce cas serait une faille d'exploitation :
- * n'importe quel client pourrait créer autant de séries Prometheus qu'il envoie d'URLs
- * distinctes, jusqu'à saturer la mémoire du serveur de métriques. On retombe donc sur
- * une étiquette fixe (« explosion de cardinalité », piège classique de l'instrumentation).
+ * 1. `req.metricsRoute`, déposé par `MetricsRouteInterceptor` — le cas nominal.
+ * 2. `req.route.path`, pour les requêtes REJETÉES AVANT l'intercepteur. NestJS exécute
+ *    les guards AVANT les intercepteurs : une 401/403 n'atteint donc jamais l'étape 1,
+ *    et sans ce repli tout le trafic refusé perdrait sa route — précisément celui qu'on
+ *    surveille pour la sécurité (S7).
+ * 3. `(inconnue)` sinon.
+ *
+ * Le motif joker est explicitement écarté : sur une route inexistante, la seule couche
+ * Express qui correspond est celle du middleware lui-même, enregistré en `forRoutes('*')`,
+ * et `req.route.path` vaut alors `/{*path}`. C'est ce que mesurait la version initiale
+ * pour TOUTES les 404 — défaut relevé en relecture de la PR #47.
+ *
+ * Jamais l'URL brute : n'importe quel client pourrait créer autant de séries Prometheus
+ * qu'il envoie d'URL distinctes, jusqu'à saturer la mémoire (explosion de cardinalité).
  */
 function resolveRoute(req: Request): string {
-  const path: unknown = req.route?.path;
-  if (typeof path === 'string' && path.length > 0) {
-    return `${req.baseUrl ?? ''}${path}`;
+  if (req.metricsRoute) {
+    return req.metricsRoute;
   }
+
+  const chemin: unknown = req.route?.path;
+  if (typeof chemin === 'string' && chemin.length > 0 && !chemin.includes('*')) {
+    return `${req.baseUrl ?? ''}${chemin}`;
+  }
+
   return '(inconnue)';
 }

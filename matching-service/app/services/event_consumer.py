@@ -2,6 +2,7 @@
 import asyncio
 import logging
 from app.db.redis import get_redis
+from app.observability.metrics import consumer_pending_messages
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +37,35 @@ async def ensure_group() -> None:
             raise
 
 
+async def refresh_pending_gauge() -> None:
+    """Publie la taille de la PEL dans la métrique de la sonde S8 (SH-29).
+
+    La PEL (Pending Entries List) contient les messages lus mais non encore acquittés :
+    elle grossit quand le consumer traite plus lentement qu'il ne reçoit, ou quand un
+    traitement échoue en boucle sans jamais acquitter. C'est le seul indicateur d'une
+    **panne silencieuse** du bus — l'API répond 200, sur des données périmées.
+
+    Ne propage jamais : une sonde qui casse le consumer qu'elle mesure serait pire que
+    l'absence de mesure.
+    """
+    try:
+        redis = get_redis()
+        resultat = await redis.xpending(STREAM_KEY, GROUP)
+        # redis-py rend un dict {"pending": N, ...} ; 0 si le groupe n'a rien en attente.
+        consumer_pending_messages.set(float(resultat.get("pending", 0)) if resultat else 0.0)
+    except Exception:
+        logger.debug("Mesure de la PEL indisponible", exc_info=True)
+
+
 async def consume_loop(stop_event: asyncio.Event) -> None:
     """Boucle de consommation : XREADGROUP bloquant, ACK après traitement."""
     await ensure_group()
     redis = get_redis()
     while not stop_event.is_set():
         try:
+            # Rafraîchie à chaque tour de boucle (bloquante 2 s) : ~30 mesures/min, coût
+            # négligeable pour Redis, et suffisamment fin pour la fenêtre de 5 min de S8.
+            await refresh_pending_gauge()
             response = await redis.xreadgroup(
                 GROUP, CONSUMER, {STREAM_KEY: ">"}, count=10, block=2000
             )

@@ -201,7 +201,7 @@ Nouveau profil `obs` dans `docker-compose.yml`, activable indépendamment (`--pr
 | S4 | Saturation mémoire | cAdvisor | RAM utilisée / limite, par conteneur | > 85 % pendant 10 min → **WARNING** | Anticiper l'OOM-kill (contrainte réelle de la VM b2-7) |
 | S5 | Instabilité conteneur | cAdvisor | nombre de redémarrages | > 2 en 15 min → **CRITIQUE** | Détecter un crash-loop (`restart: unless-stopped` le masque sinon) |
 | S6 | Erreurs applicatives | Loki (LogQL `level="error"`) | erreurs / min | > 10/min sur 5 min → **WARNING** | Repérer les erreurs métier invisibles en HTTP 200 |
-| S7 | Pression sur l'authentification | Loki (logs gateway, `status=429`) | 429 sur `/api/v1/auth` par IP | > 20/min → **SÉCURITÉ** | Détecter une tentative de brute-force (R7/R9, complète SH-5) |
+| S7 | Pression sur l'authentification | Loki (logs gateway, `status=429`) | 429 sur `/api/v1/auth`, **toutes IP confondues** | > 20/min → **SÉCURITÉ** | Détecter une tentative de brute-force (R7/R9, complète SH-5) |
 | S8 | Retard du bus d'événements | métrique custom / logs consumer | lag du consumer Redis Stream | > 100 messages sur 5 min → **WARNING** | Détecter un matching qui décroche du temps réel (SH-14) |
 
 **Modalité de signalement**

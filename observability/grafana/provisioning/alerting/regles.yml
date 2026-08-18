@@ -204,7 +204,17 @@ groups:
             relativeTimeRange: { from: 900, to: 0 }
             datasourceUid: prometheus
             model:
-              expr: count_over_time(changes(container_start_time_seconds{name=~"skillhunt-.*"}[15m])[15m:1m]) > 0 and changes(container_start_time_seconds{name=~"skillhunt-.*"}[15m]) > 2
+              # Expression simplifiée : `changes()` rend DIRECTEMENT le nombre de
+              # redémarrages sur la fenêtre, et le seuil vit dans le champ prévu pour lui.
+              #
+              # La version initiale enveloppait ce calcul dans
+              # `count_over_time(...[15m:1m]) > 0 and changes(...) > 2`. L'opérateur `and`
+              # renvoie la valeur de l'opérande GAUCHE, or `count_over_time` d'une
+              # sous-requête à 1 min sur 15 min vaut toujours 15 : le mail d'alerte
+              # affichait « requete=15 » au lieu du nombre de redémarrages, et l'interface
+              # Grafana annonçait « seuil > 0 » alors que le vrai seuil était enfoui dans
+              # l'expression. Déclenchement juste, diagnostic faux. Relevé en relecture.
+              expr: changes(container_start_time_seconds{name=~"skillhunt-.*"}[15m])
               instant: true
               refId: requete
           - refId: seuil
@@ -213,7 +223,7 @@ groups:
               type: threshold
               expression: requete
               conditions:
-                - evaluator: { type: gt, params: [0] }
+                - evaluator: { type: gt, params: [2] }
               refId: seuil
         noDataState: OK
         execErrState: OK
@@ -248,7 +258,12 @@ groups:
               # désormais leur niveau en toutes lettres (correctif du chantier B) : pino
               # écrivait « 30 » là où python-json-logger écrit « info », et cette règle
               # serait restée aveugle sur le monolithe.
-              expr: sum(count_over_time({plateforme="skillhunt", level="error"}[1m]))
+              # `sum by (service)` et non `sum` seul : sans la ventilation, les deux
+              # services sont agrégés en un seul nombre, l'alerte ne peut pas dire LEQUEL
+              # est en erreur, et `{{ .Labels.service }}` du mail retombe sur « plateforme »
+              # — alors que le runbook demande précisément d'identifier le service.
+              # Relevé en relecture de la PR #47.
+              expr: sum by (service) (count_over_time({plateforme="skillhunt", level="error"}[1m]))
               queryType: instant
               refId: requete
           - refId: seuil
@@ -312,10 +327,18 @@ groups:
         data:
           - refId: requete
             relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: loki
+            datasourceUid: prometheus
             model:
-              expr: sum(count_over_time({service="matching-service"} |= "consumer" |= "retard" [5m]))
-              queryType: instant
+              # MÉTRIQUE et non filtre de logs. La version initiale de cette règle
+              # cherchait le mot « retard » dans les journaux du consumer — mot qui n'est
+              # écrit NULLE PART. La règle ne pouvait donc jamais se déclencher tout en
+              # donnant l'apparence d'une couverture : exactement le défaut contre lequel
+              # SUPERVISION.md §7 met en garde. Relevé en relecture de la PR #47.
+              #
+              # `matching_consumer_pending_messages` mesure la PEL du consumer group
+              # (messages lus, non acquittés). Seuil de 100 conforme au tableau §4.3.
+              expr: matching_consumer_pending_messages
+              instant: true
               refId: requete
           - refId: seuil
             datasourceUid: __expr__
@@ -323,7 +346,7 @@ groups:
               type: threshold
               expression: requete
               conditions:
-                - evaluator: { type: gt, params: [0] }
+                - evaluator: { type: gt, params: [100] }
               refId: seuil
         noDataState: OK
         execErrState: OK
