@@ -350,6 +350,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+      # SH-50 — Doublon VOLONTAIRE sous /rootfs. cAdvisor cherche les métadonnées de
+      # couches via ce préfixe (`/rootfs/var/lib/docker/image/overlay2/layerdb/...`), or un
+      # bind-mount de `/` ne propage PAS les points de montage imbriqués : /var/lib/docker
+      # n'apparaissait pas sous /rootfs. Résultat, cAdvisor énumérait bien les conteneurs
+      # puis échouait sur chacun — « failed to identify the read-write layer ID ».
+      - /var/lib/docker/:/rootfs/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     # `--docker_only` : n'expose QUE les conteneurs, pas les cgroups système de l'hôte.
     # Réduit le bruit et divise par ~3 le nombre de séries, ce qui compte sur une b2-7.
