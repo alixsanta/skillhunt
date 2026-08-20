@@ -280,9 +280,22 @@ services:
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
+      # SH-50 — Socket Docker monté EXPLICITEMENT, en plus de /var/run.
+      #
+      # Sans lui, cAdvisor ne résout pas les métadonnées Docker : il publie les cgroups de
+      # l'HÔTE (`id="/"`, `id="/system.slice"`) sans le label `name`, et les sondes S4 et S5
+      # — qui filtrent sur `name=~"skillhunt-.*"` — restent vides. Le montage de /var/run
+      # suffisait sous Docker Desktop mais PAS sur l'Ubuntu de la VM, où le défaut a été
+      # constaté le 2026-08-19 : 44 séries exposées, aucune portant un nom de conteneur.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    # `--docker_only` : n'expose QUE les conteneurs, pas les cgroups système de l'hôte.
+    # Réduit le bruit et divise par ~3 le nombre de séries.
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
     devices:
       - /dev/kmsg
     privileged: true
