@@ -337,9 +337,31 @@ services:
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
+      # SH-50 — Socket Docker monté EXPLICITEMENT, en plus de /var/run.
+      #
+      # Sans lui, cAdvisor ne résout pas les métadonnées Docker : il publie les cgroups de
+      # l'HÔTE (`id="/"`, `id="/system.slice"`) sans le label `name`, et les sondes S4 et S5
+      # — qui filtrent sur `name=~"skillhunt-.*"` — restent vides. Constaté sur la VM le
+      # 2026-08-19 : 44 séries exposées, AUCUNE portant un nom de conteneur.
+      #
+      # Le montage de /var/run suffisait sous Docker Desktop mais pas sur l'Ubuntu de la
+      # VM — troisième divergence développement/production de ce ticket, après l'anomalie
+      # IPv6 (AN-01) et le journal d'accès d'uvicorn.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+      # SH-50 — Doublon VOLONTAIRE sous /rootfs. cAdvisor cherche les métadonnées de
+      # couches via ce préfixe (`/rootfs/var/lib/docker/image/overlay2/layerdb/...`), or un
+      # bind-mount de `/` ne propage PAS les points de montage imbriqués : /var/lib/docker
+      # n'apparaissait pas sous /rootfs. Résultat, cAdvisor énumérait bien les conteneurs
+      # puis échouait sur chacun — « failed to identify the read-write layer ID ».
+      - /var/lib/docker/:/rootfs/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    # `--docker_only` : n'expose QUE les conteneurs, pas les cgroups système de l'hôte.
+    # Réduit le bruit et divise par ~3 le nombre de séries, ce qui compte sur une b2-7.
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
     mem_limit: 256m
     logging:
       driver: "json-file"
