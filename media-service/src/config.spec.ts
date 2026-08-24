@@ -39,4 +39,16 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...base, MEDIA_WORKER_CONCURRENCY: '0' })).toThrow(/entière positive/);
     expect(() => loadConfig({ ...base, MEDIA_WORKER_CONCURRENCY: 'deux' })).toThrow(/entière positive/);
   });
+
+  it('accepte PORT=0 : port éphémère attribué par le système (utilisé par les tests)', () => {
+    expect(loadConfig({ REDIS_URL: 'redis://localhost:6381', PORT: '0' }).port).toBe(0);
+  });
+
+  it('refuse un port hors de la plage TCP ou non entier', () => {
+    const base = { REDIS_URL: 'redis://localhost:6381' };
+
+    expect(() => loadConfig({ ...base, PORT: '999999' })).toThrow(/entre 0 et 65535/);
+    expect(() => loadConfig({ ...base, PORT: '-1' })).toThrow(/entre 0 et 65535/);
+    expect(() => loadConfig({ ...base, PORT: 'abc' })).toThrow(/entre 0 et 65535/);
+  });
 });

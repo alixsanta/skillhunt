@@ -30,7 +30,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): MediaServiceCo
   }
 
   return {
-    port: toPositiveInt(env.PORT, DEFAULT_PORT, 'PORT'),
+    port: toPort(env.PORT, DEFAULT_PORT),
     redisUrl,
     queueName: env.MEDIA_QUEUE_NAME ?? DEFAULT_QUEUE_NAME,
     concurrency: toPositiveInt(env.MEDIA_WORKER_CONCURRENCY, DEFAULT_CONCURRENCY, 'MEDIA_WORKER_CONCURRENCY'),
@@ -45,6 +45,23 @@ function toPositiveInt(raw: string | undefined, fallback: number, name: string):
   const value = Number(raw);
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${name} : valeur entière positive attendue, reçu « ${raw} »`);
+  }
+  return value;
+}
+
+/**
+ * Port d'écoute. `0` est une valeur LÉGITIME : elle demande au système d'attribuer un
+ * port libre — c'est ainsi que les tests démarrent le service sans risquer un conflit
+ * avec l'instance conteneurisée. La borne haute évite qu'une coquille (`PORT=999999`)
+ * ne se manifeste qu'au `listen`, bien après le démarrage.
+ */
+function toPort(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw === '') {
+    return fallback;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0 || value > 65535) {
+    throw new Error(`PORT : entier attendu entre 0 et 65535, reçu « ${raw} »`);
   }
   return value;
 }
