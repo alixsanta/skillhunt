@@ -31,6 +31,17 @@ scrape_configs:
         labels:
           service: matching-service
 
+  # ── Worker média : jobs traités, durée de transcodage, échecs (SH-15/SH-16) ──────────
+  # Note : sans `container_name` et une fois le service scalé, le DNS Docker ne résout
+  # qu'une réplique par scrape. Une découverte dynamique sera à poser en SH-16 si le
+  # scaling devient permanent.
+  - job_name: media-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['media-service:3002']
+        labels:
+          service: media-service
+
   # ── cAdvisor : CPU, mémoire et redémarrages de TOUS les conteneurs (S4, S5) ──────────
   # Couvre les briques sans instrumentation applicative — postgres, redis, mongo,
   # localstack, gateway, frontend-web — qu'aucune métrique métier n'atteindrait.
