@@ -36,6 +36,8 @@ yarn-debug.log*
 yarn-error.log*
 /backend-core/dist/
 /backend-core/build/
+/media-service/dist/
+/media-service/build/
 .tsccard/
 *.tsbuildinfo
 
