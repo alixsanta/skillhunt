@@ -114,9 +114,9 @@ C4.2.1 de porter sur des anomalies réellement *détectées en production*, et n
 
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
-| [SH-15](tickets/SH-15-scaffolding-media.md) | Scaffolding `media-service` (Node + FFmpeg) | 🔵 Backlog | 3 | C2.1.2 | — |
-| [SH-16](tickets/SH-16-transcodage-async.md) | Pipeline de transcodage asynchrone 4K/360° (files Redis, workers auto-scalables) | 🔵 Backlog | 8 | C2.2.2 | R1 |
-| [SH-17](tickets/SH-17-streaming-s3-cdn.md) | Streaming & stockage : S3 + CloudFront + Signed URLs | 🔵 Backlog | 5 | C2.2.3 | R8, R3 |
+| [SH-15](tickets/SH-15-scaffolding-media.md) | Scaffolding `media-service` (Node + FFmpeg) — *worker pur : `/health`, `/metrics`, file BullMQ consommée, image ffmpeg non-root ; [design EP04](superpowers/specs/2026-08-24-EP04-media-portfolio-design.md)* | 🟢 Terminé | 3 | C2.1.2, C2.2.2 | — |
+| [SH-16](tickets/SH-16-transcodage-async.md) | Pipeline de transcodage asynchrone 4K/360° — *flux entrant : upload présigné, entité `user_media`, job BullMQ, worker ffprobe/ffmpeg* | 🔵 Backlog | 8 | C2.2.2, C2.2.3 | R1 |
+| [SH-17](tickets/SH-17-streaming-s3-cdn.md) | Streaming & stockage : S3 + Signed URLs — *flux sortant : manifeste HLS réécrit en segments signés, poster, consultation recruteur, purge* | 🔵 Backlog | 5 | C2.2.3, C2.4.1 | R8, R3 |
 | [SH-18](tickets/SH-18-portfolio-interactif.md) | Portfolio interactif (exposition vidéos 4K/360°) | 🔵 Backlog | 5 | C2.4.1 | — |
 
 ## EP05 — Frontend Multi-support · *38 J/H* · 🎯 J4

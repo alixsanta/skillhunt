@@ -1,0 +1,68 @@
+# Nom du workflow affiché dans l'onglet Actions de GitHub
+name: SkillHunt - CI Media Service
+
+# SH-15 — Même discipline que node-ci.yml : lint, audit, tests, build.
+on:
+  push:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'media-service/**'
+      - '.github/workflows/media-ci.yml'
+  pull_request:
+    branches: [ "main", "develop" ]
+    paths:
+      - 'media-service/**'
+      - '.github/workflows/media-ci.yml'
+
+jobs:
+  validation-media:
+    name: Validation du worker média
+    runs-on: ubuntu-latest
+    # Monorepo : toutes les commandes `run` s'exécutent dans media-service/
+    defaults:
+      run:
+        working-directory: media-service
+
+    # Redis réel : les tests d'intégration du worker consomment une VRAIE file BullMQ.
+    # Sans ce service, `worker.integration.spec.ts` et le test de bootstrap se sautent
+    # silencieusement — et la CI ne prouverait plus rien (C2.2.2).
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 📥 Récupération du code source
+        uses: actions/checkout@v4
+
+      - name: 🟢 Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          # Monorepo : le lockfile est dans media-service/ (et non à la racine du dépôt)
+          cache-dependency-path: 'media-service/package-lock.json'
+
+      - name: 📦 Installation propre des dépendances (ci)
+        run: npm ci
+
+      # BLOQUANT au niveau high, même politique que backend-core (SH-32/SH-47)
+      - name: 🛡️ Audit de sécurité des dépendances NPM
+        run: npm audit --audit-level=high
+
+      - name: 🔍 Analyse statique du code (Lint)
+        run: npm run lint
+
+      - name: 🧪 Exécution des tests automatisés
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: npm run test
+
+      - name: 🏗️ Validation de la compilation (Build)
+        run: npm run build

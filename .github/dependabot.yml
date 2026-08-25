@@ -41,6 +41,27 @@ updates:
     # Les montées MAJEURES restent hors groupe → une PR chacune, impact évalué une par une.
 
   # ────────────────────────────────────────────────────────────────────────────
+  # Worker média (Node 20 / TypeScript / FFmpeg)
+  # ────────────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/media-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "media-service"]
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    target-branch: "develop"
+    groups:
+      media-service-mineur:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ────────────────────────────────────────────────────────────────────────────
   # SPA React / Vite
   # ────────────────────────────────────────────────────────────────────────────
   - package-ecosystem: "npm"
