@@ -87,6 +87,7 @@ skillhunt/
 │       ├── app.module.ts
 │       └── main.ts       # bootstrap, CORS, ValidationPipe global, Swagger /api/docs
 ├── matching-service/     # Microservice FastAPI (scoring + PostGIS) — À DÉMARRER
+├── media-service/        # Worker BullMQ + FFmpeg, transcodage média (Node/TS) — port 3002
 ├── .github/workflows/    # node-ci.yml (NestJS), python-ci.yml (FastAPI)
 └── CLAUDE.md             # ce fichier
 ```
@@ -199,6 +200,14 @@ python -m venv venv && source venv/bin/activate   # (Windows : venv\Scripts\acti
 pip install -r requirements.txt
 uvicorn main:app --reload      # à adapter selon le point d'entrée
 pytest --cov=. tests/
+```
+
+**media-service/**
+```bash
+npm ci
+npm run lint
+npm run test    # tests d'intégration : Redis éphémère, voir media-service/CLAUDE.md (port 6381)
+npm run build
 ```
 
 ---

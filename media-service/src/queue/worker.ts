@@ -72,6 +72,13 @@ export function createTranscodeWorker(
     logger.error({ jobId: job?.id, raison: err.message }, 'Job de transcodage en échec');
   });
 
+  // BullMQ émet 'error' pour les défauts de connexion, les échecs de reconnexion et de
+  // nettoyage — sans handler explicite, il tombe dans le comportement par défaut de
+  // Node (console.error), une ligne NON-JSON qu'Alloy ignore silencieusement. Un incident
+  // Redis (le worker perd sa connexion) resterait alors totalement invisible en
+  // supervision, alors même que /health reste volontairement à 200 dans ce cas.
+  worker.on('error', (err) => logger.error({ raison: err.message }, 'Erreur du worker BullMQ'));
+
   // BullMQ traite une instance IORedis fournie par l'appelant comme « partagée » et ne
   // la ferme donc JAMAIS elle-même dans `worker.close()` (seule la connexion bloquante
   // dupliquée en interne est fermée). Sans ce hook, `connection` reste ouverte

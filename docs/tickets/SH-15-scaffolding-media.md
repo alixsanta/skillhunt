@@ -77,14 +77,13 @@ Décisions structurantes reprises du design :
 * **Sans framework HTTP** : deux routes techniques ne justifient pas Express.
 * **Port 3002, aucun port hôte** : collecte Prometheus sur le réseau Docker privé (archi §2).
 * **Pas de `container_name`** : SH-16 doit pouvoir faire `--scale media-service=2`.
-
-* **BullMQ résolu :** 5.81.3
+* **Version BullMQ figée** : 5.81.3.
 
 ### 5. Definition of Done (DoD)
-- [ ] Les 6 scénarios Gherkin sont vérifiés.
-- [ ] `npm run lint`, `npm run test`, `npm run build` passent dans `media-service/`.
-- [ ] L'image se construit et le conteneur devient `healthy` dans le profil `app`.
-- [ ] La cible `media-service` apparaît `up` dans Prometheus.
-- [ ] `media-ci.yml` est vert sur la PR ; l'image est ajoutée à `docker-ci.yml` et `publish-staging.yml`.
-- [ ] Dependabot surveille `/media-service`.
-- [ ] `docs/BACKLOG.md` passe SH-15 en 🟢.
+- [x] Les 6 scénarios Gherkin sont vérifiés.
+- [x] `npm run lint`, `npm run test`, `npm run build` passent dans `media-service/`.
+- [x] L'image se construit et le conteneur devient `healthy` dans le profil `app`.
+- [x] La cible `media-service` apparaît `up` dans Prometheus.
+- [ ] `media-ci.yml` est vert sur la PR ; l'image est ajoutée à `docker-ci.yml` et `publish-staging.yml`. *(l'ajout à `docker-ci.yml`/`publish-staging.yml` est fait et vérifié ; le vert sur la PR reste à constater une fois la PR ouverte)*
+- [x] Dependabot surveille `/media-service`.
+- [x] `docs/BACKLOG.md` passe SH-15 en 🟢.

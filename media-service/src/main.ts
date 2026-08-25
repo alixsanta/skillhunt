@@ -21,7 +21,8 @@ export interface RunningService {
  * Démarre le media-service : worker BullMQ + serveur technique (SH-15).
  *
  * Exporté (plutôt qu'exécuté à l'import) pour être testable : c'est ce qui permet au
- * test de bootstrap de démarrer le service pour de vrai, leçon directe de SH-41.
+ * test de bootstrap de démarrer le service pour de vrai, leçon directe de SH-41
+ * (SH-15, C2.2.2).
  */
 export async function bootstrap(env: NodeJS.ProcessEnv = process.env): Promise<RunningService> {
   const config = loadConfig(env);

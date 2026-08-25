@@ -10,4 +10,10 @@ import pino from 'pino';
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
   base: { service: 'media-service' },
+  // Niveau en TEXTE (« error ») et non numérique (« 50 ») : la sonde S6 interroge
+  // `{level="error"}` dans Loki, elle ne matcherait jamais nos erreurs sinon (calque
+  // de backend-core/src/observability/logger.config.ts).
+  formatters: {
+    level: (label) => ({ level: label }),
+  },
 });
