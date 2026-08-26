@@ -1,4 +1,12 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { NotFoundException } from '@nestjs/common';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from '@aws-sdk/client-s3';
 import { S3StorageService } from './s3-storage.service';
 
 /**
@@ -68,5 +76,63 @@ describe('🗄️ S3StorageService (adaptateur S3 — SH-31)', () => {
     const command = sendSpy.mock.calls[0][0] as DeleteObjectCommand;
     expect(command).toBeInstanceOf(DeleteObjectCommand);
     expect(command.input).toMatchObject({ Bucket: BUCKET, Key: 'certifications/x.pdf' });
+  });
+
+  it('head traduit la réponse HeadObject en {sizeBytes, contentType}', async () => {
+    const sendSpy = jest
+      .spyOn(client, 'send')
+      .mockResolvedValue({ ContentLength: 1234, ContentType: 'video/mp4' } as never);
+
+    await expect(service.head('private/media/f1/m1/master.mp4')).resolves.toEqual({
+      sizeBytes: 1234,
+      contentType: 'video/mp4',
+    });
+    expect(sendSpy.mock.calls[0][0]).toBeInstanceOf(HeadObjectCommand);
+  });
+
+  it('head traduit une 404 S3 en NotFoundException', async () => {
+    jest
+      .spyOn(client, 'send')
+      .mockRejectedValue(Object.assign(new Error('NotFound'), { name: 'NotFound' }) as never);
+
+    await expect(service.head('absente')).rejects.toThrow(NotFoundException);
+  });
+
+  it('deletePrefix liste puis supprime par lots, et suit la pagination', async () => {
+    const sendSpy = jest
+      .spyOn(client, 'send')
+      .mockResolvedValueOnce({
+        Contents: [{ Key: 'p/a' }],
+        IsTruncated: true,
+        NextContinuationToken: 'suite',
+      } as never)
+      .mockResolvedValueOnce({} as never) // DeleteObjects du 1er lot
+      .mockResolvedValueOnce({ Contents: [{ Key: 'p/b' }], IsTruncated: false } as never)
+      .mockResolvedValueOnce({} as never); // DeleteObjects du 2e lot
+
+    await service.deletePrefix('p/');
+
+    // Une clé oubliée par la pagination, c'est un objet orphelin facturé à vie.
+    expect(sendSpy.mock.calls[0][0]).toBeInstanceOf(ListObjectsV2Command);
+    expect(sendSpy.mock.calls[1][0]).toBeInstanceOf(DeleteObjectsCommand);
+    expect(sendSpy.mock.calls[2][0]).toBeInstanceOf(ListObjectsV2Command);
+    expect(sendSpy.mock.calls[3][0]).toBeInstanceOf(DeleteObjectsCommand);
+  });
+
+  it('deletePrefix n\'envoie aucune suppression si le préfixe est vide', async () => {
+    const sendSpy = jest
+      .spyOn(client, 'send')
+      .mockResolvedValueOnce({ Contents: [], IsTruncated: false } as never);
+
+    await service.deletePrefix('vide/');
+
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('getSignedUploadUrl produit une URL PUT signée portant le type MIME', async () => {
+    const url = await service.getSignedUploadUrl('private/media/f1/m1/master.mp4', 900, 'video/mp4');
+
+    expect(url).toContain('X-Amz-Signature');
+    expect(url).toContain('X-Amz-Expires=900');
   });
 });
