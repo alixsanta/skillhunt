@@ -47,7 +47,7 @@ jobs:
     steps:
       # Étape 1 : Récupérer le code source du dépôt global
       - name: 📥 Récupération du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Étape 2 : Configurer l'environnement Python (v3.11 LTS pour la robustesse et PostGIS)
       - name: 🐍 Configuration de Python
