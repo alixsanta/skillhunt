@@ -182,6 +182,34 @@ Et à l'intérieur de `interface StorageService`, après `delete` :
   deletePrefix(prefix: string): Promise<void>;
 ```
 
+- [ ] **Step 3 bis : Libérer le nom `get` dans le Fake**
+
+`FakeStorageService` porte déjà un helper **réservé aux tests** `get(key): Buffer | undefined`,
+synchrone, qui entre en collision avec la nouvelle méthode du port (TS2393). Le port garde
+`get` — c'est le contrat de conception, consommé par les Tasks 4, 6, 7 et 8 ; le helper est
+renommé **`peek`**, en conservant sa signature synchrone :
+
+```ts
+  /**
+   * Contenu brut stocké pour une clé, ou `undefined` si absente.
+   * Nommé `peek` et non `get` : `get` appartient désormais au port (SH-16a) et rend une
+   * promesse qui rejette sur clé absente — sémantique incompatible avec l'usage en
+   * assertion directe qu'en font les tests.
+   */
+  peek(key: string): Buffer | undefined {
+    return this.store.get(key)?.body;
+  }
+```
+
+Adapter les **7 sites d'appel** : `certifications/certification.service.spec.ts` (4) et les
+tests PRÉ-EXISTANTS de `storage/storage.spec.ts` (3). Vérifier :
+
+```bash
+cd backend-core && grep -rn "storage\.get(\|storage\.peek(" src --include=*.ts
+```
+
+Attendu : les seuls `storage.get(` restants sont les deux nouveaux tests asynchrones du Step 1.
+
 - [ ] **Step 4 : Implémenter dans le Fake — `backend-core/src/storage/fake-storage.service.ts`**
 
 Importer `StoredObjectHead` depuis `./storage.service`, puis ajouter à la classe :
