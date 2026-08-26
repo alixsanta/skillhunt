@@ -2390,8 +2390,9 @@ export class MediaTranscodeListener implements OnModuleInit {
 Sans ce test, un nom d'événement mal orthographié passerait inaperçu : le média resterait indéfiniment en `UPLOADED` sans qu'aucun test ne bronche.
 
 ```ts
-import { MediaTranscodeListener } from './media.listener';
+import { Logger } from '@nestjs/common';
 import { EventEmitter } from 'node:events';
+import { MediaTranscodeListener } from './media.listener';
 
 describe('MediaTranscodeListener — câblage', () => {
   function ecouteur() {
@@ -2425,13 +2426,17 @@ describe('MediaTranscodeListener — câblage', () => {
 
   it('un résultat inexploitable est journalisé, pas propagé en rejet non géré', async () => {
     const { events, service } = ecouteur();
+    const journal = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     service.applyTranscodeResult.mockRejectedValue(new Error('non conforme'));
 
     events.emit('completed', { jobId: 'm3', returnvalue: 'nawak' });
-    await Promise.resolve();
+    // Laisse la micro-tâche du `.catch` s'exécuter avant d'observer.
+    await new Promise((resolve) => setImmediate(resolve));
 
-    // Le test échouerait sur un rejet non capté ; l'absence de bruit EST l'assertion.
-    expect(service.applyTranscodeResult).toHaveBeenCalled();
+    // On vérifie la trace elle-même : sans assertion sur le journal, ce test passerait
+    // aussi bien si l'erreur était silencieusement avalée.
+    expect(journal).toHaveBeenCalledWith(expect.stringContaining('m3'));
+    journal.mockRestore();
   });
 });
 ```
