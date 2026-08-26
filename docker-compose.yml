@@ -166,6 +166,27 @@ services:
       redis:
         condition: service_healthy
 
+  # SH-15 — Worker de transcodage média (EP04). Consomme la file BullMQ `media-transcode`
+  # sur Redis ; ne possède ni base de données ni route métier (design EP04, décision D7).
+  media-service:
+    build: ./media-service
+    # PAS de `container_name` — volontaire : un nom fixe interdirait
+    # `docker compose up --scale media-service=2`, qui est la démonstration de
+    # scalabilité horizontale attendue en SH-16.
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      PORT: 3002
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      MEDIA_WORKER_CONCURRENCY: ${MEDIA_WORKER_CONCURRENCY:-1}
+      MEDIA_TMP_DIR: /tmp/media
+    # AUCUN port hôte (archi §2) : service interne. Prometheus le scrape sur le
+    # réseau Docker privé, et il n'expose de toute façon aucune route métier.
+    depends_on:
+      redis:
+        condition: service_healthy
+
   frontend-web:
     build:
       context: ./frontend-web

@@ -1,6 +1,6 @@
 name: SkillHunt - CI Docker
 
-# SH-2 — Preuve de reproductibilité : les 3 images applicatives doivent SE CONSTRUIRE
+# SH-2 — Preuve de reproductibilité : les 5 images applicatives doivent SE CONSTRUIRE
 # à chaque changement qui les concerne. Pas de push (registre : périmètre SH-30).
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - 'backend-core/Dockerfile'
       - 'backend-core/docker-entrypoint.sh'
       - 'matching-service/Dockerfile'
+      - 'media-service/Dockerfile'
       - 'frontend-web/Dockerfile'
       - 'frontend-web/nginx.conf'
       - 'gateway/**'
@@ -20,6 +21,7 @@ on:
       - 'backend-core/Dockerfile'
       - 'backend-core/docker-entrypoint.sh'
       - 'matching-service/Dockerfile'
+      - 'media-service/Dockerfile'
       - 'frontend-web/Dockerfile'
       - 'frontend-web/nginx.conf'
       - 'gateway/**'
@@ -32,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [backend-core, matching-service, frontend-web, gateway]
+        service: [backend-core, matching-service, media-service, frontend-web, gateway]
 
     steps:
       - name: 📥 Récupération du code source

@@ -17,7 +17,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "up{job=~\"backend-core|matching-service\"}",
+          "expr": "up{job=~\"backend-core|matching-service|media-service\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -48,7 +48,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         {
-          "expr": "avg_over_time(up{job=~\"backend-core|matching-service\"}[5m])",
+          "expr": "avg_over_time(up{job=~\"backend-core|matching-service|media-service\"}[5m])",
           "legendFormat": "{{job}}",
           "refId": "A"
         }

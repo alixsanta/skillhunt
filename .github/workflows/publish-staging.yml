@@ -30,6 +30,8 @@ jobs:
             context: ./backend-core
           - service: matching-service
             context: ./matching-service
+          - service: media-service
+            context: ./media-service
           - service: gateway
             context: ./gateway
           - service: frontend-web
