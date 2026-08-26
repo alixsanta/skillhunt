@@ -57,6 +57,11 @@ export interface StorageService {
   /**
    * Supprime tous les objets sous un préfixe. Supprimer un média, c'est supprimer son
    * master, son poster et ses N segments — pas un objet. Idempotent.
+   *
+   * ⚠️ Le préfixe DOIT se terminer par `/` : `deletePrefix('private/media/f1/')` isole
+   * `f1/` de `f1x/...`. Sans le séparateur, `deletePrefix('private/media/f1')` supprimerait
+   * aussi `f10/...`, `f100/...`, etc. — une isolation insuffisante si plusieurs clés partagent
+   * le même préfixe non bornés.
    */
   deletePrefix(prefix: string): Promise<void>;
 }

@@ -114,8 +114,17 @@ describe('🗄️ S3StorageService (adaptateur S3 — SH-31)', () => {
 
     // Une clé oubliée par la pagination, c'est un objet orphelin facturé à vie.
     expect(sendSpy.mock.calls[0][0]).toBeInstanceOf(ListObjectsV2Command);
+    expect((sendSpy.mock.calls[0][0] as ListObjectsV2Command).input.ContinuationToken).toBeUndefined();
+
     expect(sendSpy.mock.calls[1][0]).toBeInstanceOf(DeleteObjectsCommand);
+
     expect(sendSpy.mock.calls[2][0]).toBeInstanceOf(ListObjectsV2Command);
+    // Sans cette assertion, le test passerait même si le jeton n'était jamais transmis :
+    // la seconde page ne serait alors jamais demandée, et ses objets resteraient orphelins.
+    expect((sendSpy.mock.calls[2][0] as ListObjectsV2Command).input).toMatchObject({
+      ContinuationToken: 'suite',
+    });
+
     expect(sendSpy.mock.calls[3][0]).toBeInstanceOf(DeleteObjectsCommand);
   });
 
