@@ -48,6 +48,16 @@ export function createTranscodeWorker(
   // abandonnées et le worker cesse silencieusement de consommer.
   const connection = new IORedis(config.redisUrl, { maxRetriesPerRequest: null });
 
+  // BullMQ n'écoute `error` sur cette connexion QUE pendant la vie du worker : il attache
+  // son handler à l'initialisation et le RETIRE dans le `finally` de `close()`
+  // (redis-connection.js). Notre propre écouteur couvre les deux fenêtres où il n'y en
+  // aurait aucun — avant l'init, et après la fermeture, or c'est précisément là que le
+  // `quit()` ci-dessous s'exécute. Sans lui, un SIGTERM reçu pendant une panne Redis tue
+  // le process sur un « unhandled 'error' event » au lieu de l'arrêter proprement.
+  connection.on('error', (err: Error) => {
+    logger.error({ raison: err.message }, 'Connexion Redis du worker en erreur');
+  });
+
   const worker = new Worker<TranscodeJobData, TranscodeJobResult>(
     config.queueName,
     async (job) => {

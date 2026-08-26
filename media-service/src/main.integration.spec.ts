@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { AddressInfo } from 'node:net';
 import { bootstrap, shutdown, type RunningService } from './main';
 
@@ -35,5 +36,39 @@ describeIf('bootstrap du media-service', () => {
 
     // Après l'arrêt, plus rien n'écoute : la connexion doit être refusée.
     await expect(fetch(`http://127.0.0.1:${port}/health`)).rejects.toThrow();
+  }, 20_000);
+
+  it('rejette proprement quand le port est déjà pris, au lieu de tuer le process', async () => {
+    // Un occupant tient le port ; `listen` échouera donc en EADDRINUSE. Sans écouteur
+    // sur l'événement `error`, la promesse de bootstrap ne se réglerait jamais et Node
+    // abattrait le process sur une pile brute — sans passer par la journalisation.
+    // L'occupant doit se lier EXACTEMENT comme le service, c'est-à-dire sans hôte (donc
+    // sur `::`, toutes interfaces). Le lier à `127.0.0.1` ne provoquerait aucun conflit
+    // sous Windows, où les deux liaisons cohabitent — le test passerait alors à côté.
+    const squatter = createServer();
+    await new Promise<void>((resolve) => squatter.listen(0, resolve));
+    const { port } = squatter.address() as AddressInfo;
+
+    // Si le démarrage réussissait malgré tout, il faudrait quand même refermer ce qu'il a
+    // ouvert : un worker resté connecté empêche Jest de rendre la main.
+    let demarre: RunningService | undefined;
+
+    try {
+      await expect(
+        bootstrap({
+          REDIS_URL: url as string,
+          PORT: String(port),
+          MEDIA_QUEUE_NAME: 'media-transcode-bootstrap-conflit',
+        }).then((service) => {
+          demarre = service;
+          return service;
+        }),
+      ).rejects.toThrow(/EADDRINUSE/);
+    } finally {
+      if (demarre) {
+        await shutdown(demarre).catch(() => undefined);
+      }
+      await new Promise<void>((resolve) => squatter.close(() => resolve()));
+    }
   }, 20_000);
 });
