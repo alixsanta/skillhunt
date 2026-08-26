@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: 📥 Récupération du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🐳 Build de l'image ${{ matrix.service }}
         run: docker build -t skillhunt-${{ matrix.service }}:ci ./${{ matrix.service }}

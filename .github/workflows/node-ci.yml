@@ -39,7 +39,7 @@ jobs:
     steps:
       # Étape 1 : Récupérer le code source du dépôt GitHub
       - name: 📥 Récupération du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Étape 2 : Configurer l'environnement Node.js (version 20 LTS recommandée)
       - name: 🟢 Configuration de Node.js
