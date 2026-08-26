@@ -31,7 +31,7 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
   it('conserve le contenu et le type MIME déposés', async () => {
     await storage.put(key, body, contentType);
 
-    expect(storage.get(key)).toEqual(body);
+    expect(storage.peek(key)).toEqual(body);
     expect(storage.getContentType(key)).toBe(contentType);
   });
 
@@ -41,7 +41,7 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
 
     await storage.put(key, nouveau, contentType);
 
-    expect(storage.get(key)).toEqual(nouveau);
+    expect(storage.peek(key)).toEqual(nouveau);
     expect(storage.size()).toBe(1);
   });
 
@@ -51,7 +51,7 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
 
     await storage.delete(key);
 
-    expect(storage.get(key)).toBeUndefined();
+    expect(storage.peek(key)).toBeUndefined();
     await expect(storage.getSignedUrl(key, 900)).rejects.toThrow(NotFoundException);
   });
 

@@ -42,8 +42,13 @@ export class FakeStorageService implements StorageService {
 
   // --- Helpers réservés aux tests (non exposés par le port) ---
 
-  /** Contenu brut stocké pour une clé, ou `undefined` si absente. */
-  get(key: string): Buffer | undefined {
+  /**
+   * Contenu brut stocké pour une clé, ou `undefined` si absente.
+   * Nommé `peek` et non `get` : `get` appartient désormais au port (SH-16a) et rend
+   * une promesse qui rejette sur clé absente — sémantique incompatible avec l'usage
+   * en assertion directe qu'en font les tests.
+   */
+  peek(key: string): Buffer | undefined {
     return this.store.get(key)?.body;
   }
 

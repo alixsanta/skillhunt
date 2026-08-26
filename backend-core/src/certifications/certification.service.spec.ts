@@ -158,7 +158,7 @@ describe('📜 CertificationService (SH-10)', () => {
     expect(result.freelanceId).toBe('free-A');
     expect(result.mimeType).toBe('application/pdf');
     // Le fichier a bien été déposé dans le stockage (chiffrement AES-256 assuré par l'adaptateur S3)
-    const stored = storage.get(keyOf(result));
+    const stored = storage.peek(keyOf(result));
     expect(stored).toBeDefined();
     // Métadonnées assainies : auteur/titre/producer retirés
     const reloaded = await PDFDocument.load(stored as Buffer);
@@ -173,7 +173,7 @@ describe('📜 CertificationService (SH-10)', () => {
 
     const result = await service.uploadCertification('free-A', dto(), fakeFile(pdf));
 
-    const reloaded = await PDFDocument.load(storage.get(keyOf(result)) as Buffer);
+    const reloaded = await PDFDocument.load(storage.peek(keyOf(result)) as Buffer);
     // Le flux XMP (auteur/GPS) ne doit plus exister après assainissement
     expect(reloaded.catalog.has(PDFName.of('Metadata'))).toBe(false);
   });
@@ -244,7 +244,7 @@ describe('📜 CertificationService (SH-10)', () => {
     async (decision) => {
       const cert = await service.uploadCertification('free-A', dto(), fakeFile(await makePdf()));
       const key = keyOf(cert);
-      expect(storage.get(key)).toBeDefined();
+      expect(storage.peek(key)).toBeDefined();
 
       const reviewed = await service.reviewCertification(cert.id, { decision });
 
@@ -252,7 +252,7 @@ describe('📜 CertificationService (SH-10)', () => {
       expect(reviewed.reviewedAt).toBeInstanceOf(Date);
       expect(reviewed.purgedAt).toBeInstanceOf(Date);
       // Document réellement purgé du stockage
-      expect(storage.get(key)).toBeUndefined();
+      expect(storage.peek(key)).toBeUndefined();
       // Et plus accessible via Signed URL
       await expect(service.getDocumentUrl(cert.id, admin)).rejects.toThrow(NotFoundException);
     },
