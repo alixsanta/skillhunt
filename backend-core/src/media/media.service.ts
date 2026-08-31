@@ -14,7 +14,7 @@ import { STORAGE_SERVICE, StorageService, StoredObjectHead } from '../storage/st
 import { ALLOWED_MEDIA_MIME_TYPES, CreateMediaDto } from './dto/create-media.dto';
 import { QueryMediaDto } from './dto/query-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
-import { MediaQueue } from './media.queue';
+import { MediaQueue, TranscodeJobResult } from './media.queue';
 
 /**
  * Vue publique d'un média. EXCLUT `sourceKey`, `posterKey` et `hlsPrefix` : aucune clé
@@ -58,6 +58,34 @@ const EXTENSIONS: Record<string, string> = {
   'video/mp4': 'mp4',
   'video/quicktime': 'mov',
 };
+
+const MAX_ERROR_REASON = 255;
+
+/** Valide la forme du résultat rendu par le worker. Donnée externe : jamais de confiance. */
+function parseTranscodeResult(raw: string): TranscodeJobResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new BadRequestException('Résultat de transcodage illisible');
+  }
+
+  const candidate = parsed as Partial<TranscodeJobResult>;
+  const nombres = [candidate.durationSeconds, candidate.width, candidate.height];
+  const typeValide =
+    candidate.type === MediaType.VIDEO || candidate.type === MediaType.VIDEO_360;
+
+  if (
+    !nombres.every((valeur) => typeof valeur === 'number' && Number.isFinite(valeur)) ||
+    !typeValide ||
+    typeof candidate.mimeType !== 'string' ||
+    !Array.isArray(candidate.renditions)
+  ) {
+    throw new BadRequestException('Résultat de transcodage non conforme');
+  }
+
+  return candidate as TranscodeJobResult;
+}
 
 @Injectable()
 export class MediaService {
@@ -224,6 +252,51 @@ export class MediaService {
     });
 
     return this.toPublic(saved);
+  }
+
+  /** Transcrit un transcodage réussi. Le média devient consultable. */
+  async applyTranscodeResult(mediaId: string, raw: string): Promise<PublicMedia> {
+    const result = parseTranscodeResult(raw);
+
+    const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
+    if (!media) {
+      throw new NotFoundException('Média introuvable');
+    }
+
+    media.status = MediaStatus.READY;
+    media.durationSeconds = Math.round(result.durationSeconds);
+    media.width = result.width;
+    media.height = result.height;
+    media.type = result.type;
+    media.mimeType = result.mimeType;
+    media.renditions = result.renditions;
+    media.hlsPrefix = `${this.buildMediaPrefix(media.freelanceId, media.id)}hls/`;
+    media.posterKey = `${this.buildMediaPrefix(media.freelanceId, media.id)}poster.jpg`;
+    media.errorReason = null;
+    media.processedAt = new Date();
+
+    return this.toPublic(await this.mediaRepo.save(media));
+  }
+
+  /**
+   * Enregistre un échec définitif et purge les sorties partielles.
+   * Le MASTER est conservé : il permet de rejouer le transcodage après correction.
+   */
+  async markFailed(mediaId: string, reason: string): Promise<PublicMedia> {
+    const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
+    if (!media) {
+      throw new NotFoundException('Média introuvable');
+    }
+
+    const prefix = this.buildMediaPrefix(media.freelanceId, media.id);
+    await this.storage.deletePrefix(`${prefix}hls/`);
+
+    media.status = MediaStatus.FAILED;
+    // Message court destiné à l'utilisateur : jamais une pile d'exécution.
+    media.errorReason = reason.slice(0, MAX_ERROR_REASON);
+    media.processedAt = new Date();
+
+    return this.toPublic(await this.mediaRepo.save(media));
   }
 
   /** Clé du master. Le préfixe isole chaque média dans le casier de son propriétaire. */

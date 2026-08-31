@@ -4,13 +4,14 @@ import { Media } from './media.entity';
 import { MediaService } from './media.service';
 import { MediaController } from './media.controller';
 import { MediaQueue } from './media.queue';
+import { MediaTranscodeListener } from './media.listener';
 import { StorageModule } from '../storage/storage.module';
 
 /** Module média (EP04). Le stockage objet est injecté par son port, jamais construit ici. */
 @Module({
   imports: [TypeOrmModule.forFeature([Media]), StorageModule],
   controllers: [MediaController],
-  providers: [MediaService, MediaQueue],
+  providers: [MediaService, MediaQueue, MediaTranscodeListener],
   exports: [MediaService, MediaQueue],
 })
 export class MediaModule {}
