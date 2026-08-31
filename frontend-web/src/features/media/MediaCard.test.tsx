@@ -74,4 +74,12 @@ describe('MediaCard', () => {
     renderCard(makeMedia({ status: 'FAILED', errorReason: 'Aucun flux vidéo décodable' }));
     expect(screen.getByText('Aucun flux vidéo décodable')).toBeInTheDocument();
   });
+
+  it('n\'affiche pas la raison d\'échec quand elle est absente', () => {
+    // Le cas positif est couvert : si la garde était supprimée ou passée en test de
+    // veracité laissant passer une chaîne vide, rien ne le détecterait. La vérification
+    // de l'absence est tout aussi importante que celle de la présence.
+    renderCard(makeMedia({ status: 'READY', errorReason: null }));
+    expect(screen.queryByText('Erreur')).not.toBeInTheDocument();
+  });
 });
