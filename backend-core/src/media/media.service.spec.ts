@@ -1,5 +1,5 @@
 import { ConflictException, BadRequestException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { MediaService } from './media.service';
 import { Media } from './media.entity';
 import { MediaStatus } from '../common/enums';
@@ -10,6 +10,11 @@ const FREELANCE = '11111111-1111-1111-1111-111111111111';
 
 // Dépôt en mémoire : suffisant pour le cycle de vie, et sans base de données à démarrer.
 function fakeRepo(rows: Media[] = []): Repository<Media> {
+  // `count` est un mock espionnable : les tests de quota doivent vérifier la clause
+  // `where` réellement envoyée, pas seulement le résultat du filtrage côté dépôt.
+  const count = jest.fn(
+    async () => rows.filter((row) => row.status !== MediaStatus.FAILED).length,
+  );
   return {
     create: (data: Partial<Media>) => ({ ...data }) as Media,
     save: async (entity: Media) => {
@@ -20,7 +25,7 @@ function fakeRepo(rows: Media[] = []): Repository<Media> {
     },
     findOne: async ({ where }: { where: { id: string } }) =>
       rows.find((row) => row.id === where.id) ?? null,
-    count: async () => rows.filter((row) => row.status !== MediaStatus.FAILED).length,
+    count,
   } as unknown as Repository<Media>;
 }
 
@@ -112,5 +117,18 @@ describe('MediaService — déclaration', () => {
     const service = new MediaService(fakeRepo(rows), storage);
 
     await expect(service.createDraft(FREELANCE, dto())).rejects.toThrow(ConflictException);
+  });
+
+  it('interroge le quota sur les seuls médias non FAILED du freelance', async () => {
+    const repo = fakeRepo();
+    const service = new MediaService(repo, storage);
+
+    await service.createDraft(FREELANCE, dto());
+
+    // Sans cette assertion, le test du plafond passerait même si le service comptait
+    // TOUS les médias de TOUS les freelances : le dépôt simulé filtre de son côté.
+    expect(repo.count).toHaveBeenCalledWith({
+      where: { freelanceId: FREELANCE, status: Not(MediaStatus.FAILED) },
+    });
   });
 });

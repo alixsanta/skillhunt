@@ -90,6 +90,10 @@ export class MediaService {
       status: MediaStatus.DRAFT,
       sourceKey,
       mimeType: dto.contentType,
+      // `dto.sizeBytes` n'est PAS persisté ici (volontaire) : c'est une taille annoncée
+      // par le client, non vérifiée à ce stade — elle ne sert qu'au contrôle de plafond
+      // ci-dessus. La taille faisant foi sera écrite à la confirmation du dépôt, lue
+      // depuis les métadonnées réelles de l'objet (storage.head()).
     });
     const saved = await this.mediaRepo.save(media);
 
