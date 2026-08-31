@@ -7,6 +7,8 @@ import { buildDataSourceOptions } from './database/data-source';
 import { User } from './users/user.entity';
 import { Gear } from './gear/gear.entity';
 import { Certification } from './certifications/certification.entity';
+import { Media } from './media/media.entity';
+import { MediaModule } from './media/media.module';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { TwoFactorService } from './auth/two-factor.service';
@@ -46,7 +48,7 @@ import { ObservabilityModule } from './observability/observability.module';
     TypeOrmModule.forRootAsync({
       useFactory: () => buildDataSourceOptions(),
     }),
-    TypeOrmModule.forFeature([User, Gear, Certification]),
+    TypeOrmModule.forFeature([User, Gear, Certification, Media]),
 
     // Persistance NoSQL MongoDB (SH-24) — brique chat de l'architecture (§2/§3).
     // URL via l'environnement uniquement (CLAUDE.md §8-4) ; défaut = compose dev (port hôte 27018).
@@ -59,6 +61,9 @@ import { ObservabilityModule } from './observability/observability.module';
 
     // Stockage objet privé (SH-31) — fournit STORAGE_SERVICE aux certifications (et médias SH-17)
     StorageModule,
+
+    // Portfolio média (SH-16a) : déclaration + URL PUT signée, sans octet vidéo via l'API.
+    MediaModule,
 
     // Configuration JWT RS256 (clés asymétriques) — secrets jamais en dur (C2.2.3)
     JwtModule.registerAsync({
