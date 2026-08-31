@@ -93,10 +93,15 @@ services:
     environment:
       SERVICES: s3
       AWS_DEFAULT_REGION: eu-west-3
+      # Lu par le script d'init : dev et staging n'utilisent pas le même bucket.
+      AWS_S3_BUCKET: skillhunt-staging
+      MEDIA_CORS_ORIGINS: ${CORS_ORIGIN:-http://localhost:8088,http://localhost:5173}
     networks:
       - skillhunt-private-net
     volumes:
       - skillhunt_localstack:/var/lib/localstack
+      # SH-16a — bucket + chiffrement par défaut + CORS, créés au démarrage.
+      - ./localstack/init:/etc/localstack/init/ready.d:ro
     healthcheck:
       test: ["CMD-SHELL", "awslocal s3 ls || exit 1"]
       interval: 10s
@@ -128,6 +133,13 @@ services:
       MATCHING_SERVICE_URL: http://matching-service:8000
       AWS_S3_ENDPOINT: http://localstack:4566
       AWS_S3_BUCKET: skillhunt-staging
+      # Endpoint vu DEPUIS LE NAVIGATEUR : la signature SigV4 couvre l'hôte (D9). Pas de
+      # valeur par défaut en staging — l'endpoint doit être choisi explicitement.
+      AWS_S3_PUBLIC_ENDPOINT: ${AWS_S3_PUBLIC_ENDPOINT}
+      MEDIA_MAX_FILE_MB: ${MEDIA_MAX_FILE_MB:-500}
+      MEDIA_MAX_PER_FREELANCE: ${MEDIA_MAX_PER_FREELANCE:-20}
+      MEDIA_SIGNED_URL_TTL: ${MEDIA_SIGNED_URL_TTL:-900}
+      MEDIA_DRAFT_TTL_HOURS: ${MEDIA_DRAFT_TTL_HOURS:-24}
       AWS_REGION: eu-west-3
     networks:
       - skillhunt-private-net

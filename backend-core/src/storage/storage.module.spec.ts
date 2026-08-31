@@ -45,4 +45,25 @@ describe('🗄️ StorageModule (provider — SH-31)', () => {
 
     expect(storage).toBeInstanceOf(FakeStorageService);
   });
+
+  it('buildPublicS3Client signe sur AWS_S3_PUBLIC_ENDPOINT quand il est défini', async () => {
+    process.env.AWS_S3_ENDPOINT = 'http://localstack:4566';
+    process.env.AWS_S3_PUBLIC_ENDPOINT = 'http://localhost:4566';
+
+    const { buildPublicS3Client } = await import('./storage.module');
+    const endpoint = await buildPublicS3Client().config.endpoint!();
+
+    // L'hôte entre dans la signature SigV4 : c'est celui que le NAVIGATEUR utilisera.
+    expect(endpoint.hostname).toBe('localhost');
+  });
+
+  it('buildPublicS3Client retombe sur AWS_S3_ENDPOINT quand l\'endpoint public est absent', async () => {
+    process.env.AWS_S3_ENDPOINT = 'http://localstack:4566';
+    delete process.env.AWS_S3_PUBLIC_ENDPOINT;
+
+    const { buildPublicS3Client } = await import('./storage.module');
+    const endpoint = await buildPublicS3Client().config.endpoint!();
+
+    expect(endpoint.hostname).toBe('localstack');
+  });
 });
