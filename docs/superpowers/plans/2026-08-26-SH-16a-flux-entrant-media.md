@@ -2276,6 +2276,16 @@ cd backend-core && npx jest media.listener
 
 Attendu : ÉCHEC — `service.applyTranscodeResult is not a function`.
 
+> **Amendement en cours d'exécution.** Le `parseTranscodeResult` ci-dessous s'est révélé
+> insuffisant en revue : il ne validait que les scalaires de premier niveau et se contentait
+> de vérifier que `renditions` était un tableau. Un worker compromis pouvait donc faire
+> persister des `playlistKey` arbitraires — que SH-17 transformera en URLs signées, soit un
+> accès signé au stockage d'un AUTRE freelance. La version livrée valide **chaque piste**
+> (nom, dimensions et débit entiers positifs) et **exige que sa clé reste sous le préfixe du
+> média traité** ; elle refuse aussi les durées/dimensions négatives et confronte le type MIME
+> à `ALLOWED_MEDIA_MIME_TYPES`. `applyTranscodeResult` charge donc le média **avant** de
+> parser, puisque le préfixe en dépend. Voir le commit `1361d30`.
+
 - [ ] **Step 3 : Implémenter dans `backend-core/src/media/media.service.ts`**
 
 Compléter d'abord les imports du fichier : `MediaType` depuis `../common/enums`, et `TranscodeJobResult` depuis `./media.queue`.
