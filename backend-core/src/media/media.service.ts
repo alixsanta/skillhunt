@@ -61,8 +61,40 @@ const EXTENSIONS: Record<string, string> = {
 
 const MAX_ERROR_REASON = 255;
 
+/** Nombre fini strictement positif : une durée négative n'a aucun sens. */
+function estNombrePositif(valeur: unknown): valeur is number {
+  return typeof valeur === 'number' && Number.isFinite(valeur) && valeur > 0;
+}
+
+/** Entier strictement positif : une dimension ou un débit ne sont ni fractionnaires ni négatifs. */
+function estEntierPositif(valeur: unknown): valeur is number {
+  return estNombrePositif(valeur) && Number.isInteger(valeur);
+}
+
+/**
+ * Valide UNE piste de qualité.
+ *
+ * `playlistKey` est la donnée la plus sensible du lot : SH-17 la transformera en URL
+ * signée. Une clé pointant hors du préfixe du média ouvrirait un accès signé au
+ * stockage d'un AUTRE freelance — on exige donc qu'elle reste dans le périmètre du
+ * média traité (C2.2.3).
+ */
+function estRenditionValide(valeur: unknown, prefixeAttendu: string): boolean {
+  const rendition = valeur as Partial<MediaRendition>;
+  return (
+    typeof rendition?.name === 'string' &&
+    rendition.name.length > 0 &&
+    rendition.name.length <= 32 &&
+    estEntierPositif(rendition.width) &&
+    estEntierPositif(rendition.height) &&
+    estEntierPositif(rendition.bandwidth) &&
+    typeof rendition.playlistKey === 'string' &&
+    rendition.playlistKey.startsWith(prefixeAttendu)
+  );
+}
+
 /** Valide la forme du résultat rendu par le worker. Donnée externe : jamais de confiance. */
-function parseTranscodeResult(raw: string): TranscodeJobResult {
+function parseTranscodeResult(raw: string, prefixeAttendu: string): TranscodeJobResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -71,15 +103,18 @@ function parseTranscodeResult(raw: string): TranscodeJobResult {
   }
 
   const candidate = parsed as Partial<TranscodeJobResult>;
-  const nombres = [candidate.durationSeconds, candidate.width, candidate.height];
   const typeValide =
     candidate.type === MediaType.VIDEO || candidate.type === MediaType.VIDEO_360;
 
   if (
-    !nombres.every((valeur) => typeof valeur === 'number' && Number.isFinite(valeur)) ||
+    !estNombrePositif(candidate.durationSeconds) ||
+    !estEntierPositif(candidate.width) ||
+    !estEntierPositif(candidate.height) ||
     !typeValide ||
     typeof candidate.mimeType !== 'string' ||
-    !Array.isArray(candidate.renditions)
+    !ALLOWED_MEDIA_MIME_TYPES.includes(candidate.mimeType as never) ||
+    !Array.isArray(candidate.renditions) ||
+    !candidate.renditions.every((rendition) => estRenditionValide(rendition, prefixeAttendu))
   ) {
     throw new BadRequestException('Résultat de transcodage non conforme');
   }
@@ -256,12 +291,15 @@ export class MediaService {
 
   /** Transcrit un transcodage réussi. Le média devient consultable. */
   async applyTranscodeResult(mediaId: string, raw: string): Promise<PublicMedia> {
-    const result = parseTranscodeResult(raw);
-
     const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
     if (!media) {
       throw new NotFoundException('Média introuvable');
     }
+
+    // Le préfixe ne se connaît qu'une fois le média chargé (il dépend de son
+    // propriétaire) : c'est pourquoi le chargement précède désormais le parsing.
+    const prefix = this.buildMediaPrefix(media.freelanceId, media.id);
+    const result = parseTranscodeResult(raw, prefix);
 
     media.status = MediaStatus.READY;
     media.durationSeconds = Math.round(result.durationSeconds);
@@ -270,8 +308,8 @@ export class MediaService {
     media.type = result.type;
     media.mimeType = result.mimeType;
     media.renditions = result.renditions;
-    media.hlsPrefix = `${this.buildMediaPrefix(media.freelanceId, media.id)}hls/`;
-    media.posterKey = `${this.buildMediaPrefix(media.freelanceId, media.id)}poster.jpg`;
+    media.hlsPrefix = `${prefix}hls/`;
+    media.posterKey = `${prefix}poster.jpg`;
     media.errorReason = null;
     media.processedAt = new Date();
 

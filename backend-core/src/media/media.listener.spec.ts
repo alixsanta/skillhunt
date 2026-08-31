@@ -34,21 +34,33 @@ function contexte(status = MediaStatus.UPLOADED) {
 // C2.2.3 — Le résultat du worker est une donnée EXTERNE au monolithe : elle traverse
 // Redis et n'est produite par aucun code de ce service. Elle se valide comme une entrée.
 describe('MediaService — issue du transcodage', () => {
-  const resultatValide = JSON.stringify({
-    durationSeconds: 42,
-    width: 3840,
-    height: 2160,
-    type: 'VIDEO_360',
-    mimeType: 'video/mp4',
-    renditions: [
-      { name: '720p', width: 1280, height: 720, bandwidth: 2800000, playlistKey: 'p/720p.m3u8' },
-    ],
-  });
+  // Le préfixe RÉEL du média de test : `playlistKey` doit désormais y rester confiné.
+  const PREFIXE = `private/media/${FREELANCE}/${MEDIA_ID}/`;
+
+  function resultat(overrides: Record<string, unknown> = {}) {
+    return JSON.stringify({
+      durationSeconds: 42,
+      width: 3840,
+      height: 2160,
+      type: 'VIDEO_360',
+      mimeType: 'video/mp4',
+      renditions: [
+        {
+          name: '720p',
+          width: 1280,
+          height: 720,
+          bandwidth: 2800000,
+          playlistKey: `${PREFIXE}hls/720p.m3u8`,
+        },
+      ],
+      ...overrides,
+    });
+  }
 
   it('passe en READY et transcrit les métadonnées sondées', async () => {
     const { service } = contexte();
 
-    const media = await service.applyTranscodeResult(MEDIA_ID, resultatValide);
+    const media = await service.applyTranscodeResult(MEDIA_ID, resultat());
 
     expect(media.status).toBe(MediaStatus.READY);
     expect(media.durationSeconds).toBe(42);
@@ -63,6 +75,74 @@ describe('MediaService — issue du transcodage', () => {
 
     await expect(service.applyTranscodeResult(MEDIA_ID, '{"width":"beaucoup"}')).rejects.toThrow();
     await expect(service.applyTranscodeResult(MEDIA_ID, 'pas du json')).rejects.toThrow();
+  });
+
+  // Cas de SÉCURITÉ : une `playlistKey` hors du préfixe du média correspond à un autre
+  // freelance. SH-17 la transformera en URL signée — la laisser passer ouvrirait un
+  // accès signé au stockage d'AUTRUI. C'est le cas le plus important de ce fichier.
+  it('rejette une playlistKey pointant vers le casier d\'un AUTRE freelance', async () => {
+    const { service } = contexte();
+    const autreFreelance = '22222222-2222-2222-2222-222222222222';
+
+    const malicieux = resultat({
+      renditions: [
+        {
+          name: '720p',
+          width: 1280,
+          height: 720,
+          bandwidth: 2800000,
+          playlistKey: `private/media/${autreFreelance}/${MEDIA_ID}/hls/720p.m3u8`,
+        },
+      ],
+    });
+
+    await expect(service.applyTranscodeResult(MEDIA_ID, malicieux)).rejects.toThrow();
+  });
+
+  it('rejette une durationSeconds négative', async () => {
+    const { service } = contexte();
+
+    await expect(
+      service.applyTranscodeResult(MEDIA_ID, resultat({ durationSeconds: -1 })),
+    ).rejects.toThrow();
+  });
+
+  it('rejette une width négative', async () => {
+    const { service } = contexte();
+
+    await expect(service.applyTranscodeResult(MEDIA_ID, resultat({ width: -3840 }))).rejects.toThrow();
+  });
+
+  it('rejette une width fractionnaire', async () => {
+    const { service } = contexte();
+
+    await expect(service.applyTranscodeResult(MEDIA_ID, resultat({ width: 3840.5 }))).rejects.toThrow();
+  });
+
+  it('rejette un mimeType hors de la liste blanche', async () => {
+    const { service } = contexte();
+
+    await expect(
+      service.applyTranscodeResult(MEDIA_ID, resultat({ mimeType: 'application/octet-stream' })),
+    ).rejects.toThrow();
+  });
+
+  it('rejette une rendition sans bandwidth exploitable', async () => {
+    const { service } = contexte();
+
+    const sansBandwidth = resultat({
+      renditions: [
+        {
+          name: '720p',
+          width: 1280,
+          height: 720,
+          bandwidth: 'beaucoup',
+          playlistKey: `${PREFIXE}hls/720p.m3u8`,
+        },
+      ],
+    });
+
+    await expect(service.applyTranscodeResult(MEDIA_ID, sansBandwidth)).rejects.toThrow();
   });
 
   it('markFailed enregistre la raison et purge les sorties partielles', async () => {
