@@ -64,7 +64,7 @@
         "@types/geojson": "^7946.0.16",
         "@types/jest": "^30.0.0",
         "@types/multer": "^2.1.0",
-        "@types/node": "^20.0.0",
+        "@types/node": "^26.4.0",
         "eslint": "^9.39.4",
         "jest": "^30.4.2",
         "ts-jest": "^29.4.11",
