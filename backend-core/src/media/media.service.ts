@@ -1,11 +1,19 @@
-import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { FindOptionsWhere, Not, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Media, MediaRendition } from './media.entity';
 import { MediaStatus, MediaType } from '../common/enums';
 import { STORAGE_SERVICE, StorageService } from '../storage/storage.service';
 import { CreateMediaDto } from './dto/create-media.dto';
+import { QueryMediaDto } from './dto/query-media.dto';
+import { UpdateMediaDto } from './dto/update-media.dto';
 
 /**
  * Vue publique d'un média. EXCLUT `sourceKey`, `posterKey` et `hlsPrefix` : aucune clé
@@ -35,6 +43,13 @@ export interface UploadInstructions {
   method: 'PUT';
   headers: Record<string, string>;
   expiresIn: number;
+}
+
+export interface PaginatedMedia {
+  items: PublicMedia[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 // Extension dérivée du type MIME — jamais d'un nom de fichier fourni par le client (R7).
@@ -110,6 +125,50 @@ export class MediaService {
         expiresIn: this.signedUrlTtl,
       },
     };
+  }
+
+  /** Liste paginée des médias d'UN freelance. Étanchéité : filtrée sur l'id du token. */
+  async getMine(freelanceId: string, query: QueryMediaDto): Promise<PaginatedMedia> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const where: FindOptionsWhere<Media> = { freelanceId };
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    const [rows, total] = await this.mediaRepo.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { items: rows.map((row) => this.toPublic(row)), total, page, limit };
+  }
+
+  /**
+   * Met à jour les métadonnées éditables d'un média dont on est propriétaire.
+   * Un média d'autrui donne 404 et non 403 : son existence n'a pas à être révélée.
+   */
+  async updateOwn(
+    mediaId: string,
+    freelanceId: string,
+    dto: UpdateMediaDto,
+  ): Promise<PublicMedia> {
+    const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
+    if (!media || media.freelanceId !== freelanceId) {
+      throw new NotFoundException('Média introuvable');
+    }
+
+    if (dto.title !== undefined) {
+      media.title = dto.title;
+    }
+    if (dto.description !== undefined) {
+      media.description = dto.description;
+    }
+
+    return this.toPublic(await this.mediaRepo.save(media));
   }
 
   /** Clé du master. Le préfixe isole chaque média dans le casier de son propriétaire. */

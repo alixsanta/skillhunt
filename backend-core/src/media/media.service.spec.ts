@@ -1,4 +1,4 @@
-import { ConflictException, BadRequestException } from '@nestjs/common';
+import { ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Not, Repository } from 'typeorm';
 import { MediaService } from './media.service';
 import { Media } from './media.entity';
@@ -25,6 +25,7 @@ function fakeRepo(rows: Media[] = []): Repository<Media> {
     },
     findOne: async ({ where }: { where: { id: string } }) =>
       rows.find((row) => row.id === where.id) ?? null,
+    findAndCount: async () => [rows, rows.length],
     count,
   } as unknown as Repository<Media>;
 }
@@ -130,5 +131,73 @@ describe('MediaService — déclaration', () => {
     expect(repo.count).toHaveBeenCalledWith({
       where: { freelanceId: FREELANCE, status: Not(MediaStatus.FAILED) },
     });
+  });
+});
+
+describe('MediaService — consultation et mise à jour', () => {
+  const AUTRE = '22222222-2222-2222-2222-222222222222';
+
+  function repoAvec(rows: Media[]): Repository<Media> {
+    return {
+      findAndCount: async ({ where, skip, take }: any) => {
+        const filtered = rows.filter(
+          (row) =>
+            row.freelanceId === where.freelanceId &&
+            (where.status === undefined || row.status === where.status),
+        );
+        return [filtered.slice(skip, skip + take), filtered.length];
+      },
+      findOne: async ({ where }: any) => rows.find((row) => row.id === where.id) ?? null,
+      save: async (entity: Media) => entity,
+    } as unknown as Repository<Media>;
+  }
+
+  const rows = [
+    { id: 'a', freelanceId: FREELANCE, status: MediaStatus.READY, title: 'A', renditions: null, sizeBytes: null } as Media,
+    { id: 'b', freelanceId: FREELANCE, status: MediaStatus.DRAFT, title: 'B', renditions: null, sizeBytes: null } as Media,
+    { id: 'c', freelanceId: AUTRE, status: MediaStatus.READY, title: 'C', renditions: null, sizeBytes: null } as Media,
+  ];
+
+  it('ne rend QUE les médias du freelance du token', async () => {
+    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+
+    const page = await service.getMine(FREELANCE, {});
+
+    // Étanchéité (C2.2.2) : le média du voisin ne doit jamais apparaître.
+    expect(page.items.map((m) => m.id).sort()).toEqual(['a', 'b']);
+    expect(page.total).toBe(2);
+  });
+
+  it('filtre par statut', async () => {
+    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+
+    const page = await service.getMine(FREELANCE, { status: MediaStatus.READY });
+
+    expect(page.items.map((m) => m.id)).toEqual(['a']);
+  });
+
+  it('met à jour le titre de son propre média', async () => {
+    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+
+    const updated = await service.updateOwn('a', FREELANCE, { title: 'Nouveau titre' });
+
+    expect(updated.title).toBe('Nouveau titre');
+  });
+
+  it('refuse de modifier le média d\'un autre freelance', async () => {
+    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+
+    // 404 et non 403 : l'existence d'un média d'autrui ne doit pas être révélée.
+    await expect(service.updateOwn('c', FREELANCE, { title: 'Pirate' })).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+
+  it('rejette un média inconnu', async () => {
+    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+
+    await expect(service.updateOwn('inconnu', FREELANCE, { title: 'X' })).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

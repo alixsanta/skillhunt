@@ -1,4 +1,14 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -9,6 +19,8 @@ import {
 } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { CreateMediaDto } from './dto/create-media.dto';
+import { QueryMediaDto } from './dto/query-media.dto';
+import { UpdateMediaDto } from './dto/update-media.dto';
 import {
   JwtAuthGuard,
   RolesGuard,
@@ -42,5 +54,27 @@ export class MediaController {
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateMediaDto) {
     // Identité issue du token : aucun {id} client n'est accepté (anti-usurpation, OWASP).
     return this.mediaService.createDraft(user.userId, dto);
+  }
+
+  @Get('me')
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({ summary: 'Lister ses propres médias (filtres + pagination)' })
+  @ApiResponse({ status: 200, description: 'Liste paginée des médias du freelance.' })
+  getMine(@CurrentUser() user: JwtPayload, @Query() query: QueryMediaDto) {
+    // Étanchéité garantie par l'id du token : un Freelance ne voit que SES médias.
+    return this.mediaService.getMine(user.userId, query);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({ summary: 'Modifier le titre ou la description de son média' })
+  @ApiResponse({ status: 200, description: 'Média mis à jour.' })
+  @ApiResponse({ status: 404, description: 'Média introuvable ou appartenant à un autre compte.' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateMediaDto,
+  ) {
+    return this.mediaService.updateOwn(id, user.userId, dto);
   }
 }
