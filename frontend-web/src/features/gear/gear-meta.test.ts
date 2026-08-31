@@ -43,6 +43,10 @@ describe("Palette de l'Armurerie — aucune couleur codée en dur", () => {
   const scanDirs = [
     'src/features/gear',
     'src/features/gamification',
+    // SH-18a : le portfolio introduit `features/media`. Sans cette ligne, tout le
+    // répertoire échapperait au garde-fou — or c'est précisément lui qui fait respecter
+    // la palette, la revue de la tâche 2 l'a relevé.
+    'src/features/media',
     'src/pages',
     'src/features/navigation',
     'src/components/ui',
