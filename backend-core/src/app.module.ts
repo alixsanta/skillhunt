@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
@@ -36,6 +37,9 @@ import { ObservabilityModule } from './observability/observability.module';
   imports: [
     // Chargement global des variables d'environnement (.env)
     ConfigModule.forRoot({ isGlobal: true }),
+
+    // Ordonnanceur de tâches Cron (SH-16a) — sans lui, @Cron est inerte (MediaSweeper).
+    ScheduleModule.forRoot(),
 
     // Client Redis partagé (SH-14) — fourni globalement via le token REDIS_CLIENT (C2.2.3)
     RedisModule,
