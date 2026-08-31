@@ -77,6 +77,27 @@ describe('MediaService — issue du transcodage', () => {
     await expect(service.applyTranscodeResult(MEDIA_ID, 'pas du json')).rejects.toThrow();
   });
 
+  // Défaut B (recette e2e) : la version de BullMQ installée décode déjà `returnvalue`
+  // avant d'émettre `completed` (`queue-events.js:102`) — c'est le cas RÉEL en
+  // production. Reparser cet objet avec `JSON.parse` le stringifie en
+  // `"[object Object]"` puis échoue toujours : AUCUN média n'atteint jamais READY.
+  it('passe en READY quand le résultat arrive déjà DÉCODÉ en objet (cas réel BullMQ)', async () => {
+    const { service } = contexte();
+
+    const media = await service.applyTranscodeResult(MEDIA_ID, JSON.parse(resultat()));
+
+    expect(media.status).toBe(MediaStatus.READY);
+    expect(media.durationSeconds).toBe(42);
+  });
+
+  it('passe en READY quand le résultat arrive en chaîne JSON (compatibilité)', async () => {
+    const { service } = contexte();
+
+    const media = await service.applyTranscodeResult(MEDIA_ID, resultat());
+
+    expect(media.status).toBe(MediaStatus.READY);
+  });
+
   // Cas de SÉCURITÉ : une `playlistKey` hors du préfixe du média correspond à un autre
   // freelance. SH-17 la transformera en URL signée — la laisser passer ouvrirait un
   // accès signé au stockage d'AUTRUI. C'est le cas le plus important de ce fichier.

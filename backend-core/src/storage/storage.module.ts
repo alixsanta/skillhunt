@@ -37,6 +37,14 @@ export function buildPublicS3Client(): S3Client {
   return new S3Client({
     region: process.env.AWS_REGION ?? 'eu-west-3',
     ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
+    // `@aws-sdk/client-s3` calcule par défaut (`WHEN_SUPPORTED`) un checksum
+    // `x-amz-checksum-crc32` et le fige DANS L'URL au moment de la SIGNATURE — alors
+    // qu'aucun corps n'existe encore. La valeur signée est donc le CRC32 d'un corps VIDE
+    // (`AAAAAA==`) : tout dépôt réel envoie un corps différent, et S3 répond 400. Ce
+    // client ne sert qu'à SIGNER des URLs consommées plus tard par le navigateur (jamais
+    // à envoyer un corps lui-même) : on désactive le calcul automatique pour qu'aucun
+    // paramètre `x-amz-checksum-*`/`x-amz-sdk-checksum-algorithm` ne soit émis.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
   });
 }
 

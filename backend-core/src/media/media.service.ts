@@ -93,12 +93,27 @@ function estRenditionValide(valeur: unknown, prefixeAttendu: string): boolean {
   );
 }
 
-/** Valide la forme du résultat rendu par le worker. Donnée externe : jamais de confiance. */
-function parseTranscodeResult(raw: string, prefixeAttendu: string): TranscodeJobResult {
+/**
+ * Valide la forme du résultat rendu par le worker. Donnée externe : jamais de confiance.
+ *
+ * `raw` est `unknown` et non `string` : BullMQ (`queue-events.js`, `QueueEvents`) fait
+ * déjà `JSON.parse(returnvalue)` avant d'émettre `completed` depuis la version installée
+ * ici — reparser une chaîne déjà transformée en objet JavaScript la stringifie en
+ * `"[object Object]"` puis échoue toujours. Plutôt que de parier sur le comportement
+ * exact d'une version de bibliothèque, la frontière accepte les deux formes : une
+ * chaîne JSON (parsée ici) ou un objet déjà décodé (utilisé tel quel).
+ */
+function parseTranscodeResult(raw: unknown, prefixeAttendu: string): TranscodeJobResult {
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new BadRequestException('Résultat de transcodage illisible');
+    }
+  } else if (typeof raw === 'object' && raw !== null) {
+    parsed = raw;
+  } else {
     throw new BadRequestException('Résultat de transcodage illisible');
   }
 
@@ -289,8 +304,13 @@ export class MediaService {
     return this.toPublic(saved);
   }
 
-  /** Transcrit un transcodage réussi. Le média devient consultable. */
-  async applyTranscodeResult(mediaId: string, raw: string): Promise<PublicMedia> {
+  /**
+   * Transcrit un transcodage réussi. Le média devient consultable.
+   *
+   * `raw` est `unknown` : BullMQ peut livrer soit une chaîne JSON, soit déjà l'objet
+   * décodé selon sa version (voir `parseTranscodeResult`) — le service ne suppose rien.
+   */
+  async applyTranscodeResult(mediaId: string, raw: unknown): Promise<PublicMedia> {
     const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
     if (!media) {
       throw new NotFoundException('Média introuvable');
