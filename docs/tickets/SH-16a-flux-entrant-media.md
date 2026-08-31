@@ -189,11 +189,18 @@ spot de se reproduire (le même type de garde que celui déjà en place pour Red
 `media.queue.integration.spec.ts`).
 
 ### 6. Definition of Done (DoD)
-- [x] Les 9 scénarios Gherkin sont couverts par des tests automatisés (7/9 verts en conditions réelles ;
-  scénarios 2 et 4 verts uniquement en isolation — voir Défauts A et B, non corrigés dans ce ticket).
-- [ ] Recette de bout en bout passée `DRAFT → UPLOADED → READY` à travers la gateway — **NON atteinte**
-  (bloquée successivement par le Défaut A puis, en contournant celui-ci pour le diagnostic, par le
-  Défaut B). Voir `.superpowers/sdd/task-9-report.md` pour le détail des appels et des réponses réelles.
+- [x] Les 9 scénarios Gherkin sont couverts par des tests automatisés. Les Défauts A et B, découverts
+  par la recette, sont **corrigés et vérifiés** (commit `7ff80dc`) : le dépôt direct répond désormais 200,
+  et le résultat du worker n'est plus rejeté comme illisible.
+- [ ] Recette de bout en bout `DRAFT → UPLOADED → READY` — **atteinte jusqu'à `UPLOADED`**, le job étant
+  réellement consommé. `READY` reste hors d'atteinte pour une raison de conception, pas de code : le
+  worker de SH-15 est un no-op assumé qui rend `{ renditions: [] }`, sans durée ni dimensions ni type,
+  alors que `parseTranscodeResult` — durci à raison contre les clés de stockage forgées — les exige tous.
+  Les deux exigences étaient incompatibles dès l'écriture du plan. **`READY` devient le critère
+  d'acceptation de SH-16b.** Détail des appels et des réponses : `.superpowers/sdd/task-9-report.md`.
+- [ ] *(reporté en SH-16b)* Un résultat de transcodage invalide laisse aujourd'hui le média
+  silencieusement en `UPLOADED`, avec pour seule trace une ligne de journal : ni statut `FAILED`, ni
+  signal utilisateur. À trancher avec le vrai pipeline.
 - [x] Suite backend verte avec Redis, **zéro test `skipped`** ; lint et build verts (Task 9, Step 7).
 - [x] Migration `user_media` appliquée et annulable (Task 3).
 - [x] Bucket créé automatiquement (`localstack/init/01-bucket.sh`), chiffrement par défaut et CORS
