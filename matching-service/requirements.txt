@@ -1,18 +1,18 @@
 fastapi==0.141.1
-uvicorn[standard]==0.32.1
+uvicorn[standard]==0.52.4
 # SH-47 — Épinglage EXPLICITE d'une dépendance transitive (couche ASGI de FastAPI).
 # `fastapi` ne déclare que `starlette>=0.46.0` (borne haute ouverte) : sans cette ligne, la version
 # réellement installée dépendrait de la résolution du jour. Or 0.41.3 — celle qui tournait en
 # production depuis le 2026-07-23 — portait 7 avis de sécurité (PYSEC-2026-161/248/249/1941/1942/
 # 2280/2281), dont le plus exigeant impose 1.3.1. C'est l'équivalent Python du champ `overrides`
 # de npm utilisé en SH-32/SH-27. Voir docs/exploitation/POLITIQUE_DEPENDANCES.md §0.1 et §2.2.
-starlette==1.3.1
-pydantic==2.10.3
-pydantic-settings==2.6.1
-sqlalchemy==2.0.36
-asyncpg==0.30.0
-geoalchemy2==0.16.0
+starlette==1.6.0
+pydantic==2.13.4
+pydantic-settings==2.15.0
+sqlalchemy==2.0.52
+asyncpg==0.31.0
+geoalchemy2==0.20.0
 redis==5.2.1
 # SH-29 — Instrumentation (C4.1.2) : métriques Prometheus et logs JSON structurés.
 prometheus-fastapi-instrumentator==8.1.0
-python-json-logger==4.1.0
+python-json-logger==4.2.0
