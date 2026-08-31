@@ -10,10 +10,11 @@ import { FindOptionsWhere, Not, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { Media, MediaRendition } from './media.entity';
 import { MediaStatus, MediaType } from '../common/enums';
-import { STORAGE_SERVICE, StorageService } from '../storage/storage.service';
-import { CreateMediaDto } from './dto/create-media.dto';
+import { STORAGE_SERVICE, StorageService, StoredObjectHead } from '../storage/storage.service';
+import { ALLOWED_MEDIA_MIME_TYPES, CreateMediaDto } from './dto/create-media.dto';
 import { QueryMediaDto } from './dto/query-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
+import { MediaQueue } from './media.queue';
 
 /**
  * Vue publique d'un média. EXCLUT `sourceKey`, `posterKey` et `hlsPrefix` : aucune clé
@@ -65,6 +66,7 @@ export class MediaService {
     private readonly mediaRepo: Repository<Media>,
     @Inject(STORAGE_SERVICE)
     private readonly storage: StorageService,
+    private readonly queue: MediaQueue,
   ) {}
 
   /**
@@ -169,6 +171,59 @@ export class MediaService {
     }
 
     return this.toPublic(await this.mediaRepo.save(media));
+  }
+
+  /**
+   * Confirme le dépôt (C2.2.3).
+   *
+   * Une URL PUT signée ne sait pas plafonner la taille : c'est ICI, par lecture des
+   * métadonnées réelles, qu'une annonce mensongère est démasquée. Le contrôle de contenu
+   * définitif reste `ffprobe`, côté worker — seul capable de trancher sur un fichier qui
+   * ne transite jamais par l'API.
+   */
+  async completeUpload(mediaId: string, freelanceId: string): Promise<PublicMedia> {
+    const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
+    if (!media || media.freelanceId !== freelanceId) {
+      throw new NotFoundException('Média introuvable');
+    }
+    if (media.status !== MediaStatus.DRAFT) {
+      throw new ConflictException('Ce média a déjà été confirmé');
+    }
+
+    let head: StoredObjectHead;
+    try {
+      head = await this.storage.head(media.sourceKey);
+    } catch {
+      throw new BadRequestException('Aucun fichier déposé pour ce média');
+    }
+
+    const prefix = this.buildMediaPrefix(freelanceId, mediaId);
+    const maxBytes = this.maxFileMb * 1024 * 1024;
+
+    if (head.sizeBytes > maxBytes) {
+      await this.storage.deletePrefix(prefix);
+      throw new BadRequestException(`Fichier trop volumineux (maximum ${this.maxFileMb} Mo)`);
+    }
+    if (!ALLOWED_MEDIA_MIME_TYPES.includes(head.contentType as never)) {
+      await this.storage.deletePrefix(prefix);
+      throw new BadRequestException('Format non supporté : MP4 ou QuickTime attendu');
+    }
+
+    media.status = MediaStatus.UPLOADED;
+    media.sizeBytes = String(head.sizeBytes);
+    media.mimeType = head.contentType;
+    const saved = await this.mediaRepo.save(media);
+
+    // Après la sauvegarde : si l'enfilement échoue (503), le média reste UPLOADED et
+    // pourra être réenfilé, plutôt que de perdre la trace d'un fichier bien déposé.
+    await this.queue.enqueueTranscode({
+      mediaId,
+      sourceKey: media.sourceKey,
+      outputPrefix: `${prefix}hls/`,
+      posterKey: `${prefix}poster.jpg`,
+    });
+
+    return this.toPublic(saved);
   }
 
   /** Clé du master. Le préfixe isole chaque média dans le casier de son propriétaire. */

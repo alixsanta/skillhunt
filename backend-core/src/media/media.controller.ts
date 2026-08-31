@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -76,5 +77,23 @@ export class MediaController {
     @Body() dto: UpdateMediaDto,
   ) {
     return this.mediaService.updateOwn(id, user.userId, dto);
+  }
+
+  @Post(':id/complete')
+  @HttpCode(202)
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({
+    summary: 'Confirmer le dépôt du fichier et lancer le transcodage (Freelance)',
+    description:
+      'Vérifie la taille et le type RÉELS de l\'objet déposé, puis enfile le job de ' +
+      'transcodage. Un dépôt ne correspondant pas à sa déclaration est purgé.',
+  })
+  @ApiResponse({ status: 202, description: 'Dépôt vérifié, transcodage enfilé.' })
+  @ApiResponse({ status: 400, description: 'Aucun fichier déposé, ou dépôt non conforme (purgé).' })
+  @ApiResponse({ status: 404, description: 'Média introuvable ou appartenant à un autre compte.' })
+  @ApiResponse({ status: 409, description: 'Média déjà confirmé.' })
+  @ApiResponse({ status: 503, description: 'File de transcodage indisponible.' })
+  complete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+    return this.mediaService.completeUpload(id, user.userId);
   }
 }

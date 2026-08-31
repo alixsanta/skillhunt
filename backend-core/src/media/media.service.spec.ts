@@ -8,6 +8,9 @@ import { CreateMediaDto } from './dto/create-media.dto';
 
 const FREELANCE = '11111111-1111-1111-1111-111111111111';
 
+// Bouchon de file : les tests de déclaration et de listing n'enfilent aucun job.
+const queueBouchon = { enqueueTranscode: jest.fn() } as never;
+
 // Dépôt en mémoire : suffisant pour le cycle de vie, et sans base de données à démarrer.
 function fakeRepo(rows: Media[] = []): Repository<Media> {
   // `count` est un mock espionnable : les tests de quota doivent vérifier la clause
@@ -50,7 +53,7 @@ describe('MediaService — déclaration', () => {
   });
 
   it('crée une ligne DRAFT et rend une URL PUT signée', async () => {
-    const service = new MediaService(fakeRepo(), storage);
+    const service = new MediaService(fakeRepo(), storage, queueBouchon);
 
     const result = await service.createDraft(FREELANCE, dto());
 
@@ -62,7 +65,7 @@ describe('MediaService — déclaration', () => {
   });
 
   it('n\'expose AUCUNE clé de stockage interne', async () => {
-    const service = new MediaService(fakeRepo(), storage);
+    const service = new MediaService(fakeRepo(), storage, queueBouchon);
 
     const { media } = await service.createDraft(FREELANCE, dto());
 
@@ -90,7 +93,7 @@ describe('MediaService — déclaration', () => {
   });
 
   it('range le master sous un préfixe propre au freelance et au média', async () => {
-    const service = new MediaService(fakeRepo(), storage);
+    const service = new MediaService(fakeRepo(), storage, queueBouchon);
 
     const key = service.buildSourceKey(FREELANCE, 'm1', 'video/mp4');
 
@@ -98,14 +101,14 @@ describe('MediaService — déclaration', () => {
   });
 
   it('choisit l\'extension d\'après le type MIME, jamais d\'après un nom de fichier', async () => {
-    const service = new MediaService(fakeRepo(), storage);
+    const service = new MediaService(fakeRepo(), storage, queueBouchon);
 
     expect(service.buildSourceKey(FREELANCE, 'm1', 'video/quicktime')).toMatch(/master\.mov$/);
   });
 
   it('refuse une taille annoncée au-delà du plafond', async () => {
     process.env.MEDIA_MAX_FILE_MB = '1';
-    const service = new MediaService(fakeRepo(), storage);
+    const service = new MediaService(fakeRepo(), storage, queueBouchon);
 
     await expect(service.createDraft(FREELANCE, dto({ sizeBytes: 2 * 1024 * 1024 }))).rejects.toThrow(
       BadRequestException,
@@ -115,14 +118,14 @@ describe('MediaService — déclaration', () => {
   it('refuse au-delà du quota de médias', async () => {
     process.env.MEDIA_MAX_PER_FREELANCE = '1';
     const rows = [{ id: 'deja-la', status: MediaStatus.READY } as Media];
-    const service = new MediaService(fakeRepo(rows), storage);
+    const service = new MediaService(fakeRepo(rows), storage, queueBouchon);
 
     await expect(service.createDraft(FREELANCE, dto())).rejects.toThrow(ConflictException);
   });
 
   it('interroge le quota sur les seuls médias non FAILED du freelance', async () => {
     const repo = fakeRepo();
-    const service = new MediaService(repo, storage);
+    const service = new MediaService(repo, storage, queueBouchon);
 
     await service.createDraft(FREELANCE, dto());
 
@@ -159,7 +162,7 @@ describe('MediaService — consultation et mise à jour', () => {
   ];
 
   it('ne rend QUE les médias du freelance du token', async () => {
-    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+    const service = new MediaService(repoAvec(rows), new FakeStorageService(), queueBouchon);
 
     const page = await service.getMine(FREELANCE, {});
 
@@ -169,7 +172,7 @@ describe('MediaService — consultation et mise à jour', () => {
   });
 
   it('filtre par statut', async () => {
-    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+    const service = new MediaService(repoAvec(rows), new FakeStorageService(), queueBouchon);
 
     const page = await service.getMine(FREELANCE, { status: MediaStatus.READY });
 
@@ -177,7 +180,7 @@ describe('MediaService — consultation et mise à jour', () => {
   });
 
   it('met à jour le titre de son propre média', async () => {
-    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+    const service = new MediaService(repoAvec(rows), new FakeStorageService(), queueBouchon);
 
     const updated = await service.updateOwn('a', FREELANCE, { title: 'Nouveau titre' });
 
@@ -185,7 +188,7 @@ describe('MediaService — consultation et mise à jour', () => {
   });
 
   it('refuse de modifier le média d\'un autre freelance', async () => {
-    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+    const service = new MediaService(repoAvec(rows), new FakeStorageService(), queueBouchon);
 
     // 404 et non 403 : l'existence d'un média d'autrui ne doit pas être révélée.
     await expect(service.updateOwn('c', FREELANCE, { title: 'Pirate' })).rejects.toThrow(
@@ -194,10 +197,93 @@ describe('MediaService — consultation et mise à jour', () => {
   });
 
   it('rejette un média inconnu', async () => {
-    const service = new MediaService(repoAvec(rows), new FakeStorageService());
+    const service = new MediaService(repoAvec(rows), new FakeStorageService(), queueBouchon);
 
     await expect(service.updateOwn('inconnu', FREELANCE, { title: 'X' })).rejects.toThrow(
       NotFoundException,
     );
+  });
+});
+
+describe('MediaService — confirmation du dépôt', () => {
+  const MEDIA_ID = '33333333-3333-3333-3333-333333333333';
+
+  function contexte(overrides: Partial<Media> = {}) {
+    const media = {
+      id: MEDIA_ID,
+      freelanceId: FREELANCE,
+      status: MediaStatus.DRAFT,
+      sourceKey: `private/media/${FREELANCE}/${MEDIA_ID}/master.mp4`,
+      mimeType: 'video/mp4',
+      renditions: null,
+      sizeBytes: null,
+      ...overrides,
+    } as Media;
+
+    const repo = {
+      findOne: async () => media,
+      save: async (entity: Media) => entity,
+    } as unknown as Repository<Media>;
+
+    const storage = new FakeStorageService();
+    const queue = { enqueueTranscode: jest.fn().mockResolvedValue(undefined) };
+    const service = new MediaService(repo, storage, queue as never);
+
+    return { media, storage, queue, service };
+  }
+
+  it('vérifie le dépôt réel, passe en UPLOADED et enfile le job', async () => {
+    const { media, storage, queue, service } = contexte();
+    await storage.put(media.sourceKey, Buffer.alloc(2048), 'video/mp4');
+
+    const result = await service.completeUpload(MEDIA_ID, FREELANCE);
+
+    expect(result.status).toBe(MediaStatus.UPLOADED);
+    expect(result.sizeBytes).toBe(2048);
+    expect(queue.enqueueTranscode).toHaveBeenCalledWith({
+      mediaId: MEDIA_ID,
+      sourceKey: media.sourceKey,
+      outputPrefix: `private/media/${FREELANCE}/${MEDIA_ID}/hls/`,
+      posterKey: `private/media/${FREELANCE}/${MEDIA_ID}/poster.jpg`,
+    });
+  });
+
+  it('refuse si aucun objet n\'a été déposé', async () => {
+    const { service, queue } = contexte();
+
+    await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(BadRequestException);
+    expect(queue.enqueueTranscode).not.toHaveBeenCalled();
+  });
+
+  it('purge et refuse quand la taille RÉELLE dépasse le plafond', async () => {
+    process.env.MEDIA_MAX_FILE_MB = '1';
+    const { media, storage, service } = contexte();
+    // L'annonce disait 10 Ko à la déclaration ; le dépôt réel fait 2 Mo.
+    await storage.put(media.sourceKey, Buffer.alloc(2 * 1024 * 1024), 'video/mp4');
+
+    await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(BadRequestException);
+    // L'objet mensonger ne doit pas rester à occuper le stockage.
+    await expect(storage.head(media.sourceKey)).rejects.toThrow();
+  });
+
+  it('purge et refuse quand le type RÉEL n\'est pas dans la liste blanche', async () => {
+    const { media, storage, service } = contexte();
+    await storage.put(media.sourceKey, Buffer.alloc(16), 'application/x-msdownload');
+
+    await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(BadRequestException);
+    await expect(storage.head(media.sourceKey)).rejects.toThrow();
+  });
+
+  it('refuse la confirmation d\'un média d\'autrui', async () => {
+    const { service } = contexte({ freelanceId: '99999999-9999-9999-9999-999999999999' });
+
+    await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(NotFoundException);
+  });
+
+  it('refuse de reconfirmer un média déjà traité', async () => {
+    const { storage, media, service } = contexte({ status: MediaStatus.READY });
+    await storage.put(media.sourceKey, Buffer.alloc(16), 'video/mp4');
+
+    await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(ConflictException);
   });
 });
