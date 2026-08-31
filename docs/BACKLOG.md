@@ -115,7 +115,8 @@ C4.2.1 de porter sur des anomalies réellement *détectées en production*, et n
 | ID | Titre | Statut | Est. | Compétences | Risque |
 |---|---|---|---|---|---|
 | [SH-15](tickets/SH-15-scaffolding-media.md) | Scaffolding `media-service` (Node + FFmpeg) — *worker pur : `/health`, `/metrics`, file BullMQ consommée, image ffmpeg non-root ; [design EP04](superpowers/specs/2026-08-24-EP04-media-portfolio-design.md)* | 🟢 Terminé | 3 | C2.1.2, C2.2.2 | — |
-| [SH-16](tickets/SH-16-transcodage-async.md) | Pipeline de transcodage asynchrone 4K/360° — *flux entrant : upload présigné, entité `user_media`, job BullMQ, worker ffprobe/ffmpeg* | 🔵 Backlog | 8 | C2.2.2, C2.2.3 | R1 |
+| [SH-16a](tickets/SH-16a-flux-entrant-media.md) | Flux entrant du média : port de stockage élargi, entité `user_media`, upload par URL PUT présignée, producteur BullMQ + `QueueEvents`, balayage des déclarations abandonnées — *recette Task 9 : 2 défauts bloquants découverts (dépôt réel rejeté par le SDK S3, résultat du worker jamais transcrit), non corrigés, voir ticket* | 🟠 En cours | 5 | C2.2.3, C2.2.2, C2.4.1 | R1, R8 |
+| [SH-16b](tickets/SH-16b-pipeline-transcodage.md) | Pipeline de transcodage réel : `ffprobe` (durée, dimensions, projection 360°), `ffmpeg` échelle ABR + poster, dépôt S3, métriques, ffmpeg en CI | 🔵 Backlog | 3 | C2.2.2, C2.1.2 | R1 |
 | [SH-17](tickets/SH-17-streaming-s3-cdn.md) | Streaming & stockage : S3 + Signed URLs — *flux sortant : manifeste HLS réécrit en segments signés, poster, consultation recruteur, purge* | 🔵 Backlog | 5 | C2.2.3, C2.4.1 | R8, R3 |
 | [SH-18](tickets/SH-18-portfolio-interactif.md) | Portfolio interactif (exposition vidéos 4K/360°) | 🔵 Backlog | 5 | C2.4.1 | — |
 
