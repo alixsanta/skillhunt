@@ -41,6 +41,26 @@ entity "user_certifications" as cert #E1F5EE {
   purgedAt : timestamptz
   * freelanceId : uuid <<FK>>
 }
+entity "user_media" as media #C8E6C9 {
+  * id : uuid <<PK>>
+  --
+  * freelanceId : uuid <<FK>>
+  * title : varchar(120)
+  description : text
+  * type : enum (VIDEO|VIDEO_360)
+  * status : enum (DRAFT|UPLOADED|PROCESSING|READY|FAILED)
+  * sourceKey : varchar
+  posterKey : varchar
+  hlsPrefix : varchar
+  renditions : jsonb
+  durationSeconds : integer
+  width / height : integer
+  sizeBytes : bigint
+  * mimeType : varchar
+  errorReason : varchar
+  * createdAt / updatedAt : timestamptz
+  processedAt : timestamptz
+}
 
 ' ===== CIBLE (à implémenter) =====
 entity "gear_catalog" as gcat #F1EFE8 {
@@ -79,16 +99,6 @@ entity "mission_skills" as mskills #F1EFE8 {
   * missionId : uuid <<PK>> <<FK>>
   * skillId : uuid <<PK>> <<FK>>
 }
-entity "media" as media #F1EFE8 {
-  * id : uuid <<PK>>
-  --
-  * freelanceId : uuid <<FK>>
-  * s3Key : varchar
-  * type : enum (VIDEO_4K|VIDEO_360|IMAGE)
-  * status : enum (PROCESSING|READY|FAILED)
-  * createdAt : timestamptz
-}
-
 ' ===== Relations (crow's foot) =====
 users ||--o{ gear
 users ||--o{ cert

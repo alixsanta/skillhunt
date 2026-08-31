@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { StorageService } from './storage.service';
+import { StorageService, StoredObjectHead } from './storage.service';
 
 // Objet stocké en mémoire : contenu + type MIME associé.
 interface StoredObject {
@@ -40,10 +40,48 @@ export class FakeStorageService implements StorageService {
     return Promise.resolve();
   }
 
+  getSignedUploadUrl(key: string, ttlSeconds: number, contentType: string): Promise<string> {
+    // Aucun contrôle d'existence : on signe un dépôt À VENIR, l'objet n'existe pas encore.
+    return Promise.resolve(
+      `https://fake-storage.local/${encodeURIComponent(key)}` +
+        `?upload=1&ttl=${ttlSeconds}&ct=${encodeURIComponent(contentType)}`,
+    );
+  }
+
+  head(key: string): Promise<StoredObjectHead> {
+    const stored = this.store.get(key);
+    if (!stored) {
+      return Promise.reject(new NotFoundException('Objet de stockage introuvable'));
+    }
+    return Promise.resolve({ sizeBytes: stored.body.length, contentType: stored.contentType });
+  }
+
+  get(key: string): Promise<Buffer> {
+    const stored = this.store.get(key);
+    if (!stored) {
+      return Promise.reject(new NotFoundException('Objet de stockage introuvable'));
+    }
+    return Promise.resolve(stored.body);
+  }
+
+  deletePrefix(prefix: string): Promise<void> {
+    for (const key of [...this.store.keys()]) {
+      if (key.startsWith(prefix)) {
+        this.store.delete(key);
+      }
+    }
+    return Promise.resolve();
+  }
+
   // --- Helpers réservés aux tests (non exposés par le port) ---
 
-  /** Contenu brut stocké pour une clé, ou `undefined` si absente. */
-  get(key: string): Buffer | undefined {
+  /**
+   * Contenu brut stocké pour une clé, ou `undefined` si absente.
+   * Nommé `peek` et non `get` : `get` appartient désormais au port (SH-16a) et rend
+   * une promesse qui rejette sur clé absente — sémantique incompatible avec l'usage
+   * en assertion directe qu'en font les tests.
+   */
+  peek(key: string): Buffer | undefined {
     return this.store.get(key)?.body;
   }
 

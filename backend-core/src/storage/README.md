@@ -1,7 +1,7 @@
 # Module `storage` — Abstraction de stockage objet (SH-31)
 
 Port/adaptateur découplant le code métier d'AWS. Réutilisé par les certifications (SH-10)
-et les médias (SH-17).
+et les médias (SH-16a/SH-17).
 
 | Fichier | Rôle |
 |---|---|
@@ -28,6 +28,39 @@ Test.createTestingModule({ imports: [StorageModule] })
   .useClass(FakeStorageService)
   .compile();
 ```
+
+## Les quatre méthodes ajoutées en SH-16a
+
+Le port initial de SH-31 ne portait que `put`/`getSignedUrl`/`delete` (upload PDF côté
+serveur, pour les certifications). Le flux média (dépôt direct navigateur→S3, master 4K
+non bufferisable) a élargi le port de quatre méthodes :
+
+| Méthode | Rôle |
+|---|---|
+| `getSignedUploadUrl(key, ttlSeconds, contentType)` | URL **PUT** signée : le navigateur dépose l'objet directement sur S3, sans que l'octet ne traverse l'API (design EP04, décision D1). `contentType` entre dans la signature — le client doit envoyer exactement cet en-tête. |
+| `head(key)` | Taille et type MIME **réels** de l'objet après dépôt (`HeadObject`). C'est cette lecture qui démasque une taille annoncée mensongère : une URL PUT signée ne sait pas plafonner elle-même le volume déposé (design EP04 §9.1). |
+| `get(key)` | Contenu d'un **petit** objet texte (ex. playlist HLS de quelques Ko, SH-17). Jamais utilisé sur un master vidéo. |
+| `deletePrefix(prefix)` | Supprime tous les objets sous un préfixe (master + poster + segments HLS), avec pagination `ListObjectsV2`/`ContinuationToken` au-delà de 1000 clés. Le préfixe **doit** se terminer par `/` (anti-collision `f1/` vs `f10/...`). |
+
+### `AWS_S3_PUBLIC_ENDPOINT` — pourquoi un second client S3
+
+`getSignedUploadUrl`/`getSignedUrl` signent avec un **client dédié à la signature**
+(`buildPublicS3Client` dans `storage.module.ts`), distinct du client utilisé pour
+`put`/`head`/`get`/`delete`/`deletePrefix`. Raison : la signature SigV4 couvre l'hôte de
+l'URL. Le client applicatif cible `AWS_S3_ENDPOINT` (ex. `http://localstack:4566`, un nom
+de service **Docker interne**, injoignable depuis le navigateur) ; le client de signature
+cible `AWS_S3_PUBLIC_ENDPOINT` (ex. `http://localhost:4566`, l'hôte que le poste client
+sait résoudre). En production, les deux variables coïncident (domaine S3/CloudFront réel)
+et le module réutilise alors un seul et même client.
+
+> ⚠️ **Défaut connu (recette Task 9 de SH-16a)** : l'URL PUT rendue par
+> `getSignedUploadUrl` embarque, via le comportement par défaut de `@aws-sdk/client-s3`
+> ≥ 3.729 (`requestChecksumCalculation: WHEN_SUPPORTED`), une somme de contrôle CRC32
+> calculée sur un contenu **vide** (le corps réel n'est pas encore connu à la signature).
+> Tout dépôt d'un contenu non vide est alors rejeté par S3/LocalStack (`400
+> InvalidRequest — Value for x-amz-checksum-crc32 header is invalid`). Détail et piste de
+> correction (`requestChecksumCalculation: 'WHEN_REQUIRED'` sur le client de signature)
+> dans `docs/tickets/SH-16a-flux-entrant-media.md`.
 
 ## Divergence fake ↔ S3 réel sur `getSignedUrl`
 
@@ -76,14 +109,23 @@ La validation contre un vrai S3 émulé est **manuelle** et reste hors CI.
    ```bash
    docker compose up -d localstack
    ```
-2. Créer le bucket privé de dev (via le conteneur, pas besoin d'AWS CLI sur l'hôte) :
+2. Le bucket privé de dev n'est **plus** créé à la main : depuis SH-16a, LocalStack exécute
+   automatiquement `localstack/init/01-bucket.sh` (monté dans `/etc/localstack/init/ready.d/`,
+   convention native LocalStack) à **chaque démarrage** du conteneur. Le script est
+   idempotent — il crée le bucket s'il n'existe pas encore, puis (re)pose systématiquement
+   le **chiffrement par défaut AES-256** et la **configuration CORS** (`PUT`/`GET`/`HEAD`,
+   origines `MEDIA_CORS_ORIGINS`) nécessaire au dépôt direct navigateur→S3. Rien à exécuter
+   manuellement ; vérifier au besoin avec :
    ```bash
-   docker exec skillhunt-localstack awslocal s3 mb s3://skillhunt-media
+   docker exec skillhunt-localstack awslocal s3api get-bucket-encryption --bucket skillhunt-media
+   docker exec skillhunt-localstack awslocal s3api get-bucket-cors --bucket skillhunt-media
    ```
 3. Renseigner `.env` (copie de `.env.example`) avec `AWS_S3_ENDPOINT=http://localhost:4566`,
-   `AWS_S3_BUCKET=skillhunt-media`, `AWS_ACCESS_KEY_ID=test`, `AWS_SECRET_ACCESS_KEY=test`.
-4. Le code métier (SH-10) consommera alors `StorageService` sur LocalStack, chiffrement
-   AES-256 et Signed URL compris, sans aucun appel à AWS réel.
+   `AWS_S3_PUBLIC_ENDPOINT=http://localhost:4566` (hôte vu du navigateur — cf. section
+   ci-dessus), `AWS_S3_BUCKET=skillhunt-media`, `AWS_ACCESS_KEY_ID=test`,
+   `AWS_SECRET_ACCESS_KEY=test`.
+4. Le code métier (SH-10, SH-16a) consommera alors `StorageService` sur LocalStack,
+   chiffrement AES-256 et Signed URL compris, sans aucun appel à AWS réel.
 
 > Note : LocalStack émule l'API S3 (y compris `ServerSideEncryption`) ; le chiffrement au
 > repos est réellement appliqué par AWS en production.

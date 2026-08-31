@@ -36,3 +36,19 @@ export enum CertificationStatus {
   VALIDATED = 'VALIDATED',
   REJECTED = 'REJECTED',
 }
+
+// Cycle de vie d'un média de portfolio (SH-16a, design EP04 §5.3).
+export enum MediaStatus {
+  DRAFT = 'DRAFT', // ligne créée, URL PUT signée délivrée, dépôt non confirmé
+  UPLOADED = 'UPLOADED', // dépôt confirmé et vérifié (head), job enfilé
+  PROCESSING = 'PROCESSING', // worker démarré
+  READY = 'READY', // HLS + poster disponibles
+  FAILED = 'FAILED', // échec définitif après 3 tentatives
+}
+
+// Nature du média. Enum plutôt qu'un booléen `is360` : ajouter `IMAGE` plus tard
+// (hors périmètre EP04) ne cassera pas la migration.
+export enum MediaType {
+  VIDEO = 'VIDEO',
+  VIDEO_360 = 'VIDEO_360',
+}

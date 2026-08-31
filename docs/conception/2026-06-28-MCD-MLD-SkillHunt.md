@@ -66,6 +66,7 @@ Cardinalité Merise lue côté entité = (min, max) participations d'une occurre
 erDiagram
     users ||--o{ gear : "possède"
     users ||--o{ user_certifications : "détient"
+    users ||--o{ user_media : "expose (freelance)"
 
     users {
         uuid id PK
@@ -101,10 +102,44 @@ erDiagram
         timestamptz purgedAt "nullable — preuve de purge RGPD"
         uuid freelanceId FK "→ users.id, ON DELETE CASCADE"
     }
+
+    user_media {
+        uuid id PK
+        varchar title "120 caractères max"
+        text description "nullable"
+        enum type "VIDEO | VIDEO_360"
+        enum status "DRAFT | UPLOADED | PROCESSING | READY | FAILED"
+        varchar sourceKey "objet privé, Signed URL PUT (dépôt) / GET (lecture)"
+        varchar posterKey "nullable — miniature, remplie par SH-16b"
+        varchar hlsPrefix "nullable — préfixe des segments, rempli par SH-16b"
+        jsonb renditions "nullable — pistes de qualité, remplies par SH-16b"
+        integer durationSeconds "nullable — sondé par ffprobe, SH-16b"
+        integer width "nullable"
+        integer height "nullable"
+        bigint sizeBytes "nullable — taille RÉELLE (HeadObject), pas celle annoncée au dépôt"
+        varchar mimeType
+        varchar errorReason "nullable — message court, jamais une pile"
+        timestamptz createdAt
+        timestamptz updatedAt
+        timestamptz processedAt "nullable"
+        uuid freelanceId FK "→ users.id, ON DELETE CASCADE"
+    }
 ```
 
 Index notables : `users.email` (unique), `users.role`, `users.location` (GiST spatial), `gear.status`,
-`gear.category`, `gear.freelanceId`, `user_certifications.status`, `user_certifications.freelanceId`.
+`gear.category`, `gear.freelanceId`, `user_certifications.status`, `user_certifications.freelanceId`,
+`user_media.status`, `user_media.freelanceId`.
+
+> ⚠️ **`user_media` (SH-16a) — flux entrant implémenté, recette de bout en bout NON concluante.**
+> L'entité, la migration, l'upload par URL PUT présignée, le producteur BullMQ et le balayage des
+> déclarations abandonnées sont livrés et couverts par les tests unitaires/intégration du service.
+> La recette manuelle de clôture (Task 9, `docs/tickets/SH-16a-flux-entrant-media.md`) a cependant mis
+> en évidence **deux défauts bloquants** qui empêchent la boucle réelle `DRAFT → UPLOADED → READY` de se
+> fermer via la gateway : (1) l'URL de dépôt présignée embarque une somme de contrôle CRC32 calculée sur
+> un contenu vide, ce qui fait rejeter par S3/LocalStack tout dépôt réel non vide ; (2) l'écouteur
+> `QueueEvents` re-parse en JSON une `returnvalue` déjà désérialisée par `bullmq` (5.81.x), ce qui fait
+> échouer systématiquement la transcription du résultat, quel que soit le contenu renvoyé par le worker.
+> Détail, preuves et pistes de correction dans le ticket.
 
 > 🔐 **Chiffrement au repos — état réel et écart assumé** (règle `CLAUDE.md` §8.6 : « données sensibles
 > chiffrées AES-256 au repos »).
@@ -142,7 +177,6 @@ Index notables : `users.email` (unique), `users.role`, `users.location` (GiST sp
 ```mermaid
 erDiagram
     users ||--o{ missions : "publie (recruteur)"
-    users ||--o{ media : "expose (freelance)"
     users ||--o{ user_skills : "maîtrise"
     skills ||--o{ user_skills : ""
     user_certifications ||--o{ user_skills : "atteste (source=CERTIFIED)"
@@ -192,15 +226,6 @@ erDiagram
         uuid missionId PK "FK → missions.id"
         uuid skillId PK "FK → skills.id"
     }
-
-    media {
-        uuid id PK
-        uuid freelanceId FK "→ users.id"
-        varchar s3Key "objet privé, Signed URL"
-        enum type "VIDEO_4K | VIDEO_360 | IMAGE"
-        enum status "PROCESSING | READY | FAILED"
-        timestamptz createdAt
-    }
 ```
 
 - **`gear_catalog`** (référentiel curé par l'Admin — « catalogue officiel », cf. dossier §1.4/§1.6)
@@ -214,7 +239,9 @@ erDiagram
   une certification validée → `certificationId`). C'est le **lien certification → compétence**.
 - **`missions`** porte **soit** `useCaseId` (parcours non-expert SH-33) **soit** des skills via
   **`mission_skills`** (parcours expert). Alimente le matching (SH-12) et le bus d'événements (SH-14).
-- **`media`** (SH-18) sert le portfolio via Signed URL (réutilise `StorageService` de SH-31).
+- **`user_media`** : flux entrant livré en SH-16a (§2, ci-dessus). Reste à implémenter : le pipeline
+  de transcodage réel `ffprobe`/`ffmpeg` (SH-16b) et le flux sortant — portfolio, manifeste HLS
+  réécrit en segments signés (SH-17/SH-18).
 - **`use_cases`** (SH-33) : référentiel en **constante code** pour le MVP, migrable en table éditable
   par l'Admin (dossier §1.4/§1.6).
 - **`gear.specs JSONB`** : attribut cible sur la table `gear` existante (cf. §2).
@@ -252,6 +279,7 @@ Hors MLD relationnel (cf. dossier §3.2.5). Collections cibles :
 | `gear_catalog` (référentiel Admin) + `gear` normalisé (`user_gear`) | SCRUM-8 / cible | 🔲 |
 | `missions` + `mission_skills` + bus d'événements | SH-12 / SH-14 | 🔲 |
 | `use_cases` (référentiel) | SH-33 | 🟡 Prêt |
-| `media` (portfolio) | SH-18 | 🔲 |
+| `user_media` (flux entrant) | SH-16a | ⚠️ implémenté, recette bloquée (2 défauts, voir ticket) |
+| `user_media` (portfolio, flux sortant) | SH-17 / SH-18 | 🔲 |
 | `conversations` / `messages` (Mongo) | SH-24 | 🔲 |
 | Refresh tokens / cache (Redis) | SH-14 | 🔲 |

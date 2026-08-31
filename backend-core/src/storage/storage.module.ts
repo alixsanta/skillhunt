@@ -21,6 +21,34 @@ export function buildS3Client(): S3Client {
 }
 
 /**
+ * Construit le client servant **uniquement à signer** les URLs consommées par le
+ * navigateur (SH-16a, décision D9).
+ *
+ * `AWS_S3_ENDPOINT` est un nom de service Docker : le poste client ne sait pas le
+ * résoudre. Comme la signature SigV4 couvre l'hôte, on ne peut pas se contenter de
+ * réécrire l'URL après coup — il faut signer avec l'hôte final. En production réelle,
+ * cette variable vaut le domaine S3/CloudFront et les deux clients coïncident.
+ */
+export function buildPublicS3Client(): S3Client {
+  // `||` et non `??` : Compose substitue une CHAINE VIDE à une variable non définie
+  // (`${AWS_S3_PUBLIC_ENDPOINT}` sans valeur par défaut), que `??` laisserait passer —
+  // le client se construirait alors sans endpoint, donc contre le vrai AWS.
+  const endpoint = process.env.AWS_S3_PUBLIC_ENDPOINT || process.env.AWS_S3_ENDPOINT;
+  return new S3Client({
+    region: process.env.AWS_REGION ?? 'eu-west-3',
+    ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
+    // `@aws-sdk/client-s3` calcule par défaut (`WHEN_SUPPORTED`) un checksum
+    // `x-amz-checksum-crc32` et le fige DANS L'URL au moment de la SIGNATURE — alors
+    // qu'aucun corps n'existe encore. La valeur signée est donc le CRC32 d'un corps VIDE
+    // (`AAAAAA==`) : tout dépôt réel envoie un corps différent, et S3 répond 400. Ce
+    // client ne sert qu'à SIGNER des URLs consommées plus tard par le navigateur (jamais
+    // à envoyer un corps lui-même) : on désactive le calcul automatique pour qu'aucun
+    // paramètre `x-amz-checksum-*`/`x-amz-sdk-checksum-algorithm` ne soit émis.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+  });
+}
+
+/**
  * Module de stockage objet (SH-31).
  *
  * Lie le token `STORAGE_SERVICE` à l'adaptateur S3 configuré par l'environnement, et
@@ -39,7 +67,7 @@ export function buildS3Client(): S3Client {
             'AWS_S3_BUCKET manquant : configurez le stockage objet (cf. .env.example).',
           );
         }
-        return new S3StorageService(buildS3Client(), bucket);
+        return new S3StorageService(buildS3Client(), bucket, buildPublicS3Client());
       },
     },
   ],

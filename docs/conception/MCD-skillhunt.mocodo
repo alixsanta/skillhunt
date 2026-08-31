@@ -4,14 +4,14 @@ MODELE_MATERIEL: id, brand, model, category, officialSpecs
 CERTIFICATION: id, type, number, validUntil, statut
 COMPETENCE: id, code, label, category
 MISSION: id, useCaseId, rayon_km, statut, createdAt, localisation
-MEDIA: id, type, statut, createdAt
+USER_MEDIA: id, title, type, statut, createdAt
 MESSAGE: id, body, sentAt
 
 possède, 0N UTILISATEUR, 11 MATERIEL
 réfère, 11 MATERIEL, 0N MODELE_MATERIEL
 détient, 0N UTILISATEUR, 11 CERTIFICATION
 publie, 0N UTILISATEUR, 11 MISSION
-expose, 0N UTILISATEUR, 11 MEDIA
+expose, 0N UTILISATEUR, 11 USER_MEDIA
 échange, 0N UTILISATEUR, 11 MESSAGE
 maîtrise, 0N UTILISATEUR, 0N COMPETENCE: source
 requiert, 0N MISSION, 0N COMPETENCE

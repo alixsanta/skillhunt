@@ -446,6 +446,120 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vivacité du service
+         * @description Répond 200 tant que le processus est vivant. N'interroge AUCUNE dépendance : utilisée par le HEALTHCHECK du conteneur et par la sonde de disponibilité S1.
+         */
+        get: operations["HealthController_liveness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Disponibilité du service et de ses dépendances
+         * @description Interroge PostgreSQL, Redis et MongoDB. Répond 503 si au moins une est indisponible.
+         */
+        get: operations["HealthController_readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Déclarer une vidéo et obtenir son URL de dépôt (Freelance)
+         * @description Crée la ligne au statut DRAFT et renvoie une URL PUT signée de courte durée. Le navigateur dépose le fichier DIRECTEMENT sur le stockage objet : aucun octet vidéo ne transite par l'API. Confirmer ensuite via POST /media/{id}/complete.
+         */
+        post: operations["MediaController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister ses propres médias (filtres + pagination) */
+        get: operations["MediaController_getMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifier le titre ou la description de son média */
+        patch: operations["MediaController_update"];
+        trace?: never;
+    };
+    "/api/v1/media/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmer le dépôt du fichier et lancer le transcodage (Freelance)
+         * @description Vérifie la taille et le type RÉELS de l'objet déposé, puis enfile le job de transcodage. Un dépôt ne correspondant pas à sa déclaration est purgé.
+         */
+        post: operations["MediaController_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -841,6 +955,77 @@ export interface components {
             /** @example Spécialiste */
             levelLabel: string;
             badges: components["schemas"]["PublicBadgeDto"][];
+        };
+        LivenessDto: {
+            /**
+             * @description État du processus
+             * @example ok
+             */
+            status: string;
+            /**
+             * @description Service interrogé
+             * @example backend-core
+             */
+            service: string;
+            /**
+             * @description Durée de fonctionnement du processus, en secondes
+             * @example 4211
+             */
+            uptimeSeconds: number;
+        };
+        ReadinessDependenciesDto: {
+            /**
+             * @description PostgreSQL + PostGIS
+             * @example up
+             * @enum {string}
+             */
+            postgres: "up" | "down";
+            /**
+             * @description Redis (cache, bus, tokens)
+             * @example up
+             * @enum {string}
+             */
+            redis: "up" | "down";
+            /**
+             * @description MongoDB (chat)
+             * @example up
+             * @enum {string}
+             */
+            mongodb: "up" | "down";
+        };
+        ReadinessDto: {
+            /**
+             * @description État global : « ok » ou « degraded » en cas de 503
+             * @example ok
+             */
+            status: string;
+            /**
+             * @description Service interrogé
+             * @example backend-core
+             */
+            service: string;
+            /** @description État de chaque dépendance */
+            dependencies: components["schemas"]["ReadinessDependenciesDto"];
+        };
+        CreateMediaDto: {
+            /** @example Survol de chantier — Toulouse */
+            title: string;
+            /** @example Vol DGAC S3, caméra 4K stabilisée. */
+            description?: string;
+            /**
+             * @example video/mp4
+             * @enum {string}
+             */
+            contentType: "video/mp4" | "video/quicktime";
+            /**
+             * @description Taille annoncée du fichier, en octets
+             * @example 104857600
+             */
+            sizeBytes: number;
+        };
+        UpdateMediaDto: {
+            title?: string;
+            description?: string;
         };
     };
     responses: never;
@@ -1744,6 +1929,246 @@ export interface operations {
             };
             /** @description Profil Freelance introuvable (404 uniforme) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    HealthController_liveness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Le service est vivant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LivenessDto"];
+                };
+            };
+        };
+    };
+    HealthController_readiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Toutes les dépendances répondent. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessDto"];
+                };
+            };
+            /** @description Au moins une dépendance est indisponible. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MediaController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMediaDto"];
+            };
+        };
+        responses: {
+            /** @description Média déclaré, URL de dépôt délivrée. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entrée invalide ou taille annoncée hors plafond. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant ou accès à une ressource d'autrui (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Quota de médias atteint. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MediaController_getMine: {
+        parameters: {
+            query?: {
+                status?: "DRAFT" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste paginée des médias du freelance. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant ou accès à une ressource d'autrui (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MediaController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMediaDto"];
+            };
+        };
+        responses: {
+            /** @description Média mis à jour. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant ou accès à une ressource d'autrui (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Média introuvable ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MediaController_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dépôt vérifié, transcodage enfilé. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Aucun fichier déposé, ou dépôt non conforme (purgé). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token JWT manquant, invalide ou expiré (401) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rôle insuffisant ou accès à une ressource d'autrui (403) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Média introuvable ou appartenant à un autre compte. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Média déjà confirmé. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File de transcodage indisponible. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

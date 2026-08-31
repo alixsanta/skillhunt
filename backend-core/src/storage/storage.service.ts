@@ -6,6 +6,12 @@
  * (cf. `FakeStorageService`) ou un adaptateur S3 réel/LocalStack en runtime
  * (cf. `S3StorageService`), sans changer le code appelant (C2.1.2).
  */
+/** Métadonnées d'un objet, obtenues sans télécharger son contenu. */
+export interface StoredObjectHead {
+  sizeBytes: number;
+  contentType: string;
+}
+
 export interface StorageService {
   /**
    * Dépose un objet, **chiffré au repos (SSE AES-256)** côté adaptateur S3.
@@ -23,6 +29,41 @@ export interface StorageService {
 
   /** Purge effective de l'objet (RGPD / minimisation). */
   delete(key: string): Promise<void>;
+
+  /**
+   * URL **PUT** temporaire : le navigateur dépose l'objet DIRECTEMENT sur S3, sans
+   * qu'aucun octet ne traverse l'API (design EP04, décision D1 — un master 4K ne peut
+   * pas être bufferisé comme un PDF de 5 Mo).
+   *
+   * `contentType` entre dans la signature : le client DOIT envoyer exactement cet
+   * en-tête `Content-Type`, sinon S3 rejette le dépôt.
+   */
+  getSignedUploadUrl(key: string, ttlSeconds: number, contentType: string): Promise<string>;
+
+  /**
+   * Taille et type MIME **réels** de l'objet (C2.2.3). Une URL PUT signée ne sait pas
+   * plafonner la taille : c'est cette lecture, APRÈS dépôt, qui fait foi et démasque
+   * une annonce mensongère (design EP04 §9.1).
+   * Rejette `NotFoundException` si l'objet n'existe pas.
+   */
+  head(key: string): Promise<StoredObjectHead>;
+
+  /**
+   * Contenu de l'objet. Réservé aux **petits** objets texte — les playlists HLS de
+   * SH-17 font quelques Ko. Ne jamais l'utiliser sur un master vidéo.
+   */
+  get(key: string): Promise<Buffer>;
+
+  /**
+   * Supprime tous les objets sous un préfixe. Supprimer un média, c'est supprimer son
+   * master, son poster et ses N segments — pas un objet. Idempotent.
+   *
+   * ⚠️ Le préfixe DOIT se terminer par `/` : `deletePrefix('private/media/f1/')` isole
+   * `f1/` de `f1x/...`. Sans le séparateur, `deletePrefix('private/media/f1')` supprimerait
+   * aussi `f10/...`, `f100/...`, etc. — une isolation insuffisante si plusieurs clés partagent
+   * le même préfixe non bornés.
+   */
+  deletePrefix(prefix: string): Promise<void>;
 }
 
 /**

@@ -31,7 +31,7 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
   it('conserve le contenu et le type MIME déposés', async () => {
     await storage.put(key, body, contentType);
 
-    expect(storage.get(key)).toEqual(body);
+    expect(storage.peek(key)).toEqual(body);
     expect(storage.getContentType(key)).toBe(contentType);
   });
 
@@ -41,7 +41,7 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
 
     await storage.put(key, nouveau, contentType);
 
-    expect(storage.get(key)).toEqual(nouveau);
+    expect(storage.peek(key)).toEqual(nouveau);
     expect(storage.size()).toBe(1);
   });
 
@@ -51,7 +51,7 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
 
     await storage.delete(key);
 
-    expect(storage.get(key)).toBeUndefined();
+    expect(storage.peek(key)).toBeUndefined();
     await expect(storage.getSignedUrl(key, 900)).rejects.toThrow(NotFoundException);
   });
 
@@ -62,5 +62,53 @@ describe('🗄️ FakeStorageService (stockage en mémoire — SH-31)', () => {
   // --- Accès à une clé inexistante ---
   it('refuse la Signed URL d\'une clé inexistante (404)', async () => {
     await expect(storage.getSignedUrl('jamais-deposee', 900)).rejects.toThrow(NotFoundException);
+  });
+
+  it('getSignedUploadUrl signe un dépôt À VENIR : la clé n\'a pas besoin d\'exister', async () => {
+    const url = await storage.getSignedUploadUrl('private/media/f1/m1/master.mp4', 900, 'video/mp4');
+
+    expect(url).toContain('master.mp4');
+    // Contrairement à getSignedUrl (lecture), aucune exception : on signe un objet absent.
+    await expect(storage.getSignedUrl('private/media/f1/m1/master.mp4', 900)).rejects.toThrow();
+  });
+
+  it('head rend la taille et le type RÉELS de l\'objet déposé', async () => {
+    await storage.put('private/media/f1/m1/master.mp4', Buffer.alloc(4242), 'video/mp4');
+
+    await expect(storage.head('private/media/f1/m1/master.mp4')).resolves.toEqual({
+      sizeBytes: 4242,
+      contentType: 'video/mp4',
+    });
+  });
+
+  it('head rejette NotFound sur une clé absente', async () => {
+    await expect(storage.head('jamais-deposee')).rejects.toThrow(NotFoundException);
+  });
+
+  it('get restitue le contenu exact de l\'objet', async () => {
+    await storage.put('playlist.m3u8', Buffer.from('#EXTM3U'), 'application/vnd.apple.mpegurl');
+
+    await expect(storage.get('playlist.m3u8')).resolves.toEqual(Buffer.from('#EXTM3U'));
+  });
+
+  it('get rejette NotFound sur une clé absente', async () => {
+    await expect(storage.get('jamais-deposee')).rejects.toThrow(NotFoundException);
+  });
+
+  it('deletePrefix purge TOUS les objets du préfixe et eux seuls', async () => {
+    await storage.put('private/media/f1/m1/master.mp4', Buffer.from('a'), 'video/mp4');
+    await storage.put('private/media/f1/m1/hls/720p.m3u8', Buffer.from('b'), 'application/vnd.apple.mpegurl');
+    await storage.put('private/media/f1/m2/master.mp4', Buffer.from('c'), 'video/mp4');
+
+    await storage.deletePrefix('private/media/f1/m1/');
+
+    await expect(storage.head('private/media/f1/m1/master.mp4')).rejects.toThrow(NotFoundException);
+    await expect(storage.head('private/media/f1/m1/hls/720p.m3u8')).rejects.toThrow(NotFoundException);
+    // Le média voisin n'est pas touché : un préfixe mal borné effacerait le casier entier.
+    await expect(storage.head('private/media/f1/m2/master.mp4')).resolves.toBeDefined();
+  });
+
+  it('deletePrefix est idempotent sur un préfixe vide', async () => {
+    await expect(storage.deletePrefix('prefixe/inexistant/')).resolves.toBeUndefined();
   });
 });
