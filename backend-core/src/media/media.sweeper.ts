@@ -5,6 +5,7 @@ import { LessThan, Repository } from 'typeorm';
 import { Media } from './media.entity';
 import { MediaStatus } from '../common/enums';
 import { STORAGE_SERVICE, StorageService } from '../storage/storage.service';
+import { MediaService } from './media.service';
 
 /**
  * Balayage des déclarations abandonnées (SH-16a, design EP04 §9.2).
@@ -22,6 +23,7 @@ export class MediaSweeper {
     private readonly mediaRepo: Repository<Media>,
     @Inject(STORAGE_SERVICE)
     private readonly storage: StorageService,
+    private readonly mediaService: MediaService,
   ) {}
 
   /** Toutes les heures : le seuil se compte en heures, inutile de balayer plus souvent. */
@@ -34,10 +36,10 @@ export class MediaSweeper {
   }
 
   async purgeStaleDrafts(): Promise<number> {
-    const seuil = new Date(Date.now() - this.draftTtlHours * 3600 * 1000);
+    const threshold = new Date(Date.now() - this.draftTtlHours * 3600 * 1000);
 
     const stale = await this.mediaRepo.find({
-      where: { status: MediaStatus.DRAFT, createdAt: LessThan(seuil) },
+      where: { status: MediaStatus.DRAFT, createdAt: LessThan(threshold) },
     });
     if (stale.length === 0) {
       return 0;
@@ -46,7 +48,7 @@ export class MediaSweeper {
     for (const media of stale) {
       // Objets d'abord : si la suppression de ligne échouait après, le balayage suivant
       // rattraperait la ligne — l'inverse laisserait un objet sans référence.
-      await this.storage.deletePrefix(`private/media/${media.freelanceId}/${media.id}/`);
+      await this.storage.deletePrefix(this.mediaService.buildMediaPrefix(media.freelanceId, media.id));
     }
     await this.mediaRepo.remove(stale);
 
