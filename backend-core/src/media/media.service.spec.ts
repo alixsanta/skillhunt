@@ -1,4 +1,9 @@
-import { ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Not, Repository } from 'typeorm';
 import { MediaService } from './media.service';
 import { Media } from './media.entity';
@@ -208,6 +213,14 @@ describe('MediaService — consultation et mise à jour', () => {
 describe('MediaService — confirmation du dépôt', () => {
   const MEDIA_ID = '33333333-3333-3333-3333-333333333333';
 
+  // Même isolation que le bloc « déclaration » : un test qui abaisse le plafond
+  // (voir plus bas) ne doit pas contaminer les tests suivants.
+  beforeEach(() => {
+    process.env.MEDIA_MAX_FILE_MB = '500';
+    process.env.MEDIA_MAX_PER_FREELANCE = '20';
+    process.env.MEDIA_SIGNED_URL_TTL = '900';
+  });
+
   function contexte(overrides: Partial<Media> = {}) {
     const media = {
       id: MEDIA_ID,
@@ -285,5 +298,27 @@ describe('MediaService — confirmation du dépôt', () => {
     await storage.put(media.sourceKey, Buffer.alloc(16), 'video/mp4');
 
     await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(ConflictException);
+  });
+
+  it('remonte un 503 quand la file est indisponible, sans perdre le dépôt déjà vérifié', async () => {
+    const { media, storage, queue, service } = contexte();
+    await storage.put(media.sourceKey, Buffer.alloc(2048), 'video/mp4');
+    // Panne de Redis simulée : `MediaQueue.enqueueTranscode` transforme ça en 503 (voir
+    // media.queue.ts). Ici, on ne teste pas MediaQueue — on teste que MediaService laisse
+    // remonter cette exception SANS avaler l'erreur ni perdre l'état déjà persisté.
+    queue.enqueueTranscode.mockRejectedValueOnce(
+      new ServiceUnavailableException('Le service de transcodage est momentanément indisponible.'),
+    );
+
+    await expect(service.completeUpload(MEDIA_ID, FREELANCE)).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+
+    // Le dépôt était valide et vérifié (taille + type déjà contrôlés) : une panne de file
+    // ne doit JAMAIS faire perdre la trace d'un fichier bien déposé. `media` est l'entité
+    // réellement mutée puis passée à `save` par le service — on vérifie l'état persisté,
+    // pas seulement l'absence d'exception muette.
+    expect(media.status).toBe(MediaStatus.UPLOADED);
+    expect(media.sizeBytes).toBe('2048');
   });
 });

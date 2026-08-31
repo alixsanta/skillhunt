@@ -58,9 +58,13 @@ describeIf('MediaQueue (intégration Redis)', () => {
     await mediaQueue.enqueueTranscode(data);
     await mediaQueue.enqueueTranscode(data);
 
-    const counts = await inspector.getJobCounts('waiting');
-    // `jobId = mediaId` rend l'enfilement idempotent : BullMQ ignore le doublon.
-    expect(counts.waiting).toBeLessThanOrEqual(2);
+    // `jobId = mediaId` rend l'enfilement idempotent : BullMQ ignore le doublon plutôt que
+    // de créer un second job. On vérifie ça sur CE job précisément (et non sur le total de
+    // la file, qui dépendrait des jobs laissés par les tests voisins) : parmi les jobs en
+    // attente, un seul porte ce `mediaId`.
+    const waiting = await inspector.getJobs(['waiting']);
+    const pourCeMedia = waiting.filter((job) => job.data.mediaId === mediaId);
+    expect(pourCeMedia).toHaveLength(1);
     expect(await inspector.getJob(mediaId)).toBeDefined();
   });
 });
