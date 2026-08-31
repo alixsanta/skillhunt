@@ -4,6 +4,7 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Gear } from '../gear/gear.entity';
 import { Certification } from '../certifications/certification.entity';
+import { Media } from '../media/media.entity';
 
 /**
  * Construit les options de connexion PostgreSQL + PostGIS depuis les variables d'environnement.
@@ -18,7 +19,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     username: process.env.DB_USERNAME ?? 'skillhunt',
     password: process.env.DB_PASSWORD ?? 'skillhunt',
     database: process.env.DB_NAME ?? 'skillhunt',
-    entities: [User, Gear, Certification],
+    entities: [User, Gear, Certification, Media],
     // Relatif à __dirname (et .{ts,js}) : la CLI fonctionne depuis src/ (ts-node, dev)
     // COMME depuis dist/ (conteneur, SH-2) — un littéral 'src/…/*.ts' casse une fois compilé.
     migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
