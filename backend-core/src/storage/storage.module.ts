@@ -30,7 +30,10 @@ export function buildS3Client(): S3Client {
  * cette variable vaut le domaine S3/CloudFront et les deux clients coïncident.
  */
 export function buildPublicS3Client(): S3Client {
-  const endpoint = process.env.AWS_S3_PUBLIC_ENDPOINT ?? process.env.AWS_S3_ENDPOINT;
+  // `||` et non `??` : Compose substitue une CHAINE VIDE à une variable non définie
+  // (`${AWS_S3_PUBLIC_ENDPOINT}` sans valeur par défaut), que `??` laisserait passer —
+  // le client se construirait alors sans endpoint, donc contre le vrai AWS.
+  const endpoint = process.env.AWS_S3_PUBLIC_ENDPOINT || process.env.AWS_S3_ENDPOINT;
   return new S3Client({
     region: process.env.AWS_REGION ?? 'eu-west-3',
     ...(endpoint ? { endpoint, forcePathStyle: true } : {}),

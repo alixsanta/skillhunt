@@ -9,12 +9,26 @@ import { FakeStorageService } from './fake-storage.service';
  */
 describe('🗄️ StorageModule (provider — SH-31)', () => {
   const originalBucket = process.env.AWS_S3_BUCKET;
+  const originalEndpoint = process.env.AWS_S3_ENDPOINT;
+  const originalPublicEndpoint = process.env.AWS_S3_PUBLIC_ENDPOINT;
 
   afterEach(() => {
     if (originalBucket === undefined) {
       delete process.env.AWS_S3_BUCKET;
     } else {
       process.env.AWS_S3_BUCKET = originalBucket;
+    }
+
+    if (originalEndpoint === undefined) {
+      delete process.env.AWS_S3_ENDPOINT;
+    } else {
+      process.env.AWS_S3_ENDPOINT = originalEndpoint;
+    }
+
+    if (originalPublicEndpoint === undefined) {
+      delete process.env.AWS_S3_PUBLIC_ENDPOINT;
+    } else {
+      process.env.AWS_S3_PUBLIC_ENDPOINT = originalPublicEndpoint;
     }
   });
 
@@ -60,6 +74,18 @@ describe('🗄️ StorageModule (provider — SH-31)', () => {
   it('buildPublicS3Client retombe sur AWS_S3_ENDPOINT quand l\'endpoint public est absent', async () => {
     process.env.AWS_S3_ENDPOINT = 'http://localstack:4566';
     delete process.env.AWS_S3_PUBLIC_ENDPOINT;
+
+    const { buildPublicS3Client } = await import('./storage.module');
+    const endpoint = await buildPublicS3Client().config.endpoint!();
+
+    expect(endpoint.hostname).toBe('localstack');
+  });
+
+  it('buildPublicS3Client retombe sur AWS_S3_ENDPOINT quand l\'endpoint public est une chaîne vide', async () => {
+    process.env.AWS_S3_ENDPOINT = 'http://localstack:4566';
+    // Compose substitue une chaîne vide à une variable non définie (`${VAR}` sans
+    // valeur par défaut) : ce n'est pas la même chose qu'une variable absente.
+    process.env.AWS_S3_PUBLIC_ENDPOINT = '';
 
     const { buildPublicS3Client } = await import('./storage.module');
     const endpoint = await buildPublicS3Client().config.endpoint!();

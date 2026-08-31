@@ -134,8 +134,10 @@ services:
       AWS_S3_ENDPOINT: http://localstack:4566
       AWS_S3_BUCKET: skillhunt-staging
       # Endpoint vu DEPUIS LE NAVIGATEUR : la signature SigV4 couvre l'hôte (D9). Pas de
-      # valeur par défaut en staging — l'endpoint doit être choisi explicitement.
-      AWS_S3_PUBLIC_ENDPOINT: ${AWS_S3_PUBLIC_ENDPOINT}
+      # valeur par défaut en staging — l'endpoint doit être choisi explicitement. Le `:?`
+      # fait refuser le démarrage de `docker compose up` si la variable est absente, plutôt
+      # que de signer silencieusement des URLs inutilisables (chaîne vide substituée).
+      AWS_S3_PUBLIC_ENDPOINT: ${AWS_S3_PUBLIC_ENDPOINT:?AWS_S3_PUBLIC_ENDPOINT est obligatoire en staging (endpoint signe vu du navigateur)}
       MEDIA_MAX_FILE_MB: ${MEDIA_MAX_FILE_MB:-500}
       MEDIA_MAX_PER_FREELANCE: ${MEDIA_MAX_PER_FREELANCE:-20}
       MEDIA_SIGNED_URL_TTL: ${MEDIA_SIGNED_URL_TTL:-900}

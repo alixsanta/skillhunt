@@ -10,7 +10,12 @@ ORIGINS="${MEDIA_CORS_ORIGINS:-http://localhost:8088,http://localhost:5173}"
 
 echo "[init] Bucket ${BUCKET} (region ${REGION})"
 
-# `|| true` : le bucket survit aux redémarrages via le volume, sa re-création échoue alors.
+# `|| true` : le code de sortie est ignore sans condition, pas seulement pour le cas du
+# bucket qui survit au redemarrage via le volume (re-creation qui echoue alors). Une
+# mauvaise region ou un probleme d'authentification serait avale de la meme facon. Le
+# script continue quand meme a echouer vite dans l'ensemble : les appels suivants,
+# put-bucket-encryption et put-bucket-cors, ne sont pas gardes et tournent sous `set -eu`
+# — ils avortent si le bucket n'existe pas reellement.
 awslocal s3api create-bucket \
   --bucket "${BUCKET}" \
   --create-bucket-configuration "LocationConstraint=${REGION}" >/dev/null 2>&1 || true
@@ -25,7 +30,11 @@ awslocal s3api put-bucket-encryption \
 
 # CORS : sans cette configuration, le PUT direct depuis le navigateur est bloqué par le
 # contrôle d'origine — l'upload échouerait alors que l'URL signée est parfaitement valide.
-ALLOWED=$(printf '%s' "${ORIGINS}" | awk -F, '{for(i=1;i<=NF;i++) printf "\"%s\"%s", $i, (i<NF?",":"")}')
+# Chaque origine est nettoyée avant guillemetage : espaces de bord retires (un espace
+# apres la virgule est courant et ferait echouer la comparaison stricte avec l'en-tete
+# Origin du navigateur) et guillemets doubles supprimes (empeche une origine malveillante
+# de sortir du payload JSON).
+ALLOWED=$(printf '%s' "${ORIGINS}" | awk -F, '{for(i=1;i<=NF;i++){gsub(/^[ \t]+|[ \t]+$/,"",$i); gsub(/"/,"",$i); printf "\"%s\"%s", $i, (i<NF?",":"")}}')
 awslocal s3api put-bucket-cors --bucket "${BUCKET}" --cors-configuration "{
   \"CORSRules\": [{
     \"AllowedOrigins\": [${ALLOWED}],
