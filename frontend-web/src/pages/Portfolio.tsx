@@ -2,16 +2,14 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { MediaEmptyState } from '@/features/media/MediaEmptyState';
 import { MediaGrid } from '@/features/media/MediaGrid';
-import { hasPendingMedia, useMyMedia } from '@/features/media/useMyMedia';
+import { countPendingMedia, hasPendingMedia, useMyMedia } from '@/features/media/useMyMedia';
 
 /** Portfolio du freelance authentifié (SH-18a). */
 export default function Portfolio() {
   const { data, isPending, isError } = useMyMedia();
 
   const items = data?.items ?? [];
-  const enCours = items.filter(
-    (media) => media.status === 'UPLOADED' || media.status === 'PROCESSING',
-  ).length;
+  const enCours = countPendingMedia(items);
 
   return (
     <section className="flex flex-col gap-6">
@@ -30,7 +28,7 @@ export default function Portfolio() {
           : ''}
       </p>
 
-      {isPending && <p className="text-hud-muted text-sm">Chargement du portfolio…</p>}
+      {isPending && <p role="status" className="text-hud-muted text-sm">Chargement du portfolio…</p>}
 
       {isError && (
         <p className="text-hud-rejected text-sm" role="alert">
