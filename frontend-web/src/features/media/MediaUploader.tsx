@@ -68,26 +68,31 @@ export function MediaUploader() {
   const [percent, setPercent] = useState(0);
   const [erreur, setErreur] = useState<string | null>(null);
   const [titleError, setTitleError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setErreur(null);
 
     // Validation client : évite un aller-retour voué à l'échec. Le backend reste juge.
+    // Chaque erreur reste rattachée à SON champ (titre / fichier) plutôt que remontée dans
+    // le message générique du formulaire — un lecteur d'écran doit savoir quel champ est en
+    // cause en le retrouvant (WCAG 3.3.1, 4.1.3), pas seulement qu'une erreur existe.
     if (title.trim() === '') {
       setTitleError('Le titre est obligatoire.');
       return;
     }
     if (file === null) {
-      setErreur('Choisis un fichier vidéo.');
+      setFileError('Choisis un fichier vidéo.');
       return;
     }
     if (!estTypeAccepte(file.type)) {
-      setErreur('Format non supporté : choisis une vidéo MP4 ou QuickTime.');
+      setFileError('Format non supporté : choisis une vidéo MP4 ou QuickTime.');
       return;
     }
     const contentType = file.type;
     setTitleError(null);
+    setFileError(null);
 
     // Étape suivie dans une variable LOCALE et non via `etape` : la valeur d'état lue dans
     // ce gestionnaire vient de la fermeture du rendu courant, donc `setEtape` ne la met pas
@@ -137,24 +142,37 @@ export function MediaUploader() {
         Titre
       </label>
       <input
+        aria-describedby={titleError !== null ? 'media-title-error' : undefined}
+        aria-invalid={titleError !== null ? true : undefined}
         className={inputClass}
         id="media-title"
         maxLength={120}
         onChange={(event) => setTitle(event.target.value)}
         value={title}
       />
-      {titleError !== null && <span className="text-hud-rejected text-sm">{titleError}</span>}
+      {titleError !== null && (
+        <span className="text-hud-rejected text-sm" id="media-title-error" role="alert">
+          {titleError}
+        </span>
+      )}
 
       <label className="flex flex-col gap-1 text-sm text-white" htmlFor="media-file">
         Fichier
       </label>
       <input
         accept="video/mp4,video/quicktime"
+        aria-describedby={fileError !== null ? 'media-file-error' : undefined}
+        aria-invalid={fileError !== null ? true : undefined}
         className={inputClass}
         id="media-file"
         onChange={(event) => setFile(event.target.files?.[0] ?? null)}
         type="file"
       />
+      {fileError !== null && (
+        <span className="text-hud-rejected text-sm" id="media-file-error" role="alert">
+          {fileError}
+        </span>
+      )}
 
       {enCours && (
         <div

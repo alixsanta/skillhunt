@@ -82,4 +82,12 @@ describe('MediaCard', () => {
     renderCard(makeMedia({ status: 'READY', errorReason: null }));
     expect(screen.queryByText('Erreur')).not.toBeInTheDocument();
   });
+
+  it('n\'affiche pas une raison d\'échec périmée sous un badge PRÊT', () => {
+    // Un média retenté après un premier échec peut redevenir READY sans que `errorReason`
+    // soit remis à null entre-temps — la garde doit porter sur le statut, pas seulement sur
+    // la présence du champ, sinon un message d'échec obsolète apparaît sous le badge « PRÊT ».
+    renderCard(makeMedia({ status: 'READY', errorReason: 'Aucun flux vidéo décodable' }));
+    expect(screen.queryByText('Aucun flux vidéo décodable')).not.toBeInTheDocument();
+  });
 });
