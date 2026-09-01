@@ -8,6 +8,8 @@ import Account from '@/pages/Account';
 import Armurerie from '@/pages/Armurerie';
 import AddGear from '@/pages/AddGear';
 import FreelanceGear from '@/pages/FreelanceGear';
+import Portfolio from '@/pages/Portfolio';
+import AddMedia from '@/pages/AddMedia';
 import Search from '@/pages/Search';
 import Messages from '@/pages/Messages';
 import MessageThread from '@/pages/MessageThread';
@@ -50,6 +52,24 @@ export const routes: RouteObject[] = [
         element: (
           <ProtectedRoute>
             <AddGear />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        // Portfolio du freelance (SH-18a). Route non préfixée « mon- » : le libellé de
+        // l'interface est « Portfolio », comme `/messages` et `/recherche`.
+        path: '/portfolio',
+        element: (
+          <ProtectedRoute>
+            <Portfolio />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/portfolio/ajouter',
+        element: (
+          <ProtectedRoute>
+            <AddMedia />
           </ProtectedRoute>
         ),
       },
