@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
-import { useMyMedia } from '@/features/media/useMyMedia';
+import { useMyMedia, countPendingMedia } from '@/features/media/useMyMedia';
 
 // Première page protégée du front (SH-20). Elle sert de preuve de bout en bout du
 // parcours d'authentification, en attendant les écrans métier (Armurerie, SH-21a).
@@ -15,9 +15,8 @@ export default function Account() {
   // donc aucun appel réseau supplémentaire depuis cette carte.
   const { data: portfolio } = useMyMedia();
   const medias = portfolio?.items ?? [];
-  const enTraitement = medias.filter(
-    (media) => media.status === 'UPLOADED' || media.status === 'PROCESSING',
-  ).length;
+  // Réutilise le prédicat partagé (C2.2.3 : pas de duplication du critère métier).
+  const enTraitement = countPendingMedia(medias);
   const resumePortfolio =
     medias.length === 0
       ? 'Aucune vidéo publiée'
@@ -63,13 +62,16 @@ export default function Account() {
         {/* Portfolio (SH-18a) : publier doit rester à un clic depuis le compte, sans détour
             par la grille. */}
         <div className="border-hud-border bg-hud-card flex w-full items-center gap-3 rounded-lg border p-4">
-          {/* aria-label explicite : sans lui, le nom accessible du lien concatène les deux
-              spans (titre + résumé), ce qui empêche de le cibler par son seul intitulé
-              « Portfolio ». */}
-          <Link aria-label="Portfolio" className="min-w-0 flex-1" to="/portfolio">
-            <span className="block font-bold text-white">Portfolio</span>
+          {/* Le titre seul devient le nom accessible du lien (« Portfolio ») sans aria-label.
+              Le résumé sort du lien pour rester audible : un aria-label aurait remplacé le
+              contenu au lieu de le résumer, masquant aux lecteurs d'écran l'info du traitement
+              en cours. Même rendu visuel, information préservée pour l'accessibilité. */}
+          <div className="min-w-0 flex-1">
+            <Link className="block font-bold text-white" to="/portfolio">
+              Portfolio
+            </Link>
             <span className="text-hud-muted block text-sm">{resumePortfolio}</span>
-          </Link>
+          </div>
 
           <Link
             aria-label="Publier une vidéo"
