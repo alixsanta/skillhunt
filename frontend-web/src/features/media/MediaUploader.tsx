@@ -8,6 +8,23 @@ import type { CreateMediaInput } from './types';
 
 type Etape = 'saisie' | 'declaration' | 'depot' | 'confirmation';
 
+// Types de fichier acceptés au dépôt (C2.2.3). `satisfies` vérifie que la liste reste un
+// sous-ensemble du contrat backend (`CreateMediaDto.contentType`) sans perdre le type
+// littéral de chaque valeur — un type ajouté/retiré côté backend qui invaliderait cette
+// liste casse la compilation ici plutôt que de laisser un cast faire taire l'erreur.
+const TYPES_ACCEPTES = [
+  'video/mp4',
+  'video/quicktime',
+] as const satisfies readonly CreateMediaInput['contentType'][];
+
+// Garde de type (C2.2.3) : `accept="video/mp4,video/quicktime"` sur l'<input> n'est
+// qu'une suggestion — le sélecteur propose « tous les fichiers » et le glisser-déposer
+// l'ignore. Sans cette vérification, un fichier non supporté partirait vers l'API, que le
+// backend rejette (`@IsIn`), pour un aller-retour voué à l'échec.
+function estTypeAccepte(type: string): type is CreateMediaInput['contentType'] {
+  return (TYPES_ACCEPTES as readonly string[]).includes(type);
+}
+
 const inputClass =
   'border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white ' +
   'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none';
@@ -48,6 +65,11 @@ export function MediaUploader() {
       setErreur('Choisis un fichier vidéo.');
       return;
     }
+    if (!estTypeAccepte(file.type)) {
+      setErreur('Format non supporté : choisis une vidéo MP4 ou QuickTime.');
+      return;
+    }
+    const contentType = file.type;
     setTitleError(null);
 
     // Étape suivie dans une variable LOCALE et non via `etape` : la valeur d'état lue dans
@@ -60,9 +82,7 @@ export function MediaUploader() {
       setEtape('declaration');
       const { media, upload } = await createMedia.mutateAsync({
         title: title.trim(),
-        // Le champ <input type="file"> restreint déjà le choix via `accept` (mp4/mov) ; le
-        // backend revalide de toute façon le type réel de l'objet à la confirmation.
-        contentType: file.type as CreateMediaInput['contentType'],
+        contentType,
         sizeBytes: file.size,
       });
 
@@ -84,7 +104,7 @@ export function MediaUploader() {
       setErreur(
         etapeCourante === 'depot'
           ? "L'envoi a échoué. Réessaie : rien n'a été publié."
-          : "La publication a échoué. Réessaie dans un instant.",
+          : 'La publication a échoué. Réessaie dans un instant.',
       );
       setEtape('saisie');
     }
@@ -122,9 +142,16 @@ export function MediaUploader() {
           aria-label="Progression du dépôt"
           aria-valuemax={100}
           aria-valuemin={0}
-          aria-valuenow={etape === 'depot' ? percent : 100}
+          // Seul le dépôt a une progression connue (en octets) : `declaration` et
+          // `confirmation` restent indéterminées pour les technologies d'assistance —
+          // annoncer 100 % pendant ces phases ferait croire que l'opération est terminée.
+          aria-valuenow={etape === 'depot' ? percent : undefined}
           aria-valuetext={
-            etape === 'depot' ? `Envoi — ${percent} %` : 'Déclaration et confirmation'
+            etape === 'depot'
+              ? `Envoi — ${percent} %`
+              : etape === 'declaration'
+                ? 'Déclaration en cours…'
+                : 'Confirmation en cours…'
           }
           className="bg-hud-pill h-2 w-full overflow-hidden rounded"
           role="progressbar"

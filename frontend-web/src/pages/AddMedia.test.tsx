@@ -45,6 +45,26 @@ describe('AddMedia', () => {
     expect(await screen.findByText(/le titre est obligatoire/i)).toBeInTheDocument();
   });
 
+  it("refuse de publier un fichier d'un type non supporté, sans appeler l'API", async () => {
+    // `applyAccept: false` : par défaut, `user.upload` filtre lui-même selon l'attribut
+    // `accept`, ce qui masquerait exactement le trou qu'on vérifie ici. En vrai, le
+    // sélecteur « tous les fichiers » et le glisser-déposer ignorent `accept` — c'est ce
+    // qu'on reproduit en désactivant ce filtrage côté test.
+    const user = userEvent.setup({ applyAccept: false });
+    renderPage();
+
+    await user.type(screen.getByLabelText(/titre/i), 'Survol de chantier');
+    await user.upload(
+      screen.getByLabelText(/fichier/i),
+      new File(['x'], 'photo.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: /publier/i }));
+
+    // Aucun handler n'est enregistré : si l'API était appelée malgré le type refusé, le
+    // harnais (`onUnhandledRequest: 'error'`) ferait échouer le test.
+    expect(await screen.findByText(/format non supporté/i)).toBeInTheDocument();
+  });
+
   it('enchaîne déclaration, dépôt direct puis confirmation', async () => {
     const appels: string[] = [];
     server.use(
@@ -105,10 +125,26 @@ describe('AddMedia', () => {
     expect(confirmed).toBe(false);
   });
 
-  it("expose la progression du dépôt aux technologies d'assistance", async () => {
+  it('annonce une valeur numérique uniquement pendant le dépôt, phases indéterminées sinon', async () => {
+    // Chaque appel est bloqué tant qu'on ne le libère pas explicitement, pour observer
+    // chaque phase sans dépendre d'un timing de résolution réseau.
+    let resolveDeclare: (() => void) | undefined;
+    const declarePromise = new Promise<void>((resolve) => {
+      resolveDeclare = resolve;
+    });
+    let resolvePut: (() => void) | undefined;
+    const putPromise = new Promise<void>((resolve) => {
+      resolvePut = resolve;
+    });
+    let resolveComplete: (() => void) | undefined;
+    const completePromise = new Promise<void>((resolve) => {
+      resolveComplete = resolve;
+    });
+
     server.use(
-      http.post('*/api/v1/media', () =>
-        HttpResponse.json({
+      http.post('*/api/v1/media', async () => {
+        await declarePromise;
+        return HttpResponse.json({
           media: { id: 'm-1', status: 'DRAFT', title: 'Survol de chantier' },
           upload: {
             url: STORAGE_URL,
@@ -116,19 +152,50 @@ describe('AddMedia', () => {
             headers: { 'Content-Type': 'video/mp4' },
             expiresIn: 900,
           },
-        }),
-      ),
-      http.put(STORAGE_URL, () => new HttpResponse(null, { status: 200 })),
-      http.post('*/api/v1/media/m-1/complete', () =>
-        HttpResponse.json({ id: 'm-1', status: 'UPLOADED' }),
-      ),
+        });
+      }),
+      http.put(STORAGE_URL, async () => {
+        await putPromise;
+        return new HttpResponse(null, { status: 200 });
+      }),
+      http.post('*/api/v1/media/m-1/complete', async () => {
+        await completePromise;
+        return HttpResponse.json({ id: 'm-1', status: 'UPLOADED' });
+      }),
     );
 
     renderPage();
-    await fillAndSubmit();
+    const submitted = fillAndSubmit();
 
-    // Une barre qui grandit sans rôle ni valeur ne dit rien à un lecteur d'écran.
-    const barre = await screen.findByRole('progressbar');
-    expect(barre).toHaveAttribute('aria-valuenow');
+    // Déclaration : progression indéterminée — pas de valeur numérique fictive.
+    await waitFor(() => {
+      expect(screen.getByRole('progressbar')).toHaveAttribute(
+        'aria-valuetext',
+        'Déclaration en cours…',
+      );
+    });
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow');
+
+    resolveDeclare?.();
+
+    // Dépôt : seule phase à progression connue en octets, donc seule à porter une valeur.
+    await waitFor(() => {
+      expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toMatch(/^Envoi/);
+    });
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow');
+
+    resolvePut?.();
+
+    // Confirmation : de nouveau indéterminée.
+    await waitFor(() => {
+      expect(screen.getByRole('progressbar')).toHaveAttribute(
+        'aria-valuetext',
+        'Confirmation en cours…',
+      );
+    });
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow');
+
+    resolveComplete?.();
+    await submitted;
   });
 });
