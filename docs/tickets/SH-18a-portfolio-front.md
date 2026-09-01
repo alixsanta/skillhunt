@@ -184,11 +184,13 @@ suppression d'un média), qui dépend explicitement de SH-17.
 **Défaut hors branche, non lié à SH-18a — mentionné pour mémoire :** `Register.test.tsx` (« enchaîne
 automatiquement un login après le register ») est déjà documenté comme flaky en suite complète (passe
 seul, échoue parfois sous charge). Pendant la recette de ce ticket, la même classe de flake par
-timeout a été observée ponctuellement sur d'autres fichiers asynchrones (`Account.test.tsx`,
-`AddMedia.test.tsx`) lors d'exécutions de la suite complète pendant que la stack Docker (19 conteneurs,
-dont la reconstruction de `frontend-web`) tournait en parallèle sur la même machine — jamais en
-isolation. Aucun de ces fichiers n'échoue de façon répétable ni ne pointe vers une régression de
-logique ; le détail des exécutions est en Task 10 (§ vérification finale de ce ticket).
+timeout a été observée ponctuellement sur d'autres fichiers (`Account.test.tsx`, `AddMedia.test.tsx`,
+`MainNav.test.tsx` — ce dernier pourtant synchrone) sur 4 exécutions successives de la suite complète,
+un fichier différent à chaque fois, pendant que la stack Docker (19 conteneurs, dont la reconstruction
+de `frontend-web`) tournait en parallèle sur la même machine — jamais deux fois le même fichier, jamais
+en isolation. Les trois fichiers rejoués ensemble hors suite complète (47 → 3 fichiers, 15 tests)
+passent proprement en 15 s. Aucun ne pointe vers une régression de logique ; le détail des exécutions
+est en Task 10 (§ vérification finale de ce ticket).
 
 ### 6. Definition of Done (DoD)
 - [x] Les 9 scénarios Gherkin sont couverts par des tests automatisés et rejoués en recette manuelle
