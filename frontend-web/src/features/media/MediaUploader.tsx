@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { useCreateMedia } from './useCreateMedia';
 import { useCompleteMedia } from './useCompleteMedia';
@@ -23,6 +24,22 @@ const TYPES_ACCEPTES = [
 // backend rejette (`@IsIn`), pour un aller-retour voué à l'échec.
 function estTypeAccepte(type: string): type is CreateMediaInput['contentType'] {
   return (TYPES_ACCEPTES as readonly string[]).includes(type);
+}
+
+/**
+ * Message du backend pour un 400/409 (ValidationPipe ou quota, cf. MediaService) : déjà en
+ * français et compréhensible, on l'affiche tel quel plutôt qu'un générique — surtout pour le
+ * 409 quota, où « réessaie » est la pire réponse possible (chaque réessai crée un `DRAFT`
+ * de plus, qui compte lui-même dans le quota). Le reste (5xx, réseau) reste générique : ces
+ * réponses n'ont pas de message utilisateur fiable à afficher tel quel.
+ */
+function messageBackend(error: unknown): string | null {
+  if (!isAxiosError<{ message?: string | string[] }>(error)) return null;
+  const status = error.response?.status;
+  if (status !== 400 && status !== 409) return null;
+  const message = error.response?.data?.message;
+  if (!message) return null;
+  return [message].flat().join(' ');
 }
 
 const inputClass =
@@ -92,7 +109,8 @@ export function MediaUploader() {
       await uploadToStorage({
         url: upload.url,
         file,
-        contentType: upload.headers['Content-Type'],
+        method: upload.method,
+        headers: upload.headers,
         onProgress: setPercent,
       });
 
@@ -100,11 +118,12 @@ export function MediaUploader() {
       setEtape('confirmation');
       await completeMedia.mutateAsync({ id: media.id });
       navigate('/portfolio');
-    } catch {
+    } catch (error) {
       setErreur(
-        etapeCourante === 'depot'
-          ? "L'envoi a échoué. Réessaie : rien n'a été publié."
-          : 'La publication a échoué. Réessaie dans un instant.',
+        messageBackend(error) ??
+          (etapeCourante === 'depot'
+            ? "L'envoi a échoué. Réessaie : rien n'a été publié."
+            : 'La publication a échoué. Réessaie dans un instant.'),
       );
       setEtape('saisie');
     }

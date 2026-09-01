@@ -1067,8 +1067,11 @@ export interface components {
         UploadInstructionsDto: {
             /** @description URL PUT signée, de courte durée */
             url: string;
-            /** @example PUT */
-            method: string;
+            /**
+             * @example PUT
+             * @enum {string}
+             */
+            method: "PUT";
             /** @description En-têtes à envoyer tels quels — le Content-Type entre dans la signature */
             headers: {
                 [key: string]: string;

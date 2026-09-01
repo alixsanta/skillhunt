@@ -17,7 +17,8 @@ describe('uploadToStorage', () => {
     await uploadToStorage({
       url: STORAGE_URL,
       file: new File(['x'], 'rush.mp4', { type: 'video/mp4' }),
-      contentType: 'video/mp4',
+      method: 'PUT',
+      headers: { 'Content-Type': 'video/mp4' },
       onProgress: () => {},
     });
 
@@ -39,11 +40,55 @@ describe('uploadToStorage', () => {
     await uploadToStorage({
       url: STORAGE_URL,
       file: new File(['x'], 'rush.mp4', { type: 'video/mp4' }),
-      contentType: 'video/mp4',
+      method: 'PUT',
+      headers: { 'Content-Type': 'video/mp4' },
       onProgress: () => {},
     });
 
     expect(contentType).toContain('video/mp4');
+  });
+
+  it('transmet tout `upload.headers`, pas seulement Content-Type (SH-16a : x-amz-checksum-crc32)', async () => {
+    // Le jour où le backend signe un second en-tête, ne transmettre que Content-Type fait
+    // échouer le dépôt en 403 côté stockage — un symptôme qui ressemble à un problème de
+    // credentials plutôt qu'à ce bug côté client. C'est déjà arrivé une fois en recette SH-16a.
+    let checksum: string | null = null;
+    server.use(
+      http.put(STORAGE_URL, ({ request }) => {
+        checksum = request.headers.get('x-amz-checksum-crc32');
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    await uploadToStorage({
+      url: STORAGE_URL,
+      file: new File(['x'], 'rush.mp4', { type: 'video/mp4' }),
+      method: 'PUT',
+      headers: { 'Content-Type': 'video/mp4', 'x-amz-checksum-crc32': 'AAAAAA==' },
+      onProgress: () => {},
+    });
+
+    expect(checksum).toBe('AAAAAA==');
+  });
+
+  it('utilise le verbe fourni par `upload.method` plutôt qu’un PUT figé', async () => {
+    let received = '';
+    server.use(
+      http.post(STORAGE_URL, ({ request }) => {
+        received = request.method;
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
+
+    await uploadToStorage({
+      url: STORAGE_URL,
+      file: new File(['x'], 'rush.mp4', { type: 'video/mp4' }),
+      method: 'POST',
+      headers: { 'Content-Type': 'video/mp4' },
+      onProgress: () => {},
+    });
+
+    expect(received).toBe('POST');
   });
 
   it("propage l'échec du dépôt à l'appelant", async () => {
@@ -53,7 +98,8 @@ describe('uploadToStorage', () => {
       uploadToStorage({
         url: STORAGE_URL,
         file: new File(['x'], 'rush.mp4', { type: 'video/mp4' }),
-        contentType: 'video/mp4',
+        method: 'PUT',
+        headers: { 'Content-Type': 'video/mp4' },
         onProgress: () => {},
       }),
     ).rejects.toThrow();
