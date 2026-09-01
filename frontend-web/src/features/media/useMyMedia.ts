@@ -43,7 +43,7 @@ export function countPendingMedia(items: PublicMedia[]): number {
  * L'identité vient du token (jamais d'un id client) et le bearer est injecté par les
  * intercepteurs d'`apiClient` (SH-20) — ne pas les court-circuiter ici.
  */
-export function useMyMedia() {
+export function useMyMedia(enabled = true) {
   return useQuery<PaginatedMedia, AxiosError>({
     queryKey: myMediaQueryKey,
     queryFn: async () => {
@@ -52,6 +52,10 @@ export function useMyMedia() {
       });
       return data;
     },
+    // `GET /media/me` est `@Roles(FREELANCE)` côté backend : un RECRUITER l'appelant
+    // recevrait toujours un 403. `enabled` évite d'émettre la requête pour un rôle qui ne
+    // peut jamais recevoir de réponse utile (Account.tsx, SH-18a post-revue).
+    enabled,
     refetchInterval: (query) =>
       hasPendingMedia(query.state.data?.items ?? []) ? POLL_INTERVAL_MS : false,
     // Ne jamais réessayer une erreur 4xx : un 403 (RECRUITER sur une route @Roles(FREELANCE))

@@ -42,7 +42,16 @@ describe('AddMedia', () => {
 
     // Aucun handler n'est enregistré : si l'API était appelée, le harnais
     // (`onUnhandledRequest: 'error'`) ferait échouer le test.
-    expect(await screen.findByText(/le titre est obligatoire/i)).toBeInTheDocument();
+    const message = await screen.findByText(/le titre est obligatoire/i);
+    expect(message).toBeInTheDocument();
+
+    // WCAG 3.3.1 / 4.1.3 : l'erreur doit être annoncée (role="alert") ET associée au champ
+    // en cause, pas seulement affichée quelque part sur la page — sinon un utilisateur de
+    // lecteur d'écran qui revient sur le champ n'a aucun moyen de savoir qu'il est en erreur.
+    expect(message).toHaveAttribute('role', 'alert');
+    const titleInput = screen.getByLabelText(/titre/i);
+    expect(titleInput).toHaveAttribute('aria-invalid', 'true');
+    expect(titleInput).toHaveAttribute('aria-describedby', message.id);
   });
 
   it("refuse de publier un fichier d'un type non supporté, sans appeler l'API", async () => {
@@ -62,7 +71,15 @@ describe('AddMedia', () => {
 
     // Aucun handler n'est enregistré : si l'API était appelée malgré le type refusé, le
     // harnais (`onUnhandledRequest: 'error'`) ferait échouer le test.
-    expect(await screen.findByText(/format non supporté/i)).toBeInTheDocument();
+    const message = await screen.findByText(/format non supporté/i);
+    expect(message).toBeInTheDocument();
+
+    // L'erreur porte sur le FICHIER, pas sur le formulaire entier : associée au champ fichier
+    // (WCAG 3.3.1 / 4.1.3), pas au titre.
+    expect(message).toHaveAttribute('role', 'alert');
+    const fileInput = screen.getByLabelText(/fichier/i);
+    expect(fileInput).toHaveAttribute('aria-invalid', 'true');
+    expect(fileInput).toHaveAttribute('aria-describedby', message.id);
   });
 
   it('enchaîne déclaration, dépôt direct puis confirmation', async () => {

@@ -15,11 +15,21 @@ function fakeJwt(payload: Record<string, unknown>): string {
 }
 
 const TOKEN = fakeJwt({ userId: 'u-1', email: 'pilote@skillhunt.io', role: 'FREELANCE' });
+const RECRUITER_TOKEN = fakeJwt({
+  userId: 'u-2',
+  email: 'recruteur@skillhunt.io',
+  role: 'RECRUITER',
+});
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
-function renderAccount() {
+function renderAccount(accessToken: string = TOKEN) {
   // QueryClientProvider : la section 2FA de « Mon compte » interroge /auth/2fa/status (SH-40).
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  server.use(
+    http.post(url('/api/v1/auth/refresh'), () =>
+      HttpResponse.json({ accessToken, refreshToken: 'r' }),
+    ),
+  );
   return render(
     <QueryClientProvider client={client}>
       <AuthProvider>
@@ -36,6 +46,7 @@ function renderAccount() {
 
 beforeEach(() => {
   // Session active dès le démarrage : le refresh silencieux renvoie un access token valide.
+  // Écrasé au besoin par renderAccount(RECRUITER_TOKEN) pour les tests de rôle.
   server.use(
     http.post(url('/api/v1/auth/refresh'), () =>
       HttpResponse.json({ accessToken: TOKEN, refreshToken: 'r' }),
@@ -162,5 +173,23 @@ describe('Page Mon compte — carte portfolio (SH-18a)', () => {
 
     const summary = await screen.findByText(/1 vidéo · 1 en traitement/i);
     expect(summary).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('ne montre jamais la carte à un RECRUITER (le backend renverrait 403)', async () => {
+    // `GET /media/me` est réservé au FREELANCE (@Roles). On retire volontairement le handler
+    // par défaut posé en beforeEach : si la carte (ou `useMyMedia`) émettait quand même la
+    // requête, MSW la ferait échouer bruyamment (onUnhandledRequest: 'error', setupTests.ts)
+    // au lieu de la laisser passer silencieusement.
+    server.resetHandlers(
+      http.post(url('/api/v1/auth/refresh'), () =>
+        HttpResponse.json({ accessToken: RECRUITER_TOKEN, refreshToken: 'r' }),
+      ),
+      http.get(url('/api/v1/auth/2fa/status'), () => HttpResponse.json({ enabled: false })),
+    );
+    renderAccount(RECRUITER_TOKEN);
+
+    expect(await screen.findByText('recruteur@skillhunt.io')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Portfolio' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /publier une vidéo/i })).not.toBeInTheDocument();
   });
 });

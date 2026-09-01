@@ -13,6 +13,10 @@ import type { PublicMedia } from './types';
 export function MediaCard({ media }: { media: PublicMedia }) {
   const { hint, Icon } = STATUS_META[media.status];
   const isReady = media.status === 'READY';
+  // Un média redevenu READY après un échec passé peut encore porter l'ancien `errorReason`
+  // (le champ n'est remis à `null` que par un nouveau succès explicite côté backend). Sans ce
+  // garde-fou, une raison d'échec périmée s'afficherait sous le badge « PRÊT ».
+  const isFailed = media.status === 'FAILED';
 
   return (
     <li className="border-hud-border bg-hud-card flex flex-col overflow-hidden rounded-lg border">
@@ -36,7 +40,7 @@ export function MediaCard({ media }: { media: PublicMedia }) {
       <div className="flex flex-col gap-1.5 p-4">
         <MediaStatusBadge status={media.status} />
         <span className="truncate font-bold text-white">{media.title}</span>
-        {media.errorReason !== null && (
+        {isFailed && media.errorReason !== null && (
           <span className="text-hud-muted text-xs">{media.errorReason}</span>
         )}
       </div>
