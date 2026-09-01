@@ -113,4 +113,35 @@ describe('Page Mon compte — carte portfolio (SH-18a)', () => {
 
     expect(await screen.findByText(/2 vidéos · 1 en traitement/i)).toBeInTheDocument();
   });
+
+  it('rend le compteur du portfolio audible hors du lien', async () => {
+    // Le résumé doit être présent dans le document et ACCESSIBLE (pas masqué par un aria-label
+    // sur le lien). Le test échoue si on remettait le résumé à l'intérieur du lien avec un
+    // aria-label : l'aria-label remplacerait l'arbre accessible, le résumé ne serait plus
+    // lisible à côté du lien dans l'ordre de lecture du document.
+    server.use(
+      http.get('*/api/v1/media/me', () =>
+        HttpResponse.json({
+          items: [
+            { id: 'm-1', status: 'READY' },
+            { id: 'm-2', status: 'PROCESSING' },
+          ],
+          total: 2,
+          page: 1,
+          limit: 100,
+        }),
+      ),
+    );
+    renderAccount();
+
+    // Le lien "Portfolio" n'a pas d'aria-label : son nom est juste "Portfolio".
+    const link = await screen.findByRole('link', { name: 'Portfolio' });
+    expect(link).toBeInTheDocument();
+
+    // Le résumé doit être dans le document et NOT être un enfant du lien (sinon un aria-label
+    // sur le lien le masquerait de l'arbre accessible).
+    const summary = await screen.findByText(/2 vidéos · 1 en traitement/i);
+    expect(summary).toBeInTheDocument();
+    expect(link.contains(summary)).toBe(false);
+  });
 });
