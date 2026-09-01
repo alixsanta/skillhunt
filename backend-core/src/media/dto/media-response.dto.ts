@@ -68,13 +68,22 @@ export class PublicMediaDto {
   processedAt!: Date | null;
 }
 
+/**
+ * Verbe HTTP du dépôt. Enum à une seule valeur plutôt que `string` : le service ne produit
+ * jamais que 'PUT' (media.service.ts) — élargir le contrat au front alors que le client
+ * consomme désormais réellement ce champ (SH-18a) romprait le typage sans raison.
+ */
+export enum UploadMethod {
+  PUT = 'PUT',
+}
+
 /** Instructions de dépôt : le navigateur envoie le fichier DIRECTEMENT à cette URL. */
 export class UploadInstructionsDto {
   @ApiProperty({ description: 'URL PUT signée, de courte durée' })
   url!: string;
 
-  @ApiProperty({ example: 'PUT' })
-  method!: string;
+  @ApiProperty({ enum: UploadMethod, example: UploadMethod.PUT })
+  method!: UploadMethod;
 
   @ApiProperty({
     type: 'object',

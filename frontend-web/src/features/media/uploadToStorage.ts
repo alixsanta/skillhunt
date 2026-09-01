@@ -13,11 +13,21 @@ import axios from 'axios';
 const storageClient = axios.create();
 
 export interface UploadToStorageParams {
-  /** URL PUT signée délivrée par `POST /api/v1/media`. */
+  /** URL signée délivrée par `POST /api/v1/media`. */
   url: string;
   file: File;
-  /** Type MIME exact que l'API a fait signer — S3 refuse le dépôt s'il diffère. */
-  contentType: string;
+  /**
+   * Verbe HTTP délivré par l'API (`upload.method`). Ne jamais figer `PUT` en dur ici : SH-16a
+   * documente déjà ce champ comme faisant partie du contrat, pas comme une constante cliente.
+   */
+  method: string;
+  /**
+   * En-têtes à envoyer TELS QUELS (`upload.headers`), objet complet — pas une seule clé lue à
+   * la main. Le stockage fait entrer chaque en-tête signé dans la signature SigV4 ; en oublier
+   * un (ex. un futur `x-amz-checksum-*`, cf. SH-16a) fait échouer le dépôt en 403, un symptôme
+   * qui ressemble à un problème de credentials plutôt qu'à ce bug côté client.
+   */
+  headers: Record<string, string>;
   /** Progression en pourcentage d'octets envoyés (0–100). */
   onProgress: (percent: number) => void;
 }
@@ -26,11 +36,15 @@ export interface UploadToStorageParams {
 export async function uploadToStorage({
   url,
   file,
-  contentType,
+  method,
+  headers,
   onProgress,
 }: UploadToStorageParams): Promise<void> {
-  await storageClient.put(url, file, {
-    headers: { 'Content-Type': contentType },
+  await storageClient.request({
+    url,
+    method,
+    data: file,
+    headers,
     onUploadProgress: (event) => {
       if (event.total) {
         onProgress(Math.round((event.loaded / event.total) * 100));

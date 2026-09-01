@@ -125,6 +125,27 @@ describe('AddMedia', () => {
     expect(confirmed).toBe(false);
   });
 
+  it('affiche le message du backend sur un 409 (quota atteint), pas le générique', async () => {
+    // Le générique (« réessaie dans un instant ») est la pire réponse possible sur un 409
+    // quota : chaque réessai déclare un nouveau `DRAFT`, qui compte lui-même dans le quota.
+    server.use(
+      http.post('*/api/v1/media', () =>
+        HttpResponse.json(
+          { message: 'Quota atteint : 20 médias au maximum. Supprimez-en un avant d\'en ajouter.' },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderPage();
+    await fillAndSubmit();
+
+    expect(
+      await screen.findByText(/quota atteint.*20 médias au maximum/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/réessaie dans un instant/i)).not.toBeInTheDocument();
+  });
+
   it('annonce une valeur numérique uniquement pendant le dépôt, phases indéterminées sinon', async () => {
     // Chaque appel est bloqué tant qu'on ne le libère pas explicitement, pour observer
     // chaque phase sans dépendre d'un timing de résolution réseau.
