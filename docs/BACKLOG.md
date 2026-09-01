@@ -118,7 +118,8 @@ C4.2.1 de porter sur des anomalies réellement *détectées en production*, et n
 | [SH-16a](tickets/SH-16a-flux-entrant-media.md) | Flux entrant du média : port de stockage élargi, entité `user_media`, upload par URL PUT présignée, producteur BullMQ + `QueueEvents`, balayage des déclarations abandonnées — *recette Task 9 : 2 défauts bloquants découverts ET CORRIGÉS (checksum CRC32 d'un corps vide gravé dans l'URL signée ; `returnvalue` déjà parsé par BullMQ). `READY` reste inatteignable tant que SH-16b n'a pas livré le vrai pipeline — le worker no-op de SH-15 ne produit aucune métadonnée à valider* | 🟠 En cours | 5 | C2.2.3, C2.2.2, C2.4.1 | R1, R8 |
 | [SH-16b](tickets/SH-16b-pipeline-transcodage.md) | Pipeline de transcodage réel : `ffprobe` (durée, dimensions, projection 360°), `ffmpeg` échelle ABR + poster, dépôt S3, métriques, ffmpeg en CI | 🔵 Backlog | 3 | C2.2.2, C2.1.2 | R1 |
 | [SH-17](tickets/SH-17-streaming-s3-cdn.md) | Streaming & stockage : S3 + Signed URLs — *flux sortant : manifeste HLS réécrit en segments signés, poster, consultation recruteur, purge* | 🔵 Backlog | 5 | C2.2.3, C2.4.1 | R8, R3 |
-| [SH-18](tickets/SH-18-portfolio-interactif.md) | Portfolio interactif (exposition vidéos 4K/360°) | 🔵 Backlog | 5 | C2.4.1 | — |
+| [SH-18a](tickets/SH-18a-portfolio-front.md) | Portfolio (front) : grille des cinq états, dépôt direct en trois temps avec progression réelle, carte du compte, section recruteur — *lecteur HLS et visionneuse 360° reportés en SH-18b, ils dépendent des routes de lecture de SH-17* | 🟢 Terminé | 3 | C2.4.1, C2.2.2, C2.1.2 | — |
+| [SH-18b](tickets/SH-18b-lecteur-portfolio.md) | Lecteur HLS + visionneuse 360° WebGL, poster réel, branchement de la section recruteur, suppression d'un média — *dépend de SH-17* | 🔵 Backlog | 3 | C2.4.1, C2.2.2 | — |
 
 ## EP05 — Frontend Multi-support · *38 J/H* · 🎯 J4
 
