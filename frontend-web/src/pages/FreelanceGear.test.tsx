@@ -217,4 +217,15 @@ describe('Page Armurerie publique — vue recruteur (SH-21b)', () => {
     expect(screen.queryByText(/XP/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /épingler|retirer/i })).not.toBeInTheDocument();
   });
+
+  it('affiche la section portfolio, sans émettre de requête média', async () => {
+    server.use(respondWith(VALIDATED_LOCKER));
+    renderPage();
+
+    // Aucun handler média n'est enregistré : le harnais est en `onUnhandledRequest: 'error'`,
+    // donc toute requête vers l'API média ferait échouer ce test. C'est exactement ce qu'on
+    // veut vérifier — la route `GET /media/freelance/:id` est livrée par SH-17.
+    expect(await screen.findByRole('heading', { name: /portfolio/i })).toBeInTheDocument();
+    expect(screen.getByText(/aucune vidéo publiée/i)).toBeInTheDocument();
+  });
 });

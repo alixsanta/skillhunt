@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { VideoOff } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
@@ -141,6 +142,21 @@ export default function FreelanceGear() {
             )}
           </>
         )}
+
+        <div className="border-hud-pill-border my-8 border-t" />
+
+        <h2 className="text-hud-muted mb-3 text-xs font-bold tracking-widest uppercase">
+          Portfolio
+        </h2>
+        {/* Emplacement figé dès SH-18a ; le branchement sur `GET /media/freelance/:id`
+            arrive avec SH-17. Aucune requête n'est émise d'ici là. */}
+        <section className="border-hud-border bg-hud-card flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
+          <VideoOff aria-hidden="true" className="text-hud-muted h-8 w-8" />
+          <span className="font-bold text-white">Aucune vidéo publiée</span>
+          <span className="text-hud-muted text-sm">
+            Ce freelance n'a pas encore de média prêt à la lecture.
+          </span>
+        </section>
       </div>
     </div>
   );

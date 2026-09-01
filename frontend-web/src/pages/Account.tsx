@@ -1,13 +1,28 @@
+import { Plus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
+import { useMyMedia } from '@/features/media/useMyMedia';
 
 // Première page protégée du front (SH-20). Elle sert de preuve de bout en bout du
 // parcours d'authentification, en attendant les écrans métier (Armurerie, SH-21a).
 export default function Account() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Compteur du portfolio (SH-18a) : même clé de requête que la grille (`useMyMedia`),
+  // donc aucun appel réseau supplémentaire depuis cette carte.
+  const { data: portfolio } = useMyMedia();
+  const medias = portfolio?.items ?? [];
+  const enTraitement = medias.filter(
+    (media) => media.status === 'UPLOADED' || media.status === 'PROCESSING',
+  ).length;
+  const resumePortfolio =
+    medias.length === 0
+      ? 'Aucune vidéo publiée'
+      : `${medias.length} vidéo${medias.length > 1 ? 's' : ''}` +
+        (enTraitement > 0 ? ` · ${enTraitement} en traitement` : '');
 
   async function handleLogout() {
     try {
@@ -43,6 +58,26 @@ export default function Account() {
           <Button variant="outline" onClick={handleLogout}>
             Se déconnecter
           </Button>
+        </div>
+
+        {/* Portfolio (SH-18a) : publier doit rester à un clic depuis le compte, sans détour
+            par la grille. */}
+        <div className="border-hud-border bg-hud-card flex w-full items-center gap-3 rounded-lg border p-4">
+          {/* aria-label explicite : sans lui, le nom accessible du lien concatène les deux
+              spans (titre + résumé), ce qui empêche de le cibler par son seul intitulé
+              « Portfolio ». */}
+          <Link aria-label="Portfolio" className="min-w-0 flex-1" to="/portfolio">
+            <span className="block font-bold text-white">Portfolio</span>
+            <span className="text-hud-muted block text-sm">{resumePortfolio}</span>
+          </Link>
+
+          <Link
+            aria-label="Publier une vidéo"
+            className="bg-hud-positive text-hud-bg flex h-9 w-9 items-center justify-center rounded-md"
+            to="/portfolio/ajouter"
+          >
+            <Plus aria-hidden="true" className="h-5 w-5" />
+          </Link>
         </div>
 
         {/* Gestion de la 2FA (SH-40) — opt-in, tous rôles. Ancre pour le lien du menu compte

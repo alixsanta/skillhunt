@@ -74,3 +74,43 @@ describe('Page Mon compte — déconnexion (SH-20)', () => {
     expect(await screen.findByText('Écran de connexion')).toBeInTheDocument();
   });
 });
+
+describe('Page Mon compte — carte portfolio (SH-18a)', () => {
+  it('mène au portfolio et permet de publier directement', async () => {
+    server.use(
+      http.get('*/api/v1/media/me', () =>
+        HttpResponse.json({ items: [], total: 0, page: 1, limit: 100 }),
+      ),
+    );
+    renderAccount();
+
+    expect(await screen.findByRole('link', { name: 'Portfolio' })).toHaveAttribute(
+      'href',
+      '/portfolio',
+    );
+    // Publier ne doit pas obliger à passer par la grille.
+    expect(screen.getByRole('link', { name: /publier une vidéo/i })).toHaveAttribute(
+      'href',
+      '/portfolio/ajouter',
+    );
+  });
+
+  it("résume l'état du portfolio", async () => {
+    server.use(
+      http.get('*/api/v1/media/me', () =>
+        HttpResponse.json({
+          items: [
+            { id: 'm-1', status: 'READY' },
+            { id: 'm-2', status: 'UPLOADED' },
+          ],
+          total: 2,
+          page: 1,
+          limit: 100,
+        }),
+      ),
+    );
+    renderAccount();
+
+    expect(await screen.findByText(/2 vidéos · 1 en traitement/i)).toBeInTheDocument();
+  });
+});
