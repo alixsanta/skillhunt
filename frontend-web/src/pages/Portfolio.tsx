@@ -21,8 +21,10 @@ export default function Portfolio() {
       </div>
 
       {/* Le sondage fait évoluer la grille sans action de l'utilisateur : le changement
-          doit être ANNONCÉ, pas seulement affiché. */}
-      <p aria-live="polite" className="text-hud-muted text-sm">
+          doit être ANNONCÉ, pas seulement affiché. `data-testid` : c'est la seule région de
+          la page sans rôle/libellé accessible distinctif — un `<p>` de plus ailleurs sur la
+          page rendrait `getByRole('paragraph')` ambigu (SH-18a post-revue). */}
+      <p aria-live="polite" className="text-hud-muted text-sm" data-testid="portfolio-live-status">
         {hasPendingMedia(items)
           ? `${enCours} vidéo${enCours > 1 ? 's' : ''} en cours de traitement`
           : ''}
