@@ -166,11 +166,12 @@ dépôt lui-même, lui, a bien transité par un vrai `PUT` SigV4 vers LocalStack
 **Aucun média n'a atteint « EN TRAITEMENT » ni « PRÊT », et c'est le comportement attendu :**
 `PROCESSING` n'est jamais positionné (le listener `MediaTranscodeListener` n'écoute que
 `completed`/`failed`/`error` de `QueueEvents`, pas l'événement `active` de BullMQ — cf. design §7), et
-`READY` exige le pipeline réel de transcodage, livré par **SH-16b** (backlog), pas par ce ticket. Les 5
-médias déposés pendant la recette sont donc restés en **DÉPOSÉE** (`UPLOADED`), ce qui est exactement ce
-que la grille est censée montrer aujourd'hui : un cinquième état (« EN TRAITEMENT ») et un sixième
-(« PRÊT ») existent bien dans le code (`STATUS_META`), mais rien dans la stack actuelle ne peut encore
-les produire pour de vrai.
+`READY` exige le pipeline réel de transcodage, livré par **SH-16b** (backlog), pas par ce ticket. Les 3
+médias déposés pendant cette recette (le compte de démo en portait déjà 2 d'une recette SH-16a
+antérieure, soit 5 au total dans la grille finale) sont donc restés en **DÉPOSÉE** (`UPLOADED`), ce qui
+est exactement ce que la grille est censée montrer aujourd'hui : un cinquième état (« EN TRAITEMENT »)
+et un sixième (« PRÊT ») existent bien dans le code (`STATUS_META`), mais rien dans la stack actuelle ne
+peut encore les produire pour de vrai.
 
 **Le lecteur vidéo et la visionneuse 360° ne sont volontairement pas dans ce ticket.** Aucune fiche
 `READY` ne peut exister avant SH-16b, et la lecture elle-même (manifeste HLS réécrit en segments
