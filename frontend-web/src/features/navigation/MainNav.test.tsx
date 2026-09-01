@@ -26,6 +26,16 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /recherche/i })).not.toBeInTheDocument();
   });
 
+  it('propose au freelance son portfolio (SH-18a)', () => {
+    renderNav('FREELANCE');
+    expect(screen.getByRole('link', { name: /portfolio/i })).toHaveAttribute('href', '/portfolio');
+  });
+
+  it("n'expose jamais le portfolio au recruteur (le backend renverrait 403)", () => {
+    renderNav('RECRUITER');
+    expect(screen.queryByRole('link', { name: /portfolio/i })).not.toBeInTheDocument();
+  });
+
   it('propose au recruteur la recherche et ses messages', () => {
     renderNav('RECRUITER');
     expect(screen.getByRole('link', { name: /recherche/i })).toHaveAttribute('href', '/recherche');

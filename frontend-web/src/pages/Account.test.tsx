@@ -53,6 +53,15 @@ beforeEach(() => {
     ),
     // Section 2FA (SH-40) : état par défaut, non testé ici (TwoFactorSettings.test.tsx).
     http.get(url('/api/v1/auth/2fa/status'), () => HttpResponse.json({ enabled: false })),
+    // Carte portfolio (SH-18a) : Account appelle useMyMedia() sans condition. Page vide par
+    // défaut — les tests qui veulent un contenu précis enregistrent leur propre handler, qui
+    // prime sur celui-ci. Sans ce handler par défaut, la requête part non simulée : MSW
+    // (onUnhandledRequest: 'error', setupTests.ts) échoue la requête plutôt que le test, et le
+    // retry de useMyMedia (aucun `response.status` à lire) programme trois tentatives en
+    // backoff exponentiel sur des timers réels — un vrai coût de temps constaté en revue.
+    http.get(url('/api/v1/media/me'), () =>
+      HttpResponse.json({ items: [], total: 0, page: 1, limit: 100 }),
+    ),
   );
 });
 afterEach(() => sessionStore.clear());

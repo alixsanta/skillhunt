@@ -59,4 +59,14 @@ describe('router', () => {
     renderAt('/recherche');
     expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
   });
+
+  it('redirige un visiteur non connecté de /portfolio vers /login (SH-18a)', async () => {
+    renderAt('/portfolio');
+    expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
+  });
+
+  it('redirige un visiteur non connecté de /portfolio/ajouter vers /login (SH-18a)', async () => {
+    renderAt('/portfolio/ajouter');
+    expect(await screen.findByRole('heading', { name: 'Connexion' })).toBeInTheDocument();
+  });
 });

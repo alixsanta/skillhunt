@@ -89,7 +89,9 @@ describe('Portfolio', () => {
     // La région d'annonce DOIT rester dans le DOM, mais VIDE : une région qui disparaît et
     // réapparaît est annoncée de façon peu fiable par les lecteurs d'écran. On teste donc
     // que la région existe ET que son contenu est vide, pas seulement que le texte est absent.
-    const liveRegion = screen.getByRole('paragraph');
+    // Par test id, pas par rôle : `getByRole('paragraph')` suppose qu'il n'existe qu'un seul
+    // <p> sur la page — un second <p> ajouté ailleurs le casserait avec une erreur ambiguë.
+    const liveRegion = screen.getByTestId('portfolio-live-status');
     expect(liveRegion).toHaveAttribute('aria-live', 'polite');
     expect(liveRegion).toHaveTextContent('');
   });
