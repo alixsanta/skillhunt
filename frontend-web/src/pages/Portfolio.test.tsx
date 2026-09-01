@@ -86,7 +86,12 @@ describe('Portfolio', () => {
     renderPage();
 
     expect(await screen.findByText('Survol')).toBeInTheDocument();
-    expect(screen.queryByText(/en cours de traitement/i)).not.toBeInTheDocument();
+    // La région d'annonce DOIT rester dans le DOM, mais VIDE : une région qui disparaît et
+    // réapparaît est annoncée de façon peu fiable par les lecteurs d'écran. On teste donc
+    // que la région existe ET que son contenu est vide, pas seulement que le texte est absent.
+    const liveRegion = screen.getByRole('paragraph');
+    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    expect(liveRegion).toHaveTextContent('');
   });
 
   it('signale une erreur de chargement au lieu de rester vide', async () => {

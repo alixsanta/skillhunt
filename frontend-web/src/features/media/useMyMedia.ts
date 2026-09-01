@@ -11,9 +11,24 @@ export const myMediaQueryKey = ['media', 'me'] as const;
  * Un média est « en cours » tant qu'il attend le worker. `DRAFT` n'en fait pas partie :
  * il attend une confirmation de dépôt de la part de l'utilisateur, pas un traitement
  * serveur — le sonder ne produirait que du trafic inutile.
+ *
+ * Prédicat partagé : ne pas redire ce test ailleurs (hasPendingMedia et countPendingMedia
+ * se fondent sur le même critère).
  */
+function isPendingMedia(media: PublicMedia): boolean {
+  return media.status === 'UPLOADED' || media.status === 'PROCESSING';
+}
+
 export function hasPendingMedia(items: PublicMedia[]): boolean {
-  return items.some((media) => media.status === 'UPLOADED' || media.status === 'PROCESSING');
+  return items.some(isPendingMedia);
+}
+
+/**
+ * Compte les médias en cours (UPLOADED ou PROCESSING).
+ * Partage le même prédicat que hasPendingMedia pour éviter la dérive.
+ */
+export function countPendingMedia(items: PublicMedia[]): number {
+  return items.filter(isPendingMedia).length;
 }
 
 /**
