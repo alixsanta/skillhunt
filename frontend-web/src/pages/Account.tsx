@@ -70,7 +70,11 @@ export default function Account() {
             <Link className="block font-bold text-white" to="/portfolio">
               Portfolio
             </Link>
-            <span className="text-hud-muted block text-sm">{resumePortfolio}</span>
+            {/* Le compteur change sans action utilisateur (sondage de useMyMedia), donc il faut
+                l'annoncer aux lecteurs d'écran. Même raison que la région live sur Portfolio.tsx. */}
+            <span aria-live="polite" className="text-hud-muted block text-sm">
+              {resumePortfolio}
+            </span>
           </div>
 
           <Link

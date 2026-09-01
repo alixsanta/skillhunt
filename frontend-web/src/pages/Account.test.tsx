@@ -144,4 +144,23 @@ describe('Page Mon compte — carte portfolio (SH-18a)', () => {
     expect(summary).toBeInTheDocument();
     expect(link.contains(summary)).toBe(false);
   });
+
+  it('annonce les changements du compteur via aria-live', async () => {
+    // Le compteur de la carte du compte est sondé continuellement par useMyMedia tant qu'un
+    // média est en traitement. Ces changements doivent être annoncés aux lecteurs d'écran.
+    server.use(
+      http.get('*/api/v1/media/me', () =>
+        HttpResponse.json({
+          items: [{ id: 'm-1', status: 'PROCESSING' }],
+          total: 1,
+          page: 1,
+          limit: 100,
+        }),
+      ),
+    );
+    renderAccount();
+
+    const summary = await screen.findByText(/1 vidéo · 1 en traitement/i);
+    expect(summary).toHaveAttribute('aria-live', 'polite');
+  });
 });
