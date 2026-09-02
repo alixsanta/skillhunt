@@ -148,7 +148,7 @@ describe('AddMedia', () => {
     server.use(
       http.post('*/api/v1/media', () =>
         HttpResponse.json(
-          { message: 'Quota atteint : 20 médias au maximum. Supprimez-en un avant d\'en ajouter.' },
+          { message: "Quota atteint : 20 médias au maximum. Supprimez-en un avant d'en ajouter." },
           { status: 409 },
         ),
       ),
@@ -157,9 +157,7 @@ describe('AddMedia', () => {
     renderPage();
     await fillAndSubmit();
 
-    expect(
-      await screen.findByText(/quota atteint.*20 médias au maximum/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/quota atteint.*20 médias au maximum/i)).toBeInTheDocument();
     expect(screen.queryByText(/réessaie dans un instant/i)).not.toBeInTheDocument();
   });
 

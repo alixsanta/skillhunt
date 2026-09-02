@@ -13,7 +13,7 @@ describe('MediaStatusBadge', () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  it('rend la pastille décorative invisible aux lecteurs d\'écran', () => {
+  it("rend la pastille décorative invisible aux lecteurs d'écran", () => {
     const { container } = render(<MediaStatusBadge status="READY" />);
     // Le statut doit rester lisible sans percevoir la couleur : c'est le texte qui porte
     // l'information, la pastille n'est qu'un rappel visuel.

@@ -23,7 +23,7 @@ export const STATUS_META: Record<
     label: 'DÉPOSÉE',
     dotClass: 'bg-hud-muted',
     textClass: 'text-hud-muted',
-    hint: 'En file d\'attente',
+    hint: "En file d'attente",
     Icon: Clock,
   },
   PROCESSING: {

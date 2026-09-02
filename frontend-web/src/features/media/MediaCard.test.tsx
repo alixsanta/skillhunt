@@ -39,7 +39,7 @@ describe('MediaCard', () => {
 
   it.each([
     ['DRAFT', 'BROUILLON', 'Dépôt non confirmé'],
-    ['UPLOADED', 'DÉPOSÉE', 'En file d\'attente'],
+    ['UPLOADED', 'DÉPOSÉE', "En file d'attente"],
     ['PROCESSING', 'EN TRAITEMENT', 'Transcodage en cours'],
     ['FAILED', 'ÉCHEC', 'Transcodage impossible'],
   ] as const)('rend le statut %s avec son libellé et son indice visuel', (status, label, hint) => {
@@ -53,7 +53,7 @@ describe('MediaCard', () => {
     expect(screen.getByText('2:14')).toBeInTheDocument();
   });
 
-  it('n\'affiche pas de durée tant que le média n\'est pas prêt', () => {
+  it("n'affiche pas de durée tant que le média n'est pas prêt", () => {
     // `durationSeconds` reste null jusqu'au sondage de SH-16b : afficher « — » sur une
     // vignette en attente ne dirait rien à personne.
     renderCard(makeMedia({ status: 'UPLOADED', durationSeconds: null }));
@@ -65,17 +65,17 @@ describe('MediaCard', () => {
     expect(screen.getByText('360°')).toBeInTheDocument();
   });
 
-  it('n\'affiche pas le badge 360° sur une vidéo plate', () => {
+  it("n'affiche pas le badge 360° sur une vidéo plate", () => {
     renderCard(makeMedia({ type: 'VIDEO' }));
     expect(screen.queryByText('360°')).not.toBeInTheDocument();
   });
 
-  it('affiche la raison de l\'échec, qui est la seule information utile à ce stade', () => {
+  it("affiche la raison de l'échec, qui est la seule information utile à ce stade", () => {
     renderCard(makeMedia({ status: 'FAILED', errorReason: 'Aucun flux vidéo décodable' }));
     expect(screen.getByText('Aucun flux vidéo décodable')).toBeInTheDocument();
   });
 
-  it('n\'affiche pas la raison d\'échec quand elle est absente', () => {
+  it("n'affiche pas la raison d'échec quand elle est absente", () => {
     // Le cas positif est couvert : si la garde était supprimée ou passée en test de
     // veracité laissant passer une chaîne vide, rien ne le détecterait. La vérification
     // de l'absence est tout aussi importante que celle de la présence.
@@ -83,7 +83,7 @@ describe('MediaCard', () => {
     expect(screen.queryByText('Erreur')).not.toBeInTheDocument();
   });
 
-  it('n\'affiche pas une raison d\'échec périmée sous un badge PRÊT', () => {
+  it("n'affiche pas une raison d'échec périmée sous un badge PRÊT", () => {
     // Un média retenté après un premier échec peut redevenir READY sans que `errorReason`
     // soit remis à null entre-temps — la garde doit porter sur le statut, pas seulement sur
     // la présence du champ, sinon un message d'échec obsolète apparaît sous le badge « PRÊT ».
