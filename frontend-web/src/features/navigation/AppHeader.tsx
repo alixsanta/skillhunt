@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/useAuth';
 import { AccountMenu } from './AccountMenu';
 import { MainNav } from './MainNav';
-import { NotificationBell } from './NotificationBell';
 
 /**
  * En-tête applicatif (SH-46) : logo, navigation par rôle, notifications, menu compte.
@@ -26,14 +25,7 @@ export function AppHeader() {
 
       {user && <MainNav role={user.role} />}
 
-      <div className="flex items-center gap-1">
-        {user && (
-          <>
-            <NotificationBell />
-            <AccountMenu />
-          </>
-        )}
-      </div>
+      <div className="flex items-center gap-1">{user && <AccountMenu />}</div>
     </div>
   );
 }

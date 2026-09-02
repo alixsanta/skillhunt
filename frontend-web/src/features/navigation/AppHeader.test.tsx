@@ -33,11 +33,21 @@ describe('AppHeader', () => {
     expect(screen.getByRole('link', { name: /skillhunt/i })).toHaveAttribute('href', '/');
   });
 
-  it('assemble navigation, notifications et menu compte pour un recruteur', () => {
+  it('assemble navigation et menu compte pour un recruteur', () => {
     renderHeader('RECRUITER');
     expect(screen.getByRole('navigation', { name: /navigation principale/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /messages, aucun nouveau/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /mon compte/i })).toBeInTheDocument();
+  });
+
+  // SH-51 : la cloche menait à /messages, exactement comme l'entrée de navigation du même
+  // nom. Deux chemins pour une destination, dont un annoncé « notifications » : on garde
+  // le lien explicite et on supprime la cloche.
+  it("n'offre qu'un seul chemin vers les messages", () => {
+    renderHeader('RECRUITER');
+    const versMessages = screen
+      .getAllByRole('link')
+      .filter((lien) => lien.getAttribute('href') === '/messages');
+    expect(versMessages).toHaveLength(1);
   });
 
   it("hors session, n'affiche ni navigation ni menu compte", () => {
