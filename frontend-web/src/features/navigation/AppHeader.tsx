@@ -5,7 +5,7 @@ import { AccountMenu } from './AccountMenu';
 import { MainNav } from './MainNav';
 
 /**
- * En-tête applicatif (SH-46) : logo, navigation par rôle, notifications, menu compte.
+ * En-tête applicatif (SH-46) : logo, navigation par rôle, menu compte.
  * Hors session, seul le logo subsiste — il n'y a pas de rôle sur lequel fonder la navigation.
  */
 export function AppHeader() {
