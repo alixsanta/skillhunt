@@ -3,6 +3,7 @@ import { DropdownMenu } from 'radix-ui';
 import { useNavigate } from 'react-router-dom';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { useAuth } from '@/features/auth/useAuth';
+import { getDisplayName } from '@/features/auth/display-name';
 
 const ITEM_CLASS =
   'flex cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-sm text-white outline-none ' +
@@ -18,8 +19,9 @@ export function AccountMenu() {
 
   if (!user) return null;
 
-  // L'email fait office de nom d'affichage : le JWT ne porte pas le username.
-  const displayName = user.email.split('@')[0];
+  // Le JWT porte le username depuis SH-51 ; `getDisplayName` gère le repli pour les
+  // tokens antérieurs — le calcul est partagé plutôt que redupliqué ici.
+  const displayName = getDisplayName(user);
 
   return (
     <DropdownMenu.Root>

@@ -107,3 +107,28 @@ describe('Page Mon compte — étanchéité RBAC des actions (SH-51)', () => {
     expect(screen.queryByRole('link', { name: /armurerie/i })).not.toBeInTheDocument();
   });
 });
+
+const NAMED_TOKEN = fakeJwt({
+  userId: 'u-1',
+  email: 'pilote@skillhunt.io',
+  role: 'FREELANCE',
+  username: 'PiloteJury',
+});
+
+describe("Page Mon compte — nom d'utilisateur (SH-51)", () => {
+  it('met le nom en identité principale et relègue l’email', async () => {
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), () =>
+        HttpResponse.json({ accessToken: NAMED_TOKEN, refreshToken: 'r' }),
+      ),
+    );
+    renderAccount();
+    expect(await screen.findByText('PiloteJury')).toBeInTheDocument();
+    expect(screen.getByText('pilote@skillhunt.io')).toBeInTheDocument();
+  });
+
+  it("reste utilisable avec un token antérieur, sans nom d'utilisateur", async () => {
+    renderAccount(); // le TOKEN par défaut du harnais ne porte pas `username`
+    expect(await screen.findByText('pilote')).toBeInTheDocument();
+  });
+});
