@@ -9,8 +9,8 @@ export function MediaEmptyState() {
       <VideoOff aria-hidden="true" className="text-hud-muted h-12 w-12" />
       <h2 className="text-lg font-bold text-white">Ton portfolio est vide</h2>
       <p className="text-hud-muted max-w-sm text-sm">
-        Une vidéo en dit plus qu'un CV : montre un vol, une inspection, un rush. C'est ce que
-        les recruteurs regardent en premier.
+        Une vidéo en dit plus qu'un CV : montre un vol, une inspection, un rush. C'est ce que les
+        recruteurs regardent en premier.
       </p>
       <Button asChild>
         <Link to="/portfolio/ajouter">+ Ajouter ma première vidéo</Link>

@@ -30,7 +30,11 @@ export default function Portfolio() {
           : ''}
       </p>
 
-      {isPending && <p role="status" className="text-hud-muted text-sm">Chargement du portfolio…</p>}
+      {isPending && (
+        <p role="status" className="text-hud-muted text-sm">
+          Chargement du portfolio…
+        </p>
+      )}
 
       {isError && (
         <p className="text-hud-rejected text-sm" role="alert">
@@ -38,7 +42,9 @@ export default function Portfolio() {
         </p>
       )}
 
-      {!isPending && !isError && (items.length === 0 ? <MediaEmptyState /> : <MediaGrid items={items} />)}
+      {!isPending &&
+        !isError &&
+        (items.length === 0 ? <MediaEmptyState /> : <MediaGrid items={items} />)}
     </section>
   );
 }

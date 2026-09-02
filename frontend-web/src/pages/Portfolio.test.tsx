@@ -72,7 +72,7 @@ describe('Portfolio', () => {
     expect(await screen.findByText(/1 vidéo en cours de traitement/i)).toBeInTheDocument();
   });
 
-  it('n\'annonce rien quand tout est stabilisé', async () => {
+  it("n'annonce rien quand tout est stabilisé", async () => {
     server.use(
       http.get('*/api/v1/media/me', () =>
         HttpResponse.json({
