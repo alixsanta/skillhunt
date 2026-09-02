@@ -4,10 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthContextValue } from '@/features/auth/useAuth';
 import { AppHeader } from './AppHeader';
 
-vi.mock('@/features/chat/socket', () => ({
-  getChatSocket: () => ({ on: vi.fn(), off: vi.fn() }),
-}));
-
 function renderHeader(role: 'FREELANCE' | 'RECRUITER' | null) {
   const value = {
     user: role ? { userId: 'u-1', email: 'demo@skillhunt.io', role } : null,
