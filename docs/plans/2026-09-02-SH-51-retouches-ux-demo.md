@@ -22,6 +22,11 @@
   Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
   ```
 - **Ne pas toucher `src/pages/Login.tsx`** pour la règle de mot de passe (tâche 6) : durcir la validation à la **connexion** verrouillerait dehors tous les comptes créés sous l'ancienne règle des 8 caractères.
+- **Ne JAMAIS utiliser `git add -A` ni `git add .`.** Les additions au `.gitignore` qui excluent
+  les supports de soutenance vivent sur `chore/SH-51a-docs-soutenance`, pas sur cette branche :
+  `docs/soutenance/*.pptx` et `*.pdf` (5,4 Mo) y apparaissent donc en non suivis. Les ajouter à
+  l'historique est une décision qui a été prise en sens inverse. Stager fichier par fichier,
+  comme le fait chaque commande de commit de ce plan.
 - **Commandes :** front → `cd frontend-web` puis `npm run test`, `npm run lint`, `npm run build`. Back → `cd backend-core` puis `npm run test`, `npm run lint`, `npm run build`.
 
 ---
@@ -1071,7 +1076,18 @@ Ouvrir http://localhost:3001/api/docs, déplier `POST /api/v1/auth/register` et 
 
 - [ ] **Step 6 : Corriger le déroulé de démonstration**
 
-Dans `docs/soutenance/GUIDE_DEMO_JOUR_J.md`, la ligne 226 annonce « Le mot de passe fait huit caractères minimum. » — la remplacer par :
+⚠️ **`docs/soutenance/GUIDE_DEMO_JOUR_J.md` n'existe PAS sur cette branche** : il est commité sur
+`chore/SH-51a-docs-soutenance`, qui n'est pas encore fusionnée dans `develop`. Deux voies, selon
+l'état du dépôt au moment de l'exécution :
+
+- **La branche `chore/` a été fusionnée dans `develop`** → rapatrier `develop` dans la branche
+  de feature (`git merge develop`), puis appliquer la correction ici.
+- **Elle ne l'est pas encore** → **ne rien faire dans cette tâche** et appliquer la correction
+  directement sur `chore/SH-51a-docs-soutenance`, avec son propre commit. Cocher cette étape
+  seulement une fois que c'est fait.
+
+Dans les deux cas, la ligne 226 annonce « Le mot de passe fait huit caractères minimum. » — la
+remplacer par :
 
 ```
 Le mot de passe demande douze caractères, une minuscule, une majuscule et un chiffre.
