@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -36,9 +36,12 @@ function renderRegister() {
 }
 
 async function fillForm() {
+  // Mot de passe conforme à RegisterDto (SH-51) : 12+ caractères, minuscule, majuscule, chiffre.
+  const password = 'PiloteDrone2026';
   await userEvent.type(await screen.findByLabelText('Email'), 'nouvelle@skillhunt.io');
   await userEvent.type(screen.getByLabelText("Nom d'utilisateur"), 'nouvelle-pilote');
-  await userEvent.type(screen.getByLabelText('Mot de passe'), 'motdepasse8');
+  await userEvent.type(screen.getByLabelText('Mot de passe'), password);
+  await userEvent.type(screen.getByLabelText('Confirmation du mot de passe'), password);
   await userEvent.click(screen.getByRole('button', { name: 'Créer mon compte' }));
 }
 
@@ -149,6 +152,53 @@ describe("Écran d'inscription (SH-20)", () => {
     await userEvent.type(screen.getByLabelText('Mot de passe'), 'court');
     await userEvent.click(screen.getByRole('button', { name: 'Créer mon compte' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('au moins 8 caractères');
+    // SH-51 : la règle est passée de 8 caractères à un mot de passe robuste (12+, minuscule,
+    // majuscule, chiffre) ; le message a suivi.
+    expect(await screen.findByRole('alert')).toHaveTextContent('ne respecte pas toutes les règles');
+  });
+});
+
+describe('Inscription — robustesse du mot de passe (SH-51)', () => {
+  it('refuse un mot de passe faible sans émettre le moindre appel réseau', async () => {
+    // MSW est en `onUnhandledRequest: 'error'` : aucune route register n'est simulée ici,
+    // donc si le formulaire appelait l'API, le test échouerait de lui-même.
+    const user = userEvent.setup();
+    renderRegister();
+
+    await user.type(screen.getByLabelText(/^email$/i), 'jury@skillhunt.io');
+    await user.type(screen.getByLabelText(/nom d'utilisateur/i), 'PiloteJury');
+    await user.type(screen.getByLabelText(/^mot de passe$/i), 'motdepasse');
+    await user.type(screen.getByLabelText(/confirmation/i), 'motdepasse');
+    await user.click(screen.getByRole('button', { name: /créer mon compte/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/mot de passe/i);
+  });
+
+  it('signale une confirmation divergente', async () => {
+    const user = userEvent.setup();
+    renderRegister();
+
+    await user.type(screen.getByLabelText(/^email$/i), 'jury@skillhunt.io');
+    await user.type(screen.getByLabelText(/nom d'utilisateur/i), 'PiloteJury');
+    await user.type(screen.getByLabelText(/^mot de passe$/i), 'PiloteDrone2026');
+    await user.type(screen.getByLabelText(/confirmation/i), 'PiloteDrone2027');
+    await user.click(screen.getByRole('button', { name: /créer mon compte/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/ne correspondent pas/i);
+  });
+
+  it('coche les règles au fur et à mesure de la saisie', async () => {
+    const user = userEvent.setup();
+    renderRegister();
+
+    const liste = screen.getByRole('list', { name: /règles du mot de passe/i });
+    // Champ vide : aucune règle n'est encore respectée.
+    expect(within(liste).queryAllByRole('listitem', { name: /: respectée$/ })).toHaveLength(0);
+
+    await user.type(screen.getByLabelText(/^mot de passe$/i), 'PiloteDrone2026');
+
+    // L'état est lu par le NOM ACCESSIBLE, jamais par un attribut technique (convention du
+    // CLAUDE.md front). Le test prouve du même coup que la progression est audible (R6).
+    expect(within(liste).getAllByRole('listitem', { name: /: respectée$/ })).toHaveLength(4);
   });
 });

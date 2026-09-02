@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth, type RegisterInput } from '@/features/auth/useAuth';
+import { PASSWORD_RULES, isPasswordValid } from '@/features/auth/password-rules';
 import { CITIES } from '@/lib/cities';
 
 // ADMIN est volontairement absent : il n'est pas auto-attribuable (cf. SELF_ASSIGNABLE_ROLES backend).
@@ -17,6 +18,7 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [role, setRole] = useState<'FREELANCE' | 'RECRUITER'>('FREELANCE');
   const [cityName, setCityName] = useState(CITIES[0].name);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +28,14 @@ export default function Register() {
     event.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError('Le mot de passe doit faire au moins 8 caractères.');
+    // Validation stricte des entrées (C2.2.3) — mêmes règles que RegisterDto : un mot de
+    // passe non conforme n'atteint jamais le réseau.
+    if (!isPasswordValid(password)) {
+      setError('Le mot de passe ne respecte pas toutes les règles indiquées.');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError('Le mot de passe et sa confirmation ne correspondent pas.');
       return;
     }
 
@@ -95,6 +103,42 @@ export default function Register() {
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              aria-describedby={error ? 'register-error' : undefined}
+              className="border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white"
+            />
+          </div>
+
+          {/* Les règles sont affichées ET cochées en direct : l'utilisateur n'apprend pas
+              son erreur au moment de l'envoi. L'état est porté par l'`aria-label` de chaque
+              item, seule source lue aussi bien par les lecteurs d'écran que par les tests (R6). */}
+          <ul
+            aria-label="Règles du mot de passe"
+            className="text-hud-muted flex flex-col gap-1 text-xs"
+          >
+            {PASSWORD_RULES.map((regle) => {
+              const respectee = regle.test(password);
+              return (
+                <li
+                  key={regle.id}
+                  aria-label={`${regle.label} : ${respectee ? 'respectée' : 'non respectée'}`}
+                  className={respectee ? 'text-hud-positive' : undefined}
+                >
+                  {respectee ? '✓' : '•'} {regle.label}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="password-confirm" className="text-white">
+              Confirmation du mot de passe
+            </label>
+            <input
+              id="password-confirm"
+              type="password"
+              required
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
               aria-describedby={error ? 'register-error' : undefined}
               className="border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white"
             />
