@@ -82,3 +82,28 @@ describe('Page Mon compte — libellé du rôle (SH-51)', () => {
     expect(screen.queryByText('FREELANCE')).not.toBeInTheDocument();
   });
 });
+
+const RECRUITER_TOKEN = fakeJwt({
+  userId: 'u-2',
+  email: 'recruteur@skillhunt.io',
+  role: 'RECRUITER',
+});
+
+describe('Page Mon compte — étanchéité RBAC des actions (SH-51)', () => {
+  it("propose l'Armurerie à un freelance", async () => {
+    renderAccount();
+    expect(await screen.findByRole('link', { name: /mon armurerie/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /recherche/i })).not.toBeInTheDocument();
+  });
+
+  it("ne propose jamais l'Armurerie à un recruteur", async () => {
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), () =>
+        HttpResponse.json({ accessToken: RECRUITER_TOKEN, refreshToken: 'r' }),
+      ),
+    );
+    renderAccount();
+    expect(await screen.findByRole('link', { name: /recherche/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /armurerie/i })).not.toBeInTheDocument();
+  });
+});

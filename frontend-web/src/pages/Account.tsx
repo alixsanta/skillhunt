@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
 import { ROLE_LABELS } from '@/features/auth/role-labels';
+import { NAV_ITEMS } from '@/features/navigation/nav-items';
 
 // Première page protégée du front (SH-20). Elle sert de preuve de bout en bout du
 // parcours d'authentification, en attendant les écrans métier (Armurerie, SH-21a).
@@ -36,14 +37,16 @@ export default function Account() {
           </p>
         </div>
 
+        {/* Les actions DÉRIVENT de la navigation par rôle (SH-51) : `nav-items.ts` reste la
+            source unique de ce qu'un rôle a le droit de voir. Codées en dur, elles avaient
+            divergé — un RECRUITER se voyait proposer l'Armurerie, donc un 403. */}
         <div className="border-hud-border flex w-full flex-wrap justify-center gap-3 border-t pt-6">
-          <Button asChild>
-            <Link to="/mon-armurerie">Mon Armurerie</Link>
-          </Button>
-          {/* Chat contextuel (SH-24) : point d'entrée des deux rôles vers leurs conversations */}
-          <Button asChild variant="outline">
-            <Link to="/messages">Messages</Link>
-          </Button>
+          {user &&
+            NAV_ITEMS[user.role].map(({ to, label }, index) => (
+              <Button key={to} asChild variant={index === 0 ? 'default' : 'outline'}>
+                <Link to={to}>{label}</Link>
+              </Button>
+            ))}
           <Button variant="outline" onClick={handleLogout}>
             Se déconnecter
           </Button>
