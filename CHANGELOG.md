@@ -33,7 +33,24 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ## [Non publié]
 
-*Rien pour le moment.*
+### Sécurité
+
+**Résorption de la quatrième vague de dérive npm** (SH-49)
+- `qs` monté en **6.16.0** sur `backend-core` via override. Seule montée de cette vague à
+  toucher le **runtime de production** : `qs` est l'analyseur de chaînes de requête d'Express
+  (`@nestjs/platform-express` → `express@5.2.1` → `qs@6.15.2`), donc sur le chemin de toute
+  requête entrante — pagination et filtres de recherche compris.
+- `browserslist` monté en **4.28.8** sur `backend-core` et `frontend-web` (avis `high`),
+  et `fast-uri` en **3.1.7** sur `frontend-web`. Chaînes exclusivement **outillage de
+  développement** (`ts-jest` → `@babel/core`, résolution de schémas) : aucun effet sur les
+  artefacts déployés.
+- `npm audit --audit-level=high` repasse à **0 vulnérabilité** sur `backend-core` et à
+  la seule exception déjà documentée (`GHSA-jmr9-qjv8-65gv`) sur `frontend-web`.
+
+> Conformément au §0.3 de la [politique de dépendances](docs/exploitation/POLITIQUE_DEPENDANCES.md),
+> **aucun code n'a régressé** : ce sont les avis publiés qui ont bougé. Ces vagues sont traitées
+> dans une branche dédiée plutôt que dans la PR fonctionnelle qu'elles bloquent, pour que
+> l'historique distingue la veille du développement.
 
 ---
 
