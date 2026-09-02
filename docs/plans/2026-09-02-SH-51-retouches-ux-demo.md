@@ -1238,12 +1238,14 @@ describe('Inscription — robustesse du mot de passe (SH-51)', () => {
     renderRegister();
 
     const liste = screen.getByRole('list', { name: /règles du mot de passe/i });
+    // Champ vide : aucune règle n'est encore respectée.
+    expect(within(liste).queryAllByRole('listitem', { name: /: respectée$/ })).toHaveLength(0);
+
     await user.type(screen.getByLabelText(/^mot de passe$/i), 'PiloteDrone2026');
 
-    const respectees = within(liste)
-      .getAllByRole('listitem')
-      .filter((item) => item.getAttribute('data-respectee') === 'true');
-    expect(respectees).toHaveLength(4);
+    // L'état est lu par le NOM ACCESSIBLE, jamais par un attribut technique (convention du
+    // CLAUDE.md front). Le test prouve du même coup que la progression est audible (R6).
+    expect(within(liste).getAllByRole('listitem', { name: /: respectée$/ })).toHaveLength(4);
   });
 });
 ```
@@ -1298,8 +1300,8 @@ Puis, juste après le bloc `<div>` du champ « Mot de passe », insérer la list
 
 ```tsx
           {/* Les règles sont affichées ET cochées en direct : l'utilisateur n'apprend pas
-              son erreur au moment de l'envoi. `data-respectee` porte l'état pour les tests,
-              `aria-label` sur chaque item le porte pour les lecteurs d'écran (R6). */}
+              son erreur au moment de l'envoi. L'état est porté par l'`aria-label` de chaque
+              item, seule source lue aussi bien par les lecteurs d'écran que par les tests (R6). */}
           <ul
             aria-label="Règles du mot de passe"
             className="text-hud-muted flex flex-col gap-1 text-xs"
@@ -1309,7 +1311,6 @@ Puis, juste après le bloc `<div>` du champ « Mot de passe », insérer la list
               return (
                 <li
                   key={regle.id}
-                  data-respectee={respectee}
                   aria-label={`${regle.label} : ${respectee ? 'respectée' : 'non respectée'}`}
                   className={respectee ? 'text-hud-positive' : undefined}
                 >
@@ -1989,11 +1990,19 @@ describe('Catalogue de matériel (SH-51)', () => {
     expect(getModels('DRONE', 'Marque Confidentielle')).toEqual([]);
   });
 
-  it('couvre chaque catégorie du référentiel', () => {
-    // `Record<GearCategory, …>` l'impose déjà à la compilation ; ce test le prouve à
-    // l'exécution et documente l'intention.
+  it('propose des marques partout sauf dans le fourre-tout', () => {
     for (const categorie of GEAR_CATEGORIES) {
-      expect(() => getBrands(categorie)).not.toThrow();
+      const marques = getBrands(categorie);
+      if (categorie === 'OTHER') {
+        // Sans catalogue par nature : la saisie y est toujours entièrement libre.
+        expect(marques).toEqual([]);
+        continue;
+      }
+      expect(marques.length).toBeGreaterThan(0);
+      // Une marque annoncée sans aucun modèle serait une impasse pour l'utilisateur.
+      for (const marque of marques) {
+        expect(getModels(categorie, marque).length).toBeGreaterThan(0);
+      }
     }
   });
 });
