@@ -1,5 +1,5 @@
-import { Crosshair } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 
@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4 text-center">
       <div className="flex items-center gap-3">
-        <Crosshair className="text-hud-positive h-10 w-10" aria-hidden="true" />
+        <BrandMark className="text-hud-positive h-10 w-10" />
         {/* Le wordmark reste le <h1> de la page : chaque page garde un titre accessible (WCAG 2.4.6) */}
         <h1 className="text-4xl font-bold tracking-widest text-white">
           SKILL<span className="text-hud-positive">HUNT</span>
