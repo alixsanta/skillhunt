@@ -1,4 +1,4 @@
-import { MessageSquare, Radar, Warehouse, type LucideIcon } from 'lucide-react';
+import { MessageSquare, PlayCircle, Radar, Warehouse, type LucideIcon } from 'lucide-react';
 import type { UserRole } from '@/features/auth/types';
 
 export interface NavItem {
@@ -17,6 +17,7 @@ export interface NavItem {
 export const NAV_ITEMS: Record<UserRole, readonly NavItem[]> = {
   FREELANCE: [
     { to: '/mon-armurerie', label: 'Mon Armurerie', icon: Warehouse },
+    { to: '/portfolio', label: 'Portfolio', icon: PlayCircle },
     { to: '/messages', label: 'Messages', icon: MessageSquare },
   ],
   RECRUITER: [

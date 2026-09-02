@@ -23,6 +23,11 @@ import { CreateMediaDto } from './dto/create-media.dto';
 import { QueryMediaDto } from './dto/query-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import {
+  CreateMediaResponseDto,
+  PaginatedMediaDto,
+  PublicMediaDto,
+} from './dto/media-response.dto';
+import {
   JwtAuthGuard,
   RolesGuard,
   Roles,
@@ -49,7 +54,11 @@ export class MediaController {
       'Le navigateur dépose le fichier DIRECTEMENT sur le stockage objet : aucun octet ' +
       'vidéo ne transite par l\'API. Confirmer ensuite via POST /media/{id}/complete.',
   })
-  @ApiResponse({ status: 201, description: 'Média déclaré, URL de dépôt délivrée.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Média déclaré, URL de dépôt délivrée.',
+    type: CreateMediaResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Entrée invalide ou taille annoncée hors plafond.' })
   @ApiResponse({ status: 409, description: 'Quota de médias atteint.' })
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateMediaDto) {
@@ -60,7 +69,11 @@ export class MediaController {
   @Get('me')
   @Roles(UserRole.FREELANCE)
   @ApiOperation({ summary: 'Lister ses propres médias (filtres + pagination)' })
-  @ApiResponse({ status: 200, description: 'Liste paginée des médias du freelance.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Liste paginée des médias du freelance.',
+    type: PaginatedMediaDto,
+  })
   getMine(@CurrentUser() user: JwtPayload, @Query() query: QueryMediaDto) {
     // Étanchéité garantie par l'id du token : un Freelance ne voit que SES médias.
     return this.mediaService.getMine(user.userId, query);
@@ -69,7 +82,7 @@ export class MediaController {
   @Patch(':id')
   @Roles(UserRole.FREELANCE)
   @ApiOperation({ summary: 'Modifier le titre ou la description de son média' })
-  @ApiResponse({ status: 200, description: 'Média mis à jour.' })
+  @ApiResponse({ status: 200, description: 'Média mis à jour.', type: PublicMediaDto })
   @ApiResponse({ status: 404, description: 'Média introuvable ou appartenant à un autre compte.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -88,7 +101,11 @@ export class MediaController {
       'Vérifie la taille et le type RÉELS de l\'objet déposé, puis enfile le job de ' +
       'transcodage. Un dépôt ne correspondant pas à sa déclaration est purgé.',
   })
-  @ApiResponse({ status: 202, description: 'Dépôt vérifié, transcodage enfilé.' })
+  @ApiResponse({
+    status: 202,
+    description: 'Dépôt vérifié, transcodage enfilé.',
+    type: PublicMediaDto,
+  })
   @ApiResponse({ status: 400, description: 'Aucun fichier déposé, ou dépôt non conforme (purgé).' })
   @ApiResponse({ status: 404, description: 'Média introuvable ou appartenant à un autre compte.' })
   @ApiResponse({ status: 409, description: 'Média déjà confirmé.' })

@@ -1023,6 +1023,78 @@ export interface components {
              */
             sizeBytes: number;
         };
+        MediaRenditionDto: {
+            /** @example 720p */
+            name: string;
+            /** @example 1280 */
+            width: number;
+            /** @example 720 */
+            height: number;
+            /**
+             * @description Débit cible en bits par seconde
+             * @example 2800000
+             */
+            bandwidth: number;
+        };
+        PublicMediaDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            freelanceId: string;
+            /** @example Survol de chantier — Toulouse */
+            title: string;
+            description: string | null;
+            /** @enum {string} */
+            type: "VIDEO" | "VIDEO_360";
+            /** @enum {string} */
+            status: "DRAFT" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+            /** @description Durée en secondes, sondée au transcodage */
+            durationSeconds: number | null;
+            width: number | null;
+            height: number | null;
+            /** @description Taille réelle du master, en octets */
+            sizeBytes: number | null;
+            /** @example video/mp4 */
+            mimeType: string;
+            renditions: components["schemas"]["MediaRenditionDto"][] | null;
+            /** @description Message court en cas d'échec */
+            errorReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            processedAt: string | null;
+        };
+        UploadInstructionsDto: {
+            /** @description URL PUT signée, de courte durée */
+            url: string;
+            /**
+             * @example PUT
+             * @enum {string}
+             */
+            method: "PUT";
+            /** @description En-têtes à envoyer tels quels — le Content-Type entre dans la signature */
+            headers: {
+                [key: string]: string;
+            };
+            /**
+             * @description Durée de validité de l'URL, en secondes
+             * @example 900
+             */
+            expiresIn: number;
+        };
+        CreateMediaResponseDto: {
+            media: components["schemas"]["PublicMediaDto"];
+            upload: components["schemas"]["UploadInstructionsDto"];
+        };
+        PaginatedMediaDto: {
+            items: components["schemas"]["PublicMediaDto"][];
+            /** @example 3 */
+            total: number;
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            limit: number;
+        };
         UpdateMediaDto: {
             title?: string;
             description?: string;
@@ -2001,7 +2073,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CreateMediaResponseDto"];
+                };
             };
             /** @description Entrée invalide ou taille annoncée hors plafond. */
             400: {
@@ -2051,7 +2125,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PaginatedMediaDto"];
+                };
             };
             /** @description Token JWT manquant, invalide ou expiré (401) */
             401: {
@@ -2089,7 +2165,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PublicMediaDto"];
+                };
             };
             /** @description Token JWT manquant, invalide ou expiré (401) */
             401: {
@@ -2130,7 +2208,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PublicMediaDto"];
+                };
             };
             /** @description Aucun fichier déposé, ou dépôt non conforme (purgé). */
             400: {
