@@ -67,7 +67,7 @@
         "@types/jest": "^30.0.0",
         "@types/multer": "^2.1.0",
         "@types/node": "^20.0.0",
-        "eslint": "^9.39.4",
+        "eslint": "^10.9.1",
         "jest": "^30.4.2",
         "ts-jest": "^29.4.11",
         "ts-node": "^10.9.2",
