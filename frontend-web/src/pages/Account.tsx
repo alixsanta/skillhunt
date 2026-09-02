@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
 import { TwoFactorSettings } from '@/features/auth/TwoFactorSettings';
+import { ROLE_LABELS } from '@/features/auth/role-labels';
 
 // Première page protégée du front (SH-20). Elle sert de preuve de bout en bout du
 // parcours d'authentification, en attendant les écrans métier (Armurerie, SH-21a).
@@ -29,7 +30,10 @@ export default function Account() {
         <div className="flex flex-col items-center gap-1">
           <h1 className="text-2xl font-bold text-white">Mon compte</h1>
           <p className="text-white">{user?.email}</p>
-          <p className="text-hud-muted text-sm tracking-widest uppercase">{user?.role}</p>
+          {/* Libellé français, jamais la valeur d'enum du JWT (SH-51). */}
+          <p className="text-hud-muted text-sm tracking-widest uppercase">
+            {user ? ROLE_LABELS[user.role] : null}
+          </p>
         </div>
 
         <div className="border-hud-border flex w-full flex-wrap justify-center gap-3 border-t pt-6">

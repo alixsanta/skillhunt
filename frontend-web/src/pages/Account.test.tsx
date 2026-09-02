@@ -74,3 +74,11 @@ describe('Page Mon compte — déconnexion (SH-20)', () => {
     expect(await screen.findByText('Écran de connexion')).toBeInTheDocument();
   });
 });
+
+describe('Page Mon compte — libellé du rôle (SH-51)', () => {
+  it('affiche « Freelance » et jamais la valeur technique', async () => {
+    renderAccount();
+    expect(await screen.findByText('Freelance')).toBeInTheDocument();
+    expect(screen.queryByText('FREELANCE')).not.toBeInTheDocument();
+  });
+});
