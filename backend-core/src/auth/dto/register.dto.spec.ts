@@ -87,3 +87,52 @@ describe('RegisterDto — position conditionnelle par rôle (SH-34)', () => {
     expect(dto.location!.latitude).toBeCloseTo(43.6045);
   });
 });
+
+function build(password: string): RegisterDto {
+  return plainToInstance(RegisterDto, {
+    email: 'pilote@skillhunt.io',
+    username: 'PiloteJury',
+    password,
+    role: UserRole.RECRUITER,
+  });
+}
+
+async function messagesFor(password: string): Promise<string[]> {
+  const errors = await validate(build(password));
+  return errors.flatMap((error) => Object.values(error.constraints ?? {}));
+}
+
+describe('RegisterDto — robustesse du mot de passe (SH-51, C2.2.3)', () => {
+  it('accepte un mot de passe conforme', async () => {
+    expect(await messagesFor('PiloteDrone2026')).toHaveLength(0);
+  });
+
+  it('refuse en dessous de douze caractères', async () => {
+    expect(await messagesFor('Pilote2026')).toContain(
+      'Le mot de passe doit faire au moins 12 caractères',
+    );
+  });
+
+  it('refuse un mot de passe sans majuscule', async () => {
+    expect(await messagesFor('pilotedrone2026')).toContain(
+      'Le mot de passe doit contenir au moins une majuscule',
+    );
+  });
+
+  it('refuse un mot de passe sans minuscule', async () => {
+    expect(await messagesFor('PILOTEDRONE2026')).toContain(
+      'Le mot de passe doit contenir au moins une minuscule',
+    );
+  });
+
+  it('refuse un mot de passe sans chiffre', async () => {
+    expect(await messagesFor('PiloteDroneAAAA')).toContain(
+      'Le mot de passe doit contenir au moins un chiffre',
+    );
+  });
+
+  it('laisse passer le mot de passe des comptes de démonstration', async () => {
+    // Non-régression : la nouvelle règle ne doit invalider aucun compte existant.
+    expect(await messagesFor('MotDePasse2026!')).toHaveLength(0);
+  });
+});

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional,
-  IsDefined, IsLatitude, IsLongitude, ValidateIf, ValidateNested,
+  IsDefined, IsLatitude, IsLongitude, ValidateIf, ValidateNested, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserRole } from '../../common/enums';
@@ -40,9 +40,18 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Le nom d\'utilisateur ne peut pas être vide' })
   username!: string;
 
-  @ApiProperty({ example: 'P@ssw0rdSecureDrone2026', description: 'Mot de passe fort (8 caractères minimum)' })
+  // Robustesse du mot de passe (SH-51 — C2.2.3). La règle ne s'applique qu'à la CRÉATION :
+  // aucun compte existant n'est invalidé, et `LoginDto` reste volontairement permissif.
+  @ApiProperty({
+    example: 'P@ssw0rdSecureDrone2026',
+    description:
+      'Mot de passe : 12 caractères minimum, dont au moins une minuscule, une majuscule et un chiffre',
+  })
   @IsString()
-  @MinLength(8, { message: 'Le mot de passe doit faire au moins 8 caractères' })
+  @MinLength(12, { message: 'Le mot de passe doit faire au moins 12 caractères' })
+  @Matches(/[a-z]/, { message: 'Le mot de passe doit contenir au moins une minuscule' })
+  @Matches(/[A-Z]/, { message: 'Le mot de passe doit contenir au moins une majuscule' })
+  @Matches(/[0-9]/, { message: 'Le mot de passe doit contenir au moins un chiffre' })
   password!: string;
 
   @ApiProperty({
