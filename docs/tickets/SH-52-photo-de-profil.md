@@ -91,8 +91,10 @@ réduit à mes initiales.
     * Validation stricte du **type MIME réel** par inspection des **magic bytes** du contenu
       reçu — jamais la seule extension ni le `Content-Type` déclaré par le client.
     * Bucket **privé** ; accès en lecture **uniquement** par **Signed URL S3 à durée courte**
-      (~15 min), comme pour les certifications (SH-10) et les médias (SH-17). Aucun lien
-      permanent, aucune ACL publique.
+      (~15 min), comme pour les certifications (SH-10, `certification.service.ts`, déjà en
+      place). Le même principe est prévu pour les médias par SH-17, mais ce ticket reste au
+      Backlog à ce jour : aucune lecture par Signed URL n'existe encore pour les médias dans le
+      code. Aucun lien permanent, aucune ACL publique.
     * Chiffrement au repos **AES-256**, porté nativement par `StorageService.put` (SH-31).
     * Remplacement d'une ancienne photo : purge de l'objet précédent (`delete`) pour éviter
       l'accumulation silencieuse d'objets orphelins dans le bucket.
@@ -105,8 +107,12 @@ réduit à mes initiales.
 * **Frontend (React) :**
     * `InitialsAvatar` reste le composant de repli : il s'affiche tant que `avatarUrl` est
       absent ou en erreur de chargement — aucune régression visuelle pour les comptes sans photo.
-    * Nouveau composant d'upload sur `pages/Account.tsx`, réutilisant le pattern de zone de dépôt
-      + barre de progression déjà établi pour les certifications (cf. `FileUploader.tsx`).
+      C'est aujourd'hui le seul élément réutilisable côté front pour ce ticket.
+    * Aucun composant de dépôt de fichier réutilisable n'existe à ce jour côté front (il n'y a ni
+      `FileUploader`, ni écran de certifications dans `frontend-web/src` — ce dernier reste
+      purement backend, cf. `certification.service.ts`). L'écran d'upload (zone de dépôt + barre
+      de progression) est donc **à construire intégralement** sur `pages/Account.tsx` dans le
+      cadre de ce ticket, et non à réutiliser.
 
 ### 5. Definition of Done (DoD)
 - [ ] Code review effectuée et validée.
