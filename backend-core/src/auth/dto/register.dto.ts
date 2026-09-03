@@ -40,15 +40,22 @@ export class RegisterDto {
   // une chaîne non contrôlée de plusieurs Ko produirait un token que la gateway rejette (431,
   // buffers d'en-tête) sur toutes les requêtes du compte (C2.2.3).
   @ApiProperty({
-    example: 'MarcusThorne',
+    example: 'Marcus Thorne',
     description:
-      "Nom d'utilisateur unique (50 caractères max, lettres/chiffres/'-'/'_'/'.' uniquement)",
+      "Nom d'affichage (50 caractères max). Lettres, chiffres, espaces, apostrophes, tirets, " +
+      "points et tirets bas ; doit commencer par une lettre ou un chiffre.",
   })
   @IsString()
   @IsNotEmpty({ message: 'Le nom d\'utilisateur ne peut pas être vide' })
   @MaxLength(50, { message: "Le nom d'utilisateur ne doit pas dépasser 50 caractères" })
-  @Matches(/^[a-zA-Z0-9_.-]+$/, {
-    message: "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+  // Jeu de caractères d'un NOM D'AFFICHAGE, pas d'un identifiant technique : les espaces et
+  // les lettres accentuées sont légitimes (« Marcus Thorne », « Élodie O'Neil »). Ce qui est
+  // exclu, ce sont les caractères de contrôle et le balisage. Une seule répétition, non
+  // ambiguë : aucun retour sur trace catastrophique possible (C2.2.3).
+  @Matches(/^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$/u, {
+    message:
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+      "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
   })
   username!: string;
 

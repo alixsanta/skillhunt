@@ -160,21 +160,33 @@ describe('RegisterDto — validation du username (SH-51, C2.2.3)', () => {
     );
   });
 
-  it('refuse un nom contenant des espaces', async () => {
-    expect(await usernameErrors('Marcus Thorne')).toContain(
-      "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+  // Un nom d'AFFICHAGE, pas un identifiant technique : l'espace d'un nom composé et les
+  // lettres accentuées sont légitimes. Les refuser rejetterait des utilisateurs réels.
+  it.each(['Marcus Thorne', "Élodie O'Neil", 'Jean-Pierre M.', 'Mila M'])(
+    "accepte le nom d'affichage %s",
+    async (username) => {
+      expect(await usernameErrors(username)).toHaveLength(0);
+    },
+  );
+
+  it('refuse un nom commençant par une espace', async () => {
+    expect(await usernameErrors('  Marcus')).toContain(
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+        "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
     );
   });
 
   it('refuse un nom contenant des caractères de contrôle', async () => {
     expect(await usernameErrors('Marcus\nThorne')).toContain(
-      "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+        "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
     );
   });
 
   it('refuse un nom contenant des caractères spéciaux hors jeu autorisé', async () => {
     expect(await usernameErrors('<script>alert(1)</script>')).toContain(
-      "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+        "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
     );
   });
 
