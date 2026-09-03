@@ -28,6 +28,11 @@ describe('PASSWORD_RULES (SH-51)', () => {
   // PASSWORD_RULES à un tableau écrit en dur dans ce même fichier — sinon un
   // changement du DTO backend (ex. 12 → 14 caractères) ne ferait échouer aucun
   // test front alors que le commentaire promet un miroir exact.
+  //
+  // Pour que ce verrou morde aussi quand c'est le BACKEND qui dérive (et pas seulement le
+  // front), .github/workflows/frontend-ci.yml écoute explicitement le chemin de
+  // register.dto.ts en plus de frontend-web/** — sans quoi une PR qui ne touche que ce DTO
+  // ne déclencherait jamais cette suite (SH-51).
   describe('reste aligné sur RegisterDto.password (lecture du DTO backend)', () => {
     // process.cwd() vaut `frontend-web` quand la suite tourne (cf. gear-meta.test.ts) :
     // on remonte donc d'un niveau vers la racine du monorepo pour atteindre backend-core.
