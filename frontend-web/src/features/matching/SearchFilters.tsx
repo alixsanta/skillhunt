@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { CITIES } from '@/lib/cities';
+import { SKILL_SUGGESTIONS } from './skill-suggestions';
 
 const inputClass =
   'border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white ' +
@@ -26,20 +27,32 @@ interface SearchFiltersProps {
  * rayon entre 1 et 500 km, avant tout appel réseau.
  */
 export function SearchFilters({ onSubmit, isPending, error }: SearchFiltersProps) {
-  const [skillsRaw, setSkillsRaw] = useState('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillDraft, setSkillDraft] = useState('');
   const [cityName, setCityName] = useState(CITIES[0].name);
   const [radiusKm, setRadiusKm] = useState('50');
   const [clientError, setClientError] = useState<string | null>(null);
+
+  function toggleSkill(skill: string) {
+    setSkills((courantes) =>
+      courantes.includes(skill)
+        ? courantes.filter((valeur) => valeur !== skill)
+        : [...courantes, skill],
+    );
+  }
+
+  function addDraftSkill() {
+    const skill = skillDraft.trim().toLowerCase();
+    if (skill === '' || skills.includes(skill)) return;
+    setSkills((courantes) => [...courantes, skill]);
+    setSkillDraft('');
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setClientError(null);
 
     // Validation client (C2.2.3) : mêmes bornes que SearchMatchDto — évite un 400 assuré.
-    const skills = skillsRaw
-      .split(',')
-      .map((skill) => skill.trim())
-      .filter(Boolean);
     if (skills.length === 0) {
       setClientError('Renseigne au moins une compétence.');
       return;
@@ -56,17 +69,55 @@ export function SearchFilters({ onSubmit, isPending, error }: SearchFiltersProps
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="skills" className="text-white">
-          Compétences recherchées (séparées par des virgules)
-        </label>
-        <input
-          id="skills"
-          value={skillsRaw}
-          onChange={(event) => setSkillsRaw(event.target.value)}
-          placeholder="pilotage drone, thermographie, inspection"
-          className={inputClass}
-        />
+      {/* Puces à bascule (SH-51) : de vrais <button> porteurs d'`aria-pressed`, pas des
+          <div> cliquables — l'état est ainsi audible et la navigation au clavier native. */}
+      <div className="flex flex-col gap-2">
+        <span className="text-white" id="skills-legende">
+          Compétences recherchées
+        </span>
+        <div className="flex flex-wrap gap-2" role="group" aria-labelledby="skills-legende">
+          {[...SKILL_SUGGESTIONS, ...skills.filter((s) => !SKILL_SUGGESTIONS.includes(s))].map(
+            (skill) => {
+              const active = skills.includes(skill);
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => toggleSkill(skill)}
+                  className={
+                    active
+                      ? 'bg-hud-positive/15 border-hud-positive text-hud-positive rounded-full border px-3 py-1 text-sm font-bold'
+                      : 'border-hud-border bg-hud-card text-hud-muted hover:text-white rounded-full border px-3 py-1 text-sm'
+                  }
+                >
+                  {skill}
+                </button>
+              );
+            },
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            id="skill-draft"
+            aria-label="Ajouter une compétence"
+            value={skillDraft}
+            onChange={(event) => setSkillDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                // Empêche la soumission du formulaire : Entrée ajoute la compétence.
+                event.preventDefault();
+                addDraftSkill();
+              }
+            }}
+            placeholder="Autre compétence…"
+            className={`${inputClass} flex-1`}
+          />
+          <Button type="button" variant="outline" onClick={addDraftSkill}>
+            Ajouter
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-4">
@@ -88,18 +139,21 @@ export function SearchFilters({ onSubmit, isPending, error }: SearchFiltersProps
           </select>
         </div>
 
-        <div className="flex w-32 flex-col gap-1">
+        <div className="flex min-w-56 flex-1 flex-col gap-1">
+          {/* La valeur figure DANS le libellé : elle est ainsi annoncée à chaque
+              déplacement du curseur, sans région live supplémentaire (R6). */}
           <label htmlFor="radius" className="text-white">
-            Rayon (km)
+            Rayon de mission — {radiusKm} km
           </label>
           <input
             id="radius"
-            type="number"
+            type="range"
             min={1}
             max={500}
+            step={1}
             value={radiusKm}
             onChange={(event) => setRadiusKm(event.target.value)}
-            className={inputClass}
+            className="accent-hud-positive mt-3"
           />
         </div>
       </div>

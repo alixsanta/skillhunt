@@ -12,7 +12,7 @@ import Search from './Search';
 // La carte a ses propres tests (SearchMap.test.tsx) ; ici on vérifie seulement QUAND elle
 // apparaît — jsdom ne rend pas de vraie carte Leaflet.
 vi.mock('@/features/matching/SearchMap', () => ({
-  SearchMap: () => <div data-testid="search-map" />,
+  SearchMap: () => <div role="region" aria-label="Carte des freelances" />,
 }));
 
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
@@ -47,7 +47,10 @@ function renderPage() {
 }
 
 async function fillAndSubmit() {
-  await userEvent.type(screen.getByLabelText(/compétences/i), 'pilotage drone, thermographie');
+  // Les compétences se choisissent désormais via les puces à bascule (SH-51), plus un
+  // champ texte séparé par des virgules.
+  await userEvent.click(screen.getByRole('button', { name: /pilotage drone/i }));
+  await userEvent.click(screen.getByRole('button', { name: /^thermographie$/i }));
   await userEvent.selectOptions(screen.getByLabelText(/lieu de mission/i), 'Toulouse');
   await userEvent.click(screen.getByRole('button', { name: 'Lancer la recherche' }));
 }
@@ -83,15 +86,17 @@ describe('Page Recherche de freelances (SH-22)', () => {
     expect(body.lon).toBeCloseTo(1.4442, 2);
   });
 
-  it('affiche la carte de répartition avec les résultats, jamais sans (SH-23)', async () => {
+  it('affiche la carte de répartition avec les résultats (SH-23)', async () => {
     server.use(http.post(url('/api/v1/matching/search'), () => HttpResponse.json(RESULTS)));
 
     renderPage();
-    expect(screen.queryByTestId('search-map')).not.toBeInTheDocument();
+    // La carte est visible dès l'arrivée depuis SH-51 ; elle le reste une fois les
+    // résultats reçus — c'est le même panneau, pas un remontage conditionnel.
+    expect(screen.getByRole('region', { name: /carte des freelances/i })).toBeInTheDocument();
 
     await fillAndSubmit();
     await screen.findAllByRole('listitem');
-    expect(screen.getByTestId('search-map')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /carte des freelances/i })).toBeInTheDocument();
   });
 
   it('présente les résultats dans une liste nommée', async () => {
@@ -130,18 +135,18 @@ describe('Page Recherche de freelances (SH-22)', () => {
     );
   });
 
-  it('refuse un rayon hors bornes (1..500) sans appel réseau', async () => {
+  it('borne le rayon de mission entre 1 et 500 km', () => {
+    // Depuis SH-51 le rayon se règle au curseur natif (type="range") : le navigateur
+    // (et jsdom, vérifié en pratique) refuse structurellement toute valeur hors de
+    // [min, max], donc « 900 » ne peut plus être saisi pour déclencher le message
+    // d'erreur client — ce scénario n'est plus atteignable depuis l'UI. On vérifie à la
+    // place que les bornes annoncées au navigateur sont bien les mêmes (1..500), qui sont
+    // aussi celles revalidées dans `handleSubmit` en filet de sécurité (defense in depth).
     renderPage();
 
-    await userEvent.type(screen.getByLabelText(/compétences/i), 'pilotage drone');
     const radius = screen.getByLabelText(/rayon/i);
-    await userEvent.clear(radius);
-    await userEvent.type(radius, '900');
-    await userEvent.click(screen.getByRole('button', { name: 'Lancer la recherche' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Le rayon doit être compris entre 1 et 500 km.',
-    );
+    expect(radius).toHaveAttribute('min', '1');
+    expect(radius).toHaveAttribute('max', '500');
   });
 
   it('affiche un état vide explicite quand aucun freelance ne correspond', async () => {
@@ -178,5 +183,39 @@ describe('Page Recherche de freelances (SH-22)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Lancer la recherche' }));
 
     expect(await screen.findByText('pilote-pro')).toBeInTheDocument();
+  });
+});
+
+describe('Recherche — saisie visuelle (SH-51)', () => {
+  it('propose les compétences en boutons à bascule', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const puce = screen.getByRole('button', { name: /pilotage drone/i });
+    expect(puce).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(puce);
+    expect(puce).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(puce);
+    expect(puce).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('accepte une compétence absente des suggestions', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/ajouter une compétence/i), 'bathymétrie{Enter}');
+    expect(screen.getByRole('button', { name: /bathymétrie/i })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('affiche la carte avant toute recherche', () => {
+    renderPage();
+    // La carte n'attend plus une première soumission : le recruteur voit son périmètre
+    // de mission dès l'arrivée (SH-51).
+    expect(screen.getByRole('region', { name: /carte des freelances/i })).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { useMatchSearch } from '@/features/matching/useMatchSearch';
 import { SearchFilters, type SearchCriteria } from '@/features/matching/SearchFilters';
 import { SearchResultCard } from '@/features/matching/SearchResultCard';
+import { CITIES } from '@/lib/cities';
 
 // Leaflet (~55 kB gzip) est chargé PARESSEUSEMENT : il ne pèse ni sur le bundle initial
 // ni sur les visiteurs qui ne lancent aucune recherche (éco-conception, SH-28).
@@ -20,11 +21,14 @@ export default function Search() {
 
   // Périmètre réellement soumis (SH-23) : la carte doit refléter la RECHERCHE affichée,
   // pas l'état courant du formulaire (que l'utilisateur peut modifier sans relancer).
+  // La carte est visible DÈS L'ARRIVÉE (SH-51), centrée sur la ville par défaut : le
+  // recruteur voit son périmètre de mission avant sa première recherche, là où l'écran
+  // s'ouvrait sur un vide. `SearchFilters` part des mêmes valeurs par défaut.
   const [submittedArea, setSubmittedArea] = useState<{
     lat: number;
     lon: number;
     radiusKm: number;
-  } | null>(null);
+  }>({ lat: CITIES[0].lat, lon: CITIES[0].lon, radiusKm: 50 });
   // Fiche survolée côté liste (SH-46) : met en évidence le marqueur correspondant sur la carte.
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
@@ -47,15 +51,12 @@ export default function Search() {
       {/* Barre de filtres pleine largeur */}
       <div className="border-hud-border bg-hud-card border-b p-4">
         <div className="mx-auto flex max-w-6xl flex-col gap-4">
-          <header className="flex flex-col gap-1">
-            <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
-              Recherche de freelances
-            </h1>
-            <p className="text-hud-muted text-sm">
-              Score de matching multicritères : compétences, matériel validé et distance au lieu de
-              mission.
-            </p>
-          </header>
+          {/* Titre court (SH-51) : la phrase sur le score multicritères était du jargon
+              interne et mangeait la hauteur utile au-dessus de la carte. Le détail du
+              score reste lisible sur chaque carte de résultat, là où il a du sens. */}
+          <h1 className="text-2xl font-bold tracking-widest text-white uppercase">
+            Trouver un freelance
+          </h1>
 
           <SearchFilters onSubmit={handleSearch} isPending={search.isPending} error={apiError} />
         </div>
@@ -95,16 +96,14 @@ export default function Search() {
         {/* Répartition géographique (SH-23) : centre + rayon de mission + un marqueur
             par freelance localisé. Panneau plein cadre côté carte (SH-46). */}
         <div className="min-h-80 flex-1">
-          {submittedArea && (
-            <Suspense fallback={null}>
-              <SearchMap
-                center={{ lat: submittedArea.lat, lon: submittedArea.lon }}
-                radiusKm={submittedArea.radiusKm}
-                results={search.data ?? []}
-                highlightedId={highlightedId}
-              />
-            </Suspense>
-          )}
+          <Suspense fallback={null}>
+            <SearchMap
+              center={{ lat: submittedArea.lat, lon: submittedArea.lon }}
+              radiusKm={submittedArea.radiusKm}
+              results={search.data ?? []}
+              highlightedId={highlightedId}
+            />
+          </Suspense>
         </div>
       </div>
     </div>
