@@ -6,7 +6,19 @@ import { getHomeRoute } from '@/features/navigation/home-route';
 
 // Page d'accueil (SH-19), enrichie de l'état de session (SH-20), en hero HUD (SH-46).
 export default function Home() {
-  const { user } = useAuth();
+  const { user, status } = useAuth();
+
+  // Tant que le refresh silencieux du démarrage est en vol, on ne conclut RIEN : décider sur
+  // `user` seul (nul pendant la restauration) ferait clignoter le hero public avant un saut
+  // vers l'écran du rôle pour un utilisateur déjà connecté. Même approche que ProtectedRoute
+  // (SH-20), pour une seule façon d'attendre la session dans toute l'application (SH-51).
+  if (status === 'restoring') {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Chargement de votre session…</p>
+      </main>
+    );
+  }
 
   // Un utilisateur connecté n'a rien à faire sur la vitrine (SH-51) : il est mené à
   // l'écran de travail de son rôle. Le hero reste la page d'accueil du visiteur anonyme.

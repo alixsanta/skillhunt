@@ -156,6 +156,28 @@ describe("Écran d'inscription (SH-20)", () => {
     // majuscule, chiffre) ; le message a suivi.
     expect(await screen.findByRole('alert')).toHaveTextContent('ne respecte pas toutes les règles');
   });
+
+  it("n'affiche pas le formulaire tant que la session est en cours de restauration (SH-51)", async () => {
+    // Non-régression : Register décidait sur `user` seul. AuthProvider démarre en status
+    // 'restoring' avec `user` nul le temps du refresh silencieux — un utilisateur déjà connecté
+    // voyait donc l'écran d'inscription avant un saut vers son écran de travail.
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return new HttpResponse(null, { status: 401 });
+      }),
+    );
+
+    renderRegister();
+
+    // Même texte d'attente que ProtectedRoute : un seul comportement à expliquer.
+    expect(screen.getByText('Chargement de votre session…')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Créer un compte' })).not.toBeInTheDocument();
+
+    // Une fois la restauration terminée (ici : échec, visiteur anonyme), le formulaire apparaît.
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument();
+  });
 });
 
 describe('Inscription — robustesse du mot de passe (SH-51)', () => {
@@ -165,7 +187,7 @@ describe('Inscription — robustesse du mot de passe (SH-51)', () => {
     const user = userEvent.setup();
     renderRegister();
 
-    await user.type(screen.getByLabelText(/^email$/i), 'jury@skillhunt.io');
+    await user.type(await screen.findByLabelText(/^email$/i), 'jury@skillhunt.io');
     await user.type(screen.getByLabelText(/nom d'utilisateur/i), 'PiloteJury');
     await user.type(screen.getByLabelText(/^mot de passe$/i), 'motdepasse');
     await user.type(screen.getByLabelText(/confirmation/i), 'motdepasse');
@@ -178,7 +200,7 @@ describe('Inscription — robustesse du mot de passe (SH-51)', () => {
     const user = userEvent.setup();
     renderRegister();
 
-    await user.type(screen.getByLabelText(/^email$/i), 'jury@skillhunt.io');
+    await user.type(await screen.findByLabelText(/^email$/i), 'jury@skillhunt.io');
     await user.type(screen.getByLabelText(/nom d'utilisateur/i), 'PiloteJury');
     await user.type(screen.getByLabelText(/^mot de passe$/i), 'PiloteDrone2026');
     await user.type(screen.getByLabelText(/confirmation/i), 'PiloteDrone2027');
@@ -191,7 +213,7 @@ describe('Inscription — robustesse du mot de passe (SH-51)', () => {
     const user = userEvent.setup();
     renderRegister();
 
-    const liste = screen.getByRole('list', { name: /règles du mot de passe/i });
+    const liste = await screen.findByRole('list', { name: /règles du mot de passe/i });
     // Champ vide : aucune règle n'est encore respectée.
     expect(within(liste).queryAllByRole('listitem', { name: /: respectée$/ })).toHaveLength(0);
 

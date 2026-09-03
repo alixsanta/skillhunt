@@ -5,7 +5,7 @@ import { useAuth } from '@/features/auth/useAuth';
 import { getHomeRoute } from '@/features/navigation/home-route';
 
 export default function Login() {
-  const { user, login, verifyTwoFactor } = useAuth();
+  const { user, status, login, verifyTwoFactor } = useAuth();
   const location = useLocation();
 
   const [email, setEmail] = useState('');
@@ -64,6 +64,18 @@ export default function Login() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Tant que le refresh silencieux du démarrage est en vol, on ne conclut RIEN : décider sur
+  // `user` seul (nul pendant la restauration) ferait clignoter le formulaire avant un saut vers
+  // l'écran du rôle pour un utilisateur déjà connecté. Même approche que ProtectedRoute (SH-20),
+  // pour une seule façon d'attendre la session dans toute l'application (SH-51).
+  if (status === 'restoring') {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Chargement de votre session…</p>
+      </main>
+    );
   }
 
   // Redirection PAR RENDU une fois la session ouverte (SH-51). Un `navigate()` dans le

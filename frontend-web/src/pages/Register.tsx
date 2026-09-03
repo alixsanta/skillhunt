@@ -15,7 +15,7 @@ const ROLES = [
 ] as const;
 
 export default function Register() {
-  const { user, register } = useAuth();
+  const { user, status, register } = useAuth();
 
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -58,6 +58,18 @@ export default function Register() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Tant que le refresh silencieux du démarrage est en vol, on ne conclut RIEN : décider sur
+  // `user` seul (nul pendant la restauration) ferait clignoter le formulaire avant un saut vers
+  // l'écran du rôle pour un utilisateur déjà connecté. Même approche que ProtectedRoute (SH-20),
+  // pour une seule façon d'attendre la session dans toute l'application (SH-51).
+  if (status === 'restoring') {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Chargement de votre session…</p>
+      </main>
+    );
   }
 
   // `register` enchaîne le login : dès que la session est ouverte, l'utilisateur part sur

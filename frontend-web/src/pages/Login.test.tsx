@@ -104,4 +104,26 @@ describe('Écran de connexion (SH-20)', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('au moins 8 caractères');
   });
+
+  it("n'affiche pas le formulaire tant que la session est en cours de restauration (SH-51)", async () => {
+    // Non-régression : Login décidait sur `user` seul. AuthProvider démarre en status
+    // 'restoring' avec `user` nul le temps du refresh silencieux — un utilisateur déjà connecté
+    // voyait donc l'écran de connexion avant un saut vers son écran de travail.
+    server.use(
+      http.post(url('/api/v1/auth/refresh'), async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return new HttpResponse(null, { status: 401 });
+      }),
+    );
+
+    renderLogin();
+
+    // Même texte d'attente que ProtectedRoute : un seul comportement à expliquer.
+    expect(screen.getByText('Chargement de votre session…')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Connexion' })).not.toBeInTheDocument();
+
+    // Une fois la restauration terminée (ici : échec, visiteur anonyme), le formulaire apparaît.
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument();
+  });
 });
