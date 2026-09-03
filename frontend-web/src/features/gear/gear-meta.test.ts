@@ -39,6 +39,10 @@ describe("Métadonnées de l'Armurerie (SH-21a)", () => {
 // respecter le même contrat de thème que les composants de la feature.
 // Étendu à src/features/navigation, src/components/ui et src/lib (SH-46, tâche 3) : la
 // refonte HUD introduit de nouveaux répertoires qui doivent respecter le même contrat.
+// Étendu à src/features/matching, src/features/auth et src/features/chat (SH-51, revue de
+// code) : la règle vaut pour TOUS les dossiers de features, pas seulement ceux touchés par
+// la refonte HUD — ces trois-là étaient passés au travers du filet malgré ce qu'affirmaient
+// les conventions du projet.
 describe("Palette de l'Armurerie — aucune couleur codée en dur", () => {
   const scanDirs = [
     'src/features/gear',
@@ -47,6 +51,9 @@ describe("Palette de l'Armurerie — aucune couleur codée en dur", () => {
     'src/features/navigation',
     'src/components/ui',
     'src/lib',
+    'src/features/matching',
+    'src/features/auth',
+    'src/features/chat',
   ];
   const sources = scanDirs.flatMap((dir) =>
     readdirSync(join(process.cwd(), dir))
