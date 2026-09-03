@@ -1,6 +1,10 @@
 import { lazy, Suspense, useState } from 'react';
 import { useMatchSearch } from '@/features/matching/useMatchSearch';
-import { SearchFilters, type SearchCriteria } from '@/features/matching/SearchFilters';
+import {
+  DEFAULT_RADIUS_KM,
+  SearchFilters,
+  type SearchCriteria,
+} from '@/features/matching/SearchFilters';
 import { SearchResultCard } from '@/features/matching/SearchResultCard';
 import { CITIES } from '@/lib/cities';
 
@@ -23,12 +27,14 @@ export default function Search() {
   // pas l'état courant du formulaire (que l'utilisateur peut modifier sans relancer).
   // La carte est visible DÈS L'ARRIVÉE (SH-51), centrée sur la ville par défaut : le
   // recruteur voit son périmètre de mission avant sa première recherche, là où l'écran
-  // s'ouvrait sur un vide. `SearchFilters` part des mêmes valeurs par défaut.
+  // s'ouvrait sur un vide. `SearchFilters` part des mêmes valeurs par défaut — la ville
+  // via `CITIES[0]` (déjà partagé), le rayon via `DEFAULT_RADIUS_KM` (revue de code
+  // SH-51 : les deux étaient écrits en dur indépendamment et pouvaient diverger).
   const [submittedArea, setSubmittedArea] = useState<{
     lat: number;
     lon: number;
     radiusKm: number;
-  }>({ lat: CITIES[0].lat, lon: CITIES[0].lon, radiusKm: 50 });
+  }>({ lat: CITIES[0].lat, lon: CITIES[0].lon, radiusKm: DEFAULT_RADIUS_KM });
   // Fiche survolée côté liste (SH-46) : met en évidence le marqueur correspondant sur la carte.
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 

@@ -7,12 +7,16 @@ import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
 import { DEFAULT_API_URL } from '@/api/client';
 import type { MatchResult } from '@/features/matching/types';
+import { DEFAULT_RADIUS_KM } from '@/features/matching/SearchFilters';
 import Search from './Search';
 
 // La carte a ses propres tests (SearchMap.test.tsx) ; ici on vérifie seulement QUAND elle
-// apparaît — jsdom ne rend pas de vraie carte Leaflet.
+// apparaît, et — depuis SH-51 — avec QUEL rayon initial. `radiusKm` est exposé en attribut
+// `data-*` pour que le test puisse l'observer sans rendre une vraie carte Leaflet.
 vi.mock('@/features/matching/SearchMap', () => ({
-  SearchMap: () => <div role="region" aria-label="Carte des freelances" />,
+  SearchMap: ({ radiusKm }: { radiusKm: number }) => (
+    <div role="region" aria-label="Carte des freelances" data-radius-km={radiusKm} />
+  ),
 }));
 
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
@@ -217,5 +221,18 @@ describe('Recherche — saisie visuelle (SH-51)', () => {
     // La carte n'attend plus une première soumission : le recruteur voit son périmètre
     // de mission dès l'arrivée (SH-51).
     expect(screen.getByRole('region', { name: /carte des freelances/i })).toBeInTheDocument();
+  });
+
+  it('centre la carte, dès l’arrivée, sur le même rayon par défaut que le curseur du formulaire (SH-51)', () => {
+    // Revue de code SH-51 : le rayon par défaut de l'état initial de la carte et celui du
+    // curseur de `SearchFilters` venaient de deux valeurs codées en dur indépendantes, qui
+    // pouvaient diverger silencieusement. Les deux lisent désormais `DEFAULT_RADIUS_KM`.
+    renderPage();
+
+    expect(screen.getByRole('region', { name: /carte des freelances/i })).toHaveAttribute(
+      'data-radius-km',
+      String(DEFAULT_RADIUS_KM),
+    );
+    expect(screen.getByLabelText(/rayon de mission/i)).toHaveValue(String(DEFAULT_RADIUS_KM));
   });
 });

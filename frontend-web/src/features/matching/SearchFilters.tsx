@@ -15,6 +15,14 @@ export interface SearchCriteria {
   radiusKm: number;
 }
 
+// Rayon par défaut (km) partagé avec `Search.tsx` (SH-51, revue de code) : ce module
+// porte déjà les valeurs par défaut du formulaire (cf. `CITIES[0]` pour la ville), donc
+// c'est ici que le rayon par défaut doit vivre plutôt que d'être dupliqué. Sans ce
+// partage, la carte affichée à l'arrivée (état initial de `Search.tsx`) et le curseur de
+// ce formulaire pourraient diverger silencieusement en ne changeant qu'un seul des deux
+// — aucun test ne l'aurait détecté.
+export const DEFAULT_RADIUS_KM = 50;
+
 interface SearchFiltersProps {
   onSubmit: (criteria: SearchCriteria) => void;
   isPending: boolean;
@@ -30,7 +38,7 @@ export function SearchFilters({ onSubmit, isPending, error }: SearchFiltersProps
   const [skills, setSkills] = useState<string[]>([]);
   const [skillDraft, setSkillDraft] = useState('');
   const [cityName, setCityName] = useState(CITIES[0].name);
-  const [radiusKm, setRadiusKm] = useState('50');
+  const [radiusKm, setRadiusKm] = useState(String(DEFAULT_RADIUS_KM));
   const [clientError, setClientError] = useState<string | null>(null);
 
   function toggleSkill(skill: string) {
