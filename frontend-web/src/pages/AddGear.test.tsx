@@ -132,3 +132,46 @@ describe('Page Déclarer un équipement (SH-43)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/impossible de déclarer/i);
   });
 });
+
+describe('Déclaration de matériel — catalogue (SH-51)', () => {
+  it('propose les marques de la catégorie choisie', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText(/catégorie/i), 'DRONE');
+    const marque = screen.getByLabelText(/marque/i);
+    const listeId = marque.getAttribute('list');
+    expect(listeId).not.toBeNull();
+
+    const options = document.getElementById(listeId as string)?.querySelectorAll('option');
+    const valeurs = Array.from(options ?? []).map((option) => option.getAttribute('value'));
+    expect(valeurs).toContain('DJI');
+  });
+
+  it('propose les modèles une fois la marque saisie', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText(/catégorie/i), 'DRONE');
+    await user.type(screen.getByLabelText(/marque/i), 'DJI');
+
+    const modele = screen.getByLabelText(/modèle/i);
+    const listeId = modele.getAttribute('list');
+    const options = document.getElementById(listeId as string)?.querySelectorAll('option');
+    const valeurs = Array.from(options ?? []).map((option) => option.getAttribute('value'));
+    expect(valeurs).toContain('Mavic 3 Enterprise');
+  });
+
+  it('accepte un matériel absent du catalogue', async () => {
+    // Le catalogue assiste, il ne contraint pas : la saisie libre reste possible.
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText(/catégorie/i), 'DRONE');
+    await user.type(screen.getByLabelText(/marque/i), 'Marque Confidentielle');
+    await user.type(screen.getByLabelText(/modèle/i), 'Prototype 01');
+
+    expect(screen.getByLabelText(/marque/i)).toHaveValue('Marque Confidentielle');
+    expect(screen.getByLabelText(/modèle/i)).toHaveValue('Prototype 01');
+  });
+});
