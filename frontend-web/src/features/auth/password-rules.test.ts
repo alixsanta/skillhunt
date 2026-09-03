@@ -31,7 +31,15 @@ describe('PASSWORD_RULES (SH-51)', () => {
   describe('reste aligné sur RegisterDto.password (lecture du DTO backend)', () => {
     // process.cwd() vaut `frontend-web` quand la suite tourne (cf. gear-meta.test.ts) :
     // on remonte donc d'un niveau vers la racine du monorepo pour atteindre backend-core.
-    const dtoPath = join(process.cwd(), '..', 'backend-core', 'src', 'auth', 'dto', 'register.dto.ts');
+    const dtoPath = join(
+      process.cwd(),
+      '..',
+      'backend-core',
+      'src',
+      'auth',
+      'dto',
+      'register.dto.ts',
+    );
     const dtoSource = readFileSync(dtoPath, 'utf8');
 
     // Piège du fichier : il déclare aussi LoginDto, qui a SON PROPRE champ `password`
@@ -46,7 +54,9 @@ describe('PASSWORD_RULES (SH-51)', () => {
     ).toBeGreaterThanOrEqual(0);
     const nextClassStart = dtoSource.indexOf('export class', registerClassStart + 1);
     const registerClassSource =
-      nextClassStart >= 0 ? dtoSource.slice(registerClassStart, nextClassStart) : dtoSource.slice(registerClassStart);
+      nextClassStart >= 0
+        ? dtoSource.slice(registerClassStart, nextClassStart)
+        : dtoSource.slice(registerClassStart);
 
     // Toujours à l'intérieur du bloc RegisterDto : le fragment de décorateurs de
     // `password` est tout ce qui se trouve entre la fin du champ `username` et la
@@ -59,8 +69,13 @@ describe('PASSWORD_RULES (SH-51)', () => {
       usernameFieldEnd,
       "champ `username` introuvable dans RegisterDto — l'extraction du bloc `password` ne peut pas se situer.",
     ).toBeGreaterThanOrEqual(0);
-    expect(passwordFieldDecl, 'champ `password` introuvable dans RegisterDto.').toBeGreaterThan(usernameFieldEnd);
-    const passwordBlock = registerClassSource.slice(usernameFieldEnd + 'username!: string;'.length, passwordFieldDecl);
+    expect(passwordFieldDecl, 'champ `password` introuvable dans RegisterDto.').toBeGreaterThan(
+      usernameFieldEnd,
+    );
+    const passwordBlock = registerClassSource.slice(
+      usernameFieldEnd + 'username!: string;'.length,
+      passwordFieldDecl,
+    );
 
     it('cible bien RegisterDto.password (et pas LoginDto.password)', () => {
       // LoginDto.password n'a ni @MinLength ni @Matches (il est volontairement
