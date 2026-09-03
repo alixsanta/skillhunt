@@ -3,13 +3,15 @@ import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth, type RegisterInput } from '@/features/auth/useAuth';
 import { PASSWORD_RULES, isPasswordValid } from '@/features/auth/password-rules';
+import { ROLE_LABELS } from '@/features/auth/role-labels';
 import { CITIES } from '@/lib/cities';
 import { getHomeRoute } from '@/features/navigation/home-route';
 
 // ADMIN est volontairement absent : il n'est pas auto-attribuable (cf. SELF_ASSIGNABLE_ROLES backend).
+// Les libellés viennent de ROLE_LABELS (SH-51) : seule source de traduction des rôles.
 const ROLES = [
-  { value: 'FREELANCE', label: 'Freelance' },
-  { value: 'RECRUITER', label: 'Recruteur' },
+  { value: 'FREELANCE', label: ROLE_LABELS.FREELANCE },
+  { value: 'RECRUITER', label: ROLE_LABELS.RECRUITER },
 ] as const;
 
 export default function Register() {
