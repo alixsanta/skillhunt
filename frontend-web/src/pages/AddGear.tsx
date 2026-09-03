@@ -121,7 +121,13 @@ export default function AddGear() {
             <select
               id="category"
               value={category}
-              onChange={(event) => setCategory(event.target.value as GearCategory | '')}
+              onChange={(event) => {
+                // Changer de catégorie invalide marque ET modèle (SH-51) : sans ça, le champ
+                // affiche « DJI » pendant que les suggestions dessous listent des caméras 360.
+                setCategory(event.target.value as GearCategory | '');
+                setBrand('');
+                setModel('');
+              }}
               aria-invalid={fieldErrors.category ? true : undefined}
               aria-describedby={fieldErrors.category ? 'category-error' : undefined}
               className={inputClass}
@@ -147,7 +153,12 @@ export default function AddGear() {
               list="brand-options"
               autoComplete="off"
               value={brand}
-              onChange={(event) => setBrand(event.target.value)}
+              onChange={(event) => {
+                // Changer de marque invalide le modèle (SH-51) : même logique que la catégorie
+                // ci-dessus — un modèle d'une autre marque n'a pas de sens à rester affiché.
+                setBrand(event.target.value);
+                setModel('');
+              }}
               placeholder="DJI, Insta360, Boston Dynamics…"
               aria-invalid={fieldErrors.brand ? true : undefined}
               aria-describedby={fieldErrors.brand ? 'brand-error' : 'brand-hint'}

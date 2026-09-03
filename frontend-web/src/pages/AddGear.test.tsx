@@ -174,4 +174,34 @@ describe('Déclaration de matériel — catalogue (SH-51)', () => {
     expect(screen.getByLabelText(/marque/i)).toHaveValue('Marque Confidentielle');
     expect(screen.getByLabelText(/modèle/i)).toHaveValue('Prototype 01');
   });
+
+  it('changer de catégorie vide la marque et le modèle déjà saisis', async () => {
+    // Non-régression : le champ affichait « DJI » avec des suggestions de caméras 360 en
+    // dessous, une fois la catégorie changée sans que marque/modèle ne soient réinitialisés.
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText(/catégorie/i), 'DRONE');
+    await user.type(screen.getByLabelText(/marque/i), 'DJI');
+    await user.type(screen.getByLabelText(/modèle/i), 'Mavic 3');
+
+    await user.selectOptions(screen.getByLabelText(/catégorie/i), 'CAMERA_360');
+
+    expect(screen.getByLabelText(/marque/i)).toHaveValue('');
+    expect(screen.getByLabelText(/modèle/i)).toHaveValue('');
+  });
+
+  it('changer de marque vide le modèle déjà saisi', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText(/catégorie/i), 'DRONE');
+    await user.type(screen.getByLabelText(/marque/i), 'DJI');
+    await user.type(screen.getByLabelText(/modèle/i), 'Mavic 3');
+
+    await user.clear(screen.getByLabelText(/marque/i));
+    await user.type(screen.getByLabelText(/marque/i), 'Autel');
+
+    expect(screen.getByLabelText(/modèle/i)).toHaveValue('');
+  });
 });
