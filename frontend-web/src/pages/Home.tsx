@@ -1,11 +1,18 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
+import { getHomeRoute } from '@/features/navigation/home-route';
 
 // Page d'accueil (SH-19), enrichie de l'état de session (SH-20), en hero HUD (SH-46).
 export default function Home() {
   const { user } = useAuth();
+
+  // Un utilisateur connecté n'a rien à faire sur la vitrine (SH-51) : il est mené à
+  // l'écran de travail de son rôle. Le hero reste la page d'accueil du visiteur anonyme.
+  if (user) {
+    return <Navigate to={getHomeRoute(user.role)} replace />;
+  }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4 text-center">
@@ -20,20 +27,14 @@ export default function Home() {
         La preuve de compétence par l'image et la donnée technique.
       </p>
 
-      {user ? (
+      <div className="flex gap-3">
         <Button asChild>
-          <Link to="/mon-compte">Mon compte</Link>
+          <Link to="/login">Se connecter</Link>
         </Button>
-      ) : (
-        <div className="flex gap-3">
-          <Button asChild>
-            <Link to="/login">Se connecter</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/register">Créer un compte</Link>
-          </Button>
-        </div>
-      )}
+        <Button asChild variant="outline">
+          <Link to="/register">Créer un compte</Link>
+        </Button>
+      </div>
     </div>
   );
 }

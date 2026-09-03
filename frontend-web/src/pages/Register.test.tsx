@@ -1,14 +1,12 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/test/server';
 import { DEFAULT_API_URL } from '@/api/client';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { sessionStore } from '@/features/auth/session-store';
 import Register from './Register';
-import Account from './Account';
 
 function fakeJwt(payload: Record<string, unknown>): string {
   const encode = (value: object) => btoa(JSON.stringify(value)).replace(/=+$/, '');
@@ -19,19 +17,20 @@ const TOKEN = fakeJwt({ userId: 'u-2', email: 'nouvelle@skillhunt.io', role: 'FR
 const url = (path: string) => `${DEFAULT_API_URL}${path}`;
 
 function renderRegister() {
-  // QueryClientProvider : « Mon compte » (cible post-inscription) porte la section 2FA (SH-40).
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <QueryClientProvider client={client}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={['/register']}>
-          <Routes>
-            <Route path="/register" element={<Register />} />
-            <Route path="/mon-compte" element={<Account />} />
-          </Routes>
-        </MemoryRouter>
-      </AuthProvider>
-    </QueryClientProvider>,
+    <AuthProvider>
+      <MemoryRouter initialEntries={['/register']}>
+        <Routes>
+          <Route path="/register" element={<Register />} />
+          {/* Cible post-inscription (SH-51) : marqueur léger, sur le même principe que
+              ProtectedRoute.test.tsx — la vraie Armurerie n'a pas à être montée ici, seule
+              la destination de la redirection est sous test. Le mock de /login renvoie
+              toujours un token de rôle FREELANCE (voir TOKEN plus haut), donc /recherche
+              (destination RECRUITER) n'est jamais atteinte dans ce fichier. */}
+          <Route path="/mon-armurerie" element={<p>Armurerie du freelance</p>} />
+        </Routes>
+      </MemoryRouter>
+    </AuthProvider>,
   );
 }
 
@@ -47,18 +46,15 @@ async function fillForm() {
 
 beforeEach(() => {
   // Aucune session au démarrage : le refresh silencieux échoue (pas de cookie).
-  server.use(
-    http.post(url('/api/v1/auth/refresh'), () => new HttpResponse(null, { status: 401 })),
-    // Section 2FA de « Mon compte » (SH-40) : état par défaut, hors sujet ici.
-    http.get(url('/api/v1/auth/2fa/status'), () => HttpResponse.json({ enabled: false })),
-  );
+  server.use(http.post(url('/api/v1/auth/refresh'), () => new HttpResponse(null, { status: 401 })));
 });
 afterEach(() => sessionStore.clear());
 
 describe("Écran d'inscription (SH-20)", () => {
   it("enchaîne automatiquement un login après le register : l'utilisateur arrive connecté", async () => {
     // `register` ne renvoie aucun token (le backend ne le fait pas) : AuthProvider doit
-    // enchaîner un `login` pour que l'utilisateur arrive directement sur son compte.
+    // enchaîner un `login` pour que l'utilisateur arrive directement sur son écran de
+    // travail (SH-51).
     server.use(
       http.post(url('/api/v1/auth/register'), () => new HttpResponse(null, { status: 201 })),
       http.post(url('/api/v1/auth/login'), () =>
@@ -69,8 +65,9 @@ describe("Écran d'inscription (SH-20)", () => {
     renderRegister();
     await fillForm();
 
-    // Navigation vers /mon-compte + session ouverte : preuve que le login enchaîné a réussi.
-    expect(await screen.findByText('nouvelle@skillhunt.io')).toBeInTheDocument();
+    // Navigation vers l'écran de travail du FREELANCE (SH-51) + session ouverte : preuve
+    // que le login enchaîné a réussi.
+    expect(await screen.findByText('Armurerie du freelance')).toBeInTheDocument();
     expect(sessionStore.getAccessToken()).toBe(TOKEN);
   });
 
@@ -111,7 +108,7 @@ describe("Écran d'inscription (SH-20)", () => {
     await userEvent.selectOptions(await screen.findByLabelText("Ville d'activité"), 'Toulouse');
     await fillForm();
 
-    await screen.findByText('nouvelle@skillhunt.io');
+    await screen.findByText('Armurerie du freelance');
     expect(receivedBody).toMatchObject({
       role: 'FREELANCE',
       // Champs latitude/longitude EXPLICITES (pas de tableau) : le piège d'ordre
@@ -138,7 +135,10 @@ describe("Écran d'inscription (SH-20)", () => {
     expect(screen.queryByLabelText("Ville d'activité")).not.toBeInTheDocument();
 
     await fillForm();
-    await screen.findByText('nouvelle@skillhunt.io');
+    // Le mock de /login renvoie toujours TOKEN (rôle FREELANCE, cf. plus haut), quel que
+    // soit le rôle soumis à l'inscription : la destination suit le rôle réellement porté
+    // par le token émis, pas le rôle choisi dans le formulaire.
+    await screen.findByText('Armurerie du freelance');
     expect(receivedBody).not.toHaveProperty('location');
     expect(receivedBody).toMatchObject({ role: 'RECRUITER' });
   });

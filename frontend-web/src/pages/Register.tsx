@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth, type RegisterInput } from '@/features/auth/useAuth';
 import { PASSWORD_RULES, isPasswordValid } from '@/features/auth/password-rules';
 import { CITIES } from '@/lib/cities';
+import { getHomeRoute } from '@/features/navigation/home-route';
 
 // ADMIN est volontairement absent : il n'est pas auto-attribuable (cf. SELF_ASSIGNABLE_ROLES backend).
 const ROLES = [
@@ -12,8 +13,7 @@ const ROLES = [
 ] as const;
 
 export default function Register() {
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const { user, register } = useAuth();
 
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -51,12 +51,17 @@ export default function Register() {
     try {
       // `register` enchaîne automatiquement le login : l'utilisateur arrive connecté.
       await register(input);
-      navigate('/mon-compte', { replace: true });
     } catch {
       setError('Inscription impossible. Cet email est peut-être déjà utilisé.');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // `register` enchaîne le login : dès que la session est ouverte, l'utilisateur part sur
+  // l'écran de travail de son rôle plutôt que sur la fiche de son compte (SH-51).
+  if (user) {
+    return <Navigate to={getHomeRoute(user.role)} replace />;
   }
 
   return (
