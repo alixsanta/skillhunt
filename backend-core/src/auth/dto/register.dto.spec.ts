@@ -136,3 +136,53 @@ describe('RegisterDto — robustesse du mot de passe (SH-51, C2.2.3)', () => {
     expect(await messagesFor('MotDePasse2026!')).toHaveLength(0);
   });
 });
+
+// SH-51 : `username` est désormais porté par le payload du JWT, donc renvoyé dans l'en-tête
+// Authorization de chaque requête authentifiée. Sans borne, un username de plusieurs Ko produit
+// un token que la gateway rejette (431, buffers d'en-tête) sur toutes les requêtes du compte.
+describe('RegisterDto — validation du username (SH-51, C2.2.3)', () => {
+  async function usernameErrors(username: string): Promise<string[]> {
+    const errors = await validate(plainToInstance(RegisterDto, { ...BASE, username, role: UserRole.RECRUITER }));
+    return errors.filter((e) => e.property === 'username').flatMap((e) => Object.values(e.constraints ?? {}));
+  }
+
+  it('accepte un nom d\'utilisateur usuel', async () => {
+    expect(await usernameErrors('Marcus_Thorne-01')).toHaveLength(0);
+  });
+
+  it('accepte exactement 50 caractères', async () => {
+    expect(await usernameErrors('a'.repeat(50))).toHaveLength(0);
+  });
+
+  it('refuse au-delà de 50 caractères (charge utile portée par chaque en-tête Authorization)', async () => {
+    expect(await usernameErrors('a'.repeat(51))).toContain(
+      "Le nom d'utilisateur ne doit pas dépasser 50 caractères",
+    );
+  });
+
+  it('refuse un nom contenant des espaces', async () => {
+    expect(await usernameErrors('Marcus Thorne')).toContain(
+      "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+    );
+  });
+
+  it('refuse un nom contenant des caractères de contrôle', async () => {
+    expect(await usernameErrors('Marcus\nThorne')).toContain(
+      "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+    );
+  });
+
+  it('refuse un nom contenant des caractères spéciaux hors jeu autorisé', async () => {
+    expect(await usernameErrors('<script>alert(1)</script>')).toContain(
+      "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+    );
+  });
+
+  it.each(['DemoPilote', 'DemoRecruteur', 'DemoAdmin'])(
+    'laisse passer le username du compte de démonstration %s (scripts/seed-demo.sh)',
+    async (username) => {
+      // Non-régression : les comptes de démo (scripts/seed-demo.sh) doivent rester acceptés.
+      expect(await usernameErrors(username)).toHaveLength(0);
+    },
+  );
+});

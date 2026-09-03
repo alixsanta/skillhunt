@@ -94,6 +94,7 @@ export default function Register() {
             <input
               id="username"
               required
+              maxLength={50}
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               className="border-hud-border bg-hud-card rounded-md border px-3 py-2 text-white"

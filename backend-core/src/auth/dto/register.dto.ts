@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional,
+  IsEmail, IsString, IsNotEmpty, MinLength, MaxLength, IsIn, IsOptional,
   IsDefined, IsLatitude, IsLongitude, ValidateIf, ValidateNested, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -35,9 +35,21 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Format de l\'adresse email invalide' })
   email!: string;
 
-  @ApiProperty({ example: 'MarcusThorne', description: 'Nom d\'utilisateur unique' })
+  // SH-51 : porté par le payload du JWT depuis ce lot, donc renvoyé dans l'en-tête
+  // Authorization de CHAQUE requête authentifiée. Sans borne ni jeu de caractères restreint,
+  // une chaîne non contrôlée de plusieurs Ko produirait un token que la gateway rejette (431,
+  // buffers d'en-tête) sur toutes les requêtes du compte (C2.2.3).
+  @ApiProperty({
+    example: 'MarcusThorne',
+    description:
+      "Nom d'utilisateur unique (50 caractères max, lettres/chiffres/'-'/'_'/'.' uniquement)",
+  })
   @IsString()
   @IsNotEmpty({ message: 'Le nom d\'utilisateur ne peut pas être vide' })
+  @MaxLength(50, { message: "Le nom d'utilisateur ne doit pas dépasser 50 caractères" })
+  @Matches(/^[a-zA-Z0-9_.-]+$/, {
+    message: "Le nom d'utilisateur ne peut contenir que lettres, chiffres, '-', '_' et '.'",
+  })
   username!: string;
 
   // Robustesse du mot de passe (SH-51 — C2.2.3). La règle ne s'applique qu'à la CRÉATION :
