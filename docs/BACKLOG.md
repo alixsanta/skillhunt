@@ -133,6 +133,9 @@ C4.2.1 de porter sur des anomalies réellement *détectées en production*, et n
 | [SH-23](tickets/SH-23-cartographie-mapbox.md) | Cartographie des résultats de recherche — *décision Mapbox→**Leaflet+OSM** tracée (zéro token/coût) ; lazy-loading éco-conçu ; position portée par le proxy SH-22* | 🟢 Terminé | 5 | C2.4.1, C2.2.2, C2.1.2 | — |
 | [SH-24](tickets/SH-24-chat-temps-reel.md) | Chat contextuel temps réel (WebSocket + MongoDB) — *périmètre acté 2026-07-17 : texte, 1-à-1 RECRUITER↔FREELANCE ; partage de fichiers reporté avec EP04 ; e2e vérifié à travers la gateway* | 🟢 Terminé | 8 | C2.2.3, C2.2.2, C2.4.1 | R5, R9 |
 | [SH-25](tickets/SH-25-mobile-react-native.md) | App Mobile React Native + notifications Push | ⚪ Lot 2 | 13 | C2.2.3 | — |
+| [SH-51](tickets/SH-51-retouches-ux-demo.md) | Retouches UX avant soutenance (rôles, identité, inscription, recherche, catalogue) | 🟠 En cours | 5 | C2.1.2, C2.2.2, C2.2.3, C2.4.1 | — |
+| [SH-52](tickets/SH-52-photo-de-profil.md) | Photo de profil (upload S3, URL signée) | 🔵 Backlog | 5 | C2.2.3, C2.4.1 | — |
+| [SH-53](tickets/SH-53-verification-email.md) | Vérification du compte par email | 🔵 Backlog | 8 | C2.2.3, C2.4.1 | Dépendance SMTP externe |
 
 ## EP06 — Qualité & Déploiement · *20 J/H* · 🎯 J5
 
