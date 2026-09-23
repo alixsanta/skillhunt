@@ -54,6 +54,29 @@ describe('AddMedia', () => {
     expect(titleInput).toHaveAttribute('aria-describedby', message.id);
   });
 
+  it("efface l'erreur d'un champ corrigé avant de signaler le champ suivant", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    // 1re soumission : formulaire vide → le titre est signalé.
+    await user.click(screen.getByRole('button', { name: /publier/i }));
+    expect(await screen.findByText(/le titre est obligatoire/i)).toBeInTheDocument();
+
+    // 2e soumission : titre corrigé, fichier toujours absent.
+    await user.type(screen.getByLabelText(/titre/i), 'Survol de chantier');
+    await user.click(screen.getByRole('button', { name: /publier/i }));
+
+    // Le champ fichier prend le relais…
+    expect(await screen.findByText(/choisis un fichier vidéo/i)).toBeInTheDocument();
+    // …et l'erreur du titre DOIT avoir disparu. Les validations sortent par un `return`
+    // anticipé : un nettoyage placé après elles n'est jamais atteint, et l'ancienne erreur
+    // survivait sous un champ devenu valide.
+    expect(screen.queryByText(/le titre est obligatoire/i)).not.toBeInTheDocument();
+    // WCAG 4.1.3 : l'état du champ doit suivre, pas seulement le message affiché — sinon un
+    // lecteur d'écran continue d'annoncer « invalide » sur une saisie correcte.
+    expect(screen.getByLabelText(/titre/i)).not.toHaveAttribute('aria-invalid');
+  });
+
   it("refuse de publier un fichier d'un type non supporté, sans appeler l'API", async () => {
     // `applyAccept: false` : par défaut, `user.upload` filtre lui-même selon l'attribut
     // `accept`, ce qui masquerait exactement le trou qu'on vérifie ici. En vrai, le

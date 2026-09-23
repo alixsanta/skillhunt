@@ -73,6 +73,13 @@ export function MediaUploader() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setErreur(null);
+    // Remise à zéro EN TÊTE, avant les validations : chacune d'elles sort par un `return`
+    // anticipé, donc un nettoyage placé après elles n'est jamais atteint quand l'une échoue.
+    // Un titre corrigé puis resoumis sans fichier laissait alors « Le titre est obligatoire. »
+    // sous un champ devenu valide, avec son `aria-invalid` et son `aria-describedby` —
+    // un lecteur d'écran annonçait invalide un champ qui ne l'était plus.
+    setTitleError(null);
+    setFileError(null);
 
     // Validation client : évite un aller-retour voué à l'échec. Le backend reste juge.
     // Chaque erreur reste rattachée à SON champ (titre / fichier) plutôt que remontée dans
@@ -91,8 +98,6 @@ export function MediaUploader() {
       return;
     }
     const contentType = file.type;
-    setTitleError(null);
-    setFileError(null);
 
     // Étape suivie dans une variable LOCALE et non via `etape` : la valeur d'état lue dans
     // ce gestionnaire vient de la fermeture du rendu courant, donc `setEtape` ne la met pas
@@ -127,7 +132,7 @@ export function MediaUploader() {
       setErreur(
         messageBackend(error) ??
           (etapeCourante === 'depot'
-            ? "L'envoi a échoué. Réessaie : rien n'a été publié."
+            ? "L'envoi a échoué. Ta vidéo reste en brouillon : réessaie."
             : 'La publication a échoué. Réessaie dans un instant.'),
       );
       setEtape('saisie');
