@@ -41,6 +41,43 @@
     // À réexaminer le : 2026-11-18, ou dès qu'une version corrigée d'`extract-zip` paraît.
     "GHSA-jmr9-qjv8-65gv",
 
+    // GHSA-7pqw-9j4j-h8q3 — extract-zip
+    // « unvalidated symlink path traversal » — avis SUCCESSEUR de GHSA-jmr9-qjv8-65gv,
+    // sur la même faille et la même chaîne. Les deux coexistent tant que l'ancien reste
+    // publié ; retirer l'un des deux rouvrirait le blocage.
+    //
+    // Chaîne : @lhci/cli + @lhci/utils > lighthouse > puppeteer-core > @puppeteer/browsers
+    //          > extract-zip
+    //
+    // Même analyse de non-exploitabilité que GHSA-jmr9-qjv8-65gv ci-dessus, mot pour mot :
+    // dépendance de DÉVELOPPEMENT, absente de l'image servie (le Dockerfile ne copie que
+    // `dist/`), et l'unique archive extraite est le binaire Chrome téléchargé depuis les
+    // serveurs Google — non contrôlable par un tiers.
+    //
+    // AUCUN correctif amont : la plage vulnérable est `*`. Le seul remède proposé par npm
+    // est de RÉTROGRADER `@lhci/cli` en 0.12.0, ce qui casserait l'audit d'accessibilité.
+    //
+    // Ouverte le : 2026-09-23 (5ᵉ vague de dérive, SH-49)
+    // À réexaminer le : 2026-12-23, ou dès qu'une version corrigée d'`extract-zip` paraît.
+    "GHSA-7pqw-9j4j-h8q3",
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // NON OUVERTE le 2026-09-23 : GHSA-2883-xcg3-v3hh (js-yaml).
+    //
+    // L'exception avait été rédigée, puis retirée avant commit : l'avis se corrige en
+    // réalité par un override global `js-yaml: ^4.3.2` (package.json). Ce qui faisait
+    // échouer l'installation n'était pas cet override mais la montée de `vitest`, dont
+    // la résolution de peers (`canvas` via jsdom) plante npm 10.9.2 — le log le dit à la
+    // ligne `idealTree:node_modules/vitest`. `audit-ci` a confirmé lui-même que
+    // l'exception était superflue : « Consider not allowlisting path ».
+    //
+    // ⚠️ Conséquence assumée de cet override : `@lhci/utils` déclare `js-yaml` 3.x et
+    // appelle `yaml.safeLoad`, supprimé en 4.x. La branche est INATTEIGNABLE ici — elle
+    // n'est empruntée que pour un fichier `.yaml`/`.yml`, or le projet utilise
+    // `lighthouserc.json` (voir `@lhci/utils/src/lighthouserc.js`). Le job d'audit
+    // d'accessibilité en CI est ce qui le vérifie à chaque exécution.
+    // ─────────────────────────────────────────────────────────────────────────────
+
     // ─────────────────────────────────────────────────────────────────────────────
     // LEVÉE le 2026-08-18 : GHSA-qwww-vcr4-c8h2 (react-router).
     //
