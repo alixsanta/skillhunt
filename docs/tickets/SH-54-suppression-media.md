@@ -41,6 +41,22 @@ rempli par de vrais médias `READY`, lui, ne se libère jamais.
    livrer avec le reste du lecteur. Si SH-54 passe en premier, retirer l'item de SH-18b.
 5. **Message du 409** : ne le remettre en phase avec la réalité qu'une fois la route livrée.
 
+### Rapport à SH-17 — à lire avant de démarrer
+
+⚠️ **Correction apportée après ouverture du ticket.** La [conception EP04](../superpowers/specs/2026-08-24-EP04-media-portfolio-design.md)
+§11 place déjà « `DELETE` + `deletePrefix` » dans le périmètre de **SH-17** (flux sortant).
+Ce ticket ne découvre donc pas un vide de conception — il constate que **la route est
+planifiée trop tard** : SH-17 dépend du pipeline de transcodage, alors que l'impasse de
+quota existe dès aujourd'hui, sans qu'aucun média n'ait besoin d'être lisible.
+
+Deux issues, à trancher :
+- **soit** SH-54 est absorbé par SH-17 et l'impasse est assumée jusque-là (acceptable si
+  le quota de 20 n'est pas approché en démonstration) ;
+- **soit** SH-54 avance la route seule, et SH-17 n'en garde que la lecture.
+
+La seconde est recommandée : livrer un `DELETE` ne demande ni HLS, ni URL signée de
+lecture, et referme un chemin sans issue dans le produit.
+
 ### Critères d'acceptation (Gherkin)
 
 ```gherkin
