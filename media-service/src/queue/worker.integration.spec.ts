@@ -20,6 +20,10 @@ describeIf('worker de transcodage (intégration Redis)', () => {
     queueName: QUEUE_NAME,
     concurrency: 1,
     tmpDir: '/tmp/media-test',
+    // SH-16b : le worker construit désormais un client S3 à sa création. Le bucket
+    // n'est jamais atteint dans ce test — il vérifie la consommation de la FILE, pas
+    // le transcodage (couvert par pipeline.spec.ts, sur un stockage simulé).
+    s3: { bucket: 'skillhunt-media-test', endpoint: 'http://127.0.0.1:4566', region: 'eu-west-3' },
   };
 
   let queue: Queue<TranscodeJobData>;
