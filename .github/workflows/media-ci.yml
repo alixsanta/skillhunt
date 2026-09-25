@@ -49,6 +49,17 @@ jobs:
           # Monorepo : le lockfile est dans media-service/ (et non à la racine du dépôt)
           cache-dependency-path: 'media-service/package-lock.json'
 
+      # ffmpeg ET ffprobe : les tests de transcodage les exercent REELLEMENT (SH-16b).
+      # Sans eux, la garde `describeIfFfmpeg` sauterait tout le pipeline et la CI ne
+      # prouverait plus rien du cœur de ce service (C2.2.2). Le paquet Ubuntu fournit
+      # les deux binaires, et le service tourne de toute façon sur une image qui les a.
+      - name: 🎬 Installation de ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
       - name: 📦 Installation propre des dépendances (ci)
         run: npm ci
 
