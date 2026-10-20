@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: 📥 Récupération du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Configuration de Node.js
         uses: actions/setup-node@v4
@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: 📥 Récupération du code source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 🟢 Configuration de Node.js
         uses: actions/setup-node@v4
