@@ -43,7 +43,7 @@ jobs:
 
       # Étape 2 : Configurer l'environnement Node.js (version 20 LTS recommandée)
       - name: 🟢 Configuration de Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           # Le cache automatique d'npm accélère grandement les exécutions futures (gain de 1 à 2 min par run)
