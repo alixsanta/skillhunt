@@ -3,10 +3,10 @@
 # Risque évalué faible : pytest.ini déclare déjà `asyncio_default_fixture_loop_scope`, l'option
 # introduite en 0.24 pour préparer la 1.x, et aucun test ne surcharge la fixture `event_loop`
 # (principale suppression cassante de pytest-asyncio 1.0).
-pytest==9.1.1
+pytest==9.2.0
 pytest-cov==7.1.0
-pytest-asyncio==1.4.0
+pytest-asyncio==1.4.1
 httpx==0.28.1
-flake8==7.1.1
-bandit==1.8.0
+flake8==7.5.0
+bandit==1.9.4
 pip-audit==2.10.1
