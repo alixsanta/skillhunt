@@ -35,6 +35,39 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ### Sécurité
 
+**Résorption de la sixième vague de dérive npm — la première à porter des avis `critical`** (SH-49)
+
+Trois `critical` et vingt-huit `high` répartis sur les trois services, après six semaines
+sans montée. Les trois chaînes d'intégration étaient rouges d'avance.
+
+- **`proxy-addr` 2.0.7 → 2.0.8** (`critical`) sur `backend-core` ET `frontend-web`. Tiré par
+  `express`, il résout l'adresse IP cliente derrière la gateway : il est donc sur le chemin
+  de **toute requête entrante**.
+- **`axios` 1.18.1 → 1.21.1** sur `frontend-web` : **douze avis d'un coup, dont sept `high`**
+  — SSRF par redirection avec `maxRedirects: 0` non respecté, pollution de prototype
+  permettant de détourner la méthode HTTP, ReDoS gelant la boucle d'évènements. C'est le
+  client de **toutes** les requêtes de l'application, y compris le dépôt direct en stockage.
+- **`multer` 2.4.0 → 2.5.0** et **`@nestjs/platform-express` 11.1.27 → 11.2.9** sur
+  `backend-core` : `multer` porte l'upload de certifications, et la montée de la vague 5
+  était déjà redevenue vulnérable.
+- **`engine.io` 6.6.11** (transport du chat temps réel) et **`body-parser` 2.4.0**.
+- **`handlebars` 4.7.10** (`critical`) et **`brace-expansion`** sur les trois services —
+  outillage de développement, hors artefact déployé. `brace-expansion` est scopé **par
+  majeure** (1.x, 2.x, 5.x coexistent dans l'arbre) : un override global imposerait une
+  rupture d'API aux consommateurs de la 1.x.
+- **`vite` 8.3.7**, **`shadcn` 4.23.0**, **`@lhci/cli` 0.16.0** sur `frontend-web`.
+
+**Deux exceptions LEVÉES, une ouverte.** La montée de `@lhci/cli` a résolu
+`GHSA-jmr9-qjv8-65gv` et `GHSA-7pqw-9j4j-h8q3` (extract-zip), portées depuis le
+18 août : elles sont retirées, `audit-ci` les ayant lui-même signalées comme superflues.
+Reste `GHSA-c475-qrg2-pj4r` (basic-ftp), sans correctif amont — `npm audit` compte neuf
+paquets vulnérables sur cette chaîne, mais **il n'y a qu'un seul avis**, les huit autres
+n'étant que sa propagation. Le chemin vulnérable concerne le listage FTP, et aucun code du
+projet n'ouvre de connexion FTP.
+
+**Résultat :** `0 critical / 0 high` sur `backend-core` et `media-service`, `audit:deps`
+au vert sur `frontend-web` avec sa seule exception documentée.
+
 **Résorption de la cinquième vague de dérive npm** (SH-49)
 - `multer` monté en **2.4.0** sur `backend-core` (dépendance directe ET override, 4 avis
   `high`). **Montée de production, et la plus significative pour nous** : `multer` porte
