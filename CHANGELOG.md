@@ -33,6 +33,29 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ## [Non publié]
 
+### Ajouté
+
+**Le portfolio devient réellement lisible — pipeline de transcodage** (SH-16b)
+- **`ffprobe`** sonde la durée, les dimensions et la **projection 360°** d'une vidéo
+  déposée. Aucune projection serveur : la détection pose un drapeau, le rendu WebGL
+  restant côté navigateur (décision D5).
+- **`ffmpeg`** produit une **échelle HLS multi-débit** 360p / 720p / 1080p et un poster.
+  L'échelle ne **sur-échantillonne jamais** : une source 720p ne produit pas de piste
+  1080p, car ce serait du calcul et du stockage pour une qualité absente de la source.
+- Les sorties sont déposées en stockage objet par le worker lui-même, et le répertoire
+  temporaire est **nettoyé même quand le transcodage échoue**.
+- **C'est ce qui rend l'état « prêt » atteignable** : il ne l'était pas, et le backlog le
+  documentait comme tel depuis SH-16a. Un média déposé peut désormais aller au bout.
+
+### Corrigé
+
+- **Un média sans aucune piste de qualité pouvait passer en « prêt »** (SH-16b). Le
+  validateur du monolithe vérifiait chaque piste par `renditions.every(...)` — or `every`
+  rend `true` sur un tableau **vide**. Un résultat par ailleurs valide mais sans piste
+  faisait donc basculer le média en `READY` : le portfolio aurait affiché « PRÊT » sur une
+  vidéo injouable, et le manifeste maître à venir aurait été vide. Défaut relevé en
+  écrivant le test de frontière, corrigé et couvert.
+
 ### Sécurité
 
 **Résorption de la cinquième vague de dérive npm** (SH-49)

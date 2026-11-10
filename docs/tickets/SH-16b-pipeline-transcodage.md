@@ -109,14 +109,36 @@ Scénario : le temporaire est nettoyé même en échec
   Et le média finit FAILED avec une raison courte
 ```
 
+## Correction apportée au ticket en cours de route
+
+⚠️ Ce ticket affirmait plus haut que le validateur exige « **au moins une piste valide** ».
+**C'était faux**, et le constater a révélé un défaut réel : `parseTranscodeResult` vérifiait
+les pistes par `renditions.every(...)`, or `every` rend **`true` sur un tableau vide**. Un
+résultat par ailleurs conforme mais sans aucune piste faisait donc passer le média en
+`READY` — le portfolio aurait affiché « PRÊT » sur une vidéo injouable, et le manifeste
+maître de SH-17 aurait été vide.
+
+Le garde-fou `renditions.length === 0` a été ajouté, avec son test. L'affirmation du
+contrat est donc devenue vraie *après* ce ticket, pas avant.
+
 ## Definition of Done (DoD)
 
-- [ ] Résultat conforme au validateur du monolithe — **test croisé** : le résultat réel du
-      worker passe `parseTranscodeResult`, plutôt que deux définitions qui dérivent.
-- [ ] Test de confinement de préfixe : une clé hors préfixe **fait échouer** le test.
-- [ ] Test d'échelle ABR sans sur-échantillonnage.
-- [ ] Test de nettoyage du temporaire en cas d'échec.
-- [ ] Recette de bout en bout sur la stack : dépôt réel → `READY` visible dans le portfolio.
-- [ ] ffmpeg installé en CI, fixture générée au setup, suite verte.
-- [ ] Lint, build et CI verts. Backlog et `CHANGELOG.md` mis à jour.
-- [ ] `docs/BACKLOG.md` : SH-16a passe à 🟢, SH-16b à 🟢.
+- [x] Résultat conforme au validateur du monolithe — **test croisé** : `contract.spec.ts`
+      confronte la sortie RÉELLE de `runPipeline` à chaque règle. Limite assumée : les
+      règles existent en deux copies, faute de paquet partagé dans le monorepo ; les deux
+      fichiers portent un renvoi mutuel.
+- [x] Test de confinement de préfixe — **vérifié par sabotage** : pointer la clé ailleurs
+      fait tomber le test.
+- [x] Test d'échelle ABR sans sur-échantillonnage — **vérifié par sabotage** (2 échecs).
+- [x] Test de nettoyage du temporaire en cas d'échec — **vérifié par sabotage** (2 échecs).
+- [ ] ⛔ **Recette de bout en bout : NON FAITE.** Docker est arrêté sur le poste de
+      développement, donc ni LocalStack ni Redis. **`READY` n'a pas encore été observé en
+      conditions réelles** — c'est le dernier critère manquant de ce ticket, et il ne peut
+      pas être coché depuis le code seul.
+- [x] ffmpeg installé en CI, fixture générée au setup.
+- [x] Lint et build verts sur `backend-core` et `media-service`.
+- [ ] ⛔ **CI non vérifiée** : depuis le 9 novembre, les workflows Node échouent en 2 s
+      avec **zéro étape exécutée et aucun log**, sur toutes les branches y compris
+      Dependabot. Cause hors du code (aucun fichier de workflow n'est en cause) ; à
+      investiguer côté compte GitHub.
+- [x] Backlog et `CHANGELOG.md` mis à jour.

@@ -101,6 +101,16 @@ describe('MediaService — issue du transcodage', () => {
   // Cas de SÉCURITÉ : une `playlistKey` hors du préfixe du média correspond à un autre
   // freelance. SH-17 la transformera en URL signée — la laisser passer ouvrirait un
   // accès signé au stockage d'AUTRUI. C'est le cas le plus important de ce fichier.
+  it('REJETTE un résultat sans aucune piste de qualité', async () => {
+    // Un média READY sans aucune piste n'est pas lisible : le manifeste maître que SH-17
+    // générera serait vide, et le portfolio afficherait « PRÊT » sur une vidéo injouable.
+    const { service } = contexte();
+
+    await expect(
+      service.applyTranscodeResult(MEDIA_ID, resultat({ renditions: [] })),
+    ).rejects.toThrow(/non conforme/i);
+  });
+
   it('rejette une playlistKey pointant vers le casier d\'un AUTRE freelance', async () => {
     const { service } = contexte();
     const autreFreelance = '22222222-2222-2222-2222-222222222222';
