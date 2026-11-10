@@ -17,49 +17,52 @@
   // Une exception sans date de réexamen est une dette silencieuse : interdit.
   // ─────────────────────────────────────────────────────────────────────────────
   "allowlist": [
-    // GHSA-jmr9-qjv8-65gv — extract-zip
-    // « unvalidated symlink path traversal »
+    // GHSA-c475-qrg2-pj4r — basic-ftp
+    // « Quadratic-time CPU denial of service in Client.list() »
     //
-    // Chaîne : @lhci/cli > lighthouse > puppeteer-core > @puppeteer/browsers > extract-zip
+    // Chaîne : @lhci/cli > lighthouse > puppeteer-core > @puppeteer/browsers
+    //          > proxy-agent > pac-proxy-agent > get-uri > basic-ftp
+    //
+    // ⚠️ `npm audit` compte NEUF paquets vulnérables sur cette chaîne. Il n'y a en
+    // réalité qu'UN SEUL avis : les huit autres entrées ne sont que sa propagation de
+    // parent en parent. Une exception suffit donc, et il serait trompeur d'en ouvrir neuf.
     //
     // NON EXPLOITABLE dans cet usage :
     //   - `@lhci/cli` est une dépendance de DÉVELOPPEMENT, utilisée uniquement par
     //     l'audit d'accessibilité en CI (SH-27) ;
     //   - elle ne part JAMAIS en production : le Dockerfile du front construit puis ne
-    //     copie que `dist/` dans l'image finale — aucune de ces dépendances n'atteint
-    //     l'image servie aux utilisateurs ;
-    //   - l'avis vise l'extraction d'une archive contenant des liens symboliques
-    //     malveillants. Ici l'unique archive extraite est le binaire Chrome téléchargé
-    //     par Lighthouse depuis les serveurs Google : elle n'est pas contrôlable par un
-    //     tiers, ce qui supprime le vecteur ;
-    //   - AUCUNE version corrigée n'existe : la plage vulnérable est `*`. Le seul
-    //     remède proposé par npm est `--force`, qui rétrograderait `@lhci/cli` et
-    //     casserait l'audit d'accessibilité — bloquant sous 90/100 en CI. Sacrifier une
-    //     preuve du bloc 2 contre une faille inatteignable serait un mauvais échange.
+    //     copie que `dist/` dans l'image finale ;
+    //   - l'avis vise le listage d'un répertoire sur un serveur FTP. `basic-ftp` arrive
+    //     ici via la résolution de proxy de Puppeteer, qui télécharge Chrome en HTTPS
+    //     depuis les serveurs Google. **Aucun code du projet n'ouvre de connexion FTP**,
+    //     et aucune configuration de proxy FTP n'existe dans la CI : le chemin vulnérable
+    //     n'est pas atteignable.
     //
-    // Ouverte le : 2026-08-18 (relecture des PR #46/#47/#48)
-    // À réexaminer le : 2026-11-18, ou dès qu'une version corrigée d'`extract-zip` paraît.
-    "GHSA-jmr9-qjv8-65gv",
+    // AUCUN correctif amont : `@lhci/cli` est DÉJÀ en dernière version (0.16.0, montée
+    // dans cette même vague). Le seul remède proposé par npm est de RÉTROGRADER en
+    // 0.13.0, ce qui ferait régresser l'audit d'accessibilité — bloquant sous 90/100.
+    //
+    // Ouverte le : 2026-11-10 (6ᵉ vague de dérive, SH-49)
+    // À réexaminer le : 2027-02-10, ou dès qu'une version corrigée de `basic-ftp` paraît.
+    "GHSA-c475-qrg2-pj4r",
 
-    // GHSA-7pqw-9j4j-h8q3 — extract-zip
-    // « unvalidated symlink path traversal » — avis SUCCESSEUR de GHSA-jmr9-qjv8-65gv,
-    // sur la même faille et la même chaîne. Les deux coexistent tant que l'ancien reste
-    // publié ; retirer l'un des deux rouvrirait le blocage.
+    // ─────────────────────────────────────────────────────────────────────────────
+    // LEVÉES le 2026-11-10 : GHSA-jmr9-qjv8-65gv ET GHSA-7pqw-9j4j-h8q3 (extract-zip).
     //
-    // Chaîne : @lhci/cli + @lhci/utils > lighthouse > puppeteer-core > @puppeteer/browsers
-    //          > extract-zip
+    // Les deux avis portaient la MÊME faille sur la même chaîne `@lhci`, et leur
+    // justification disait qu'aucun correctif n'existait — la plage vulnérable était `*`
+    // et le seul remède une rétrogradation de `@lhci/cli`.
     //
-    // Même analyse de non-exploitabilité que GHSA-jmr9-qjv8-65gv ci-dessus, mot pour mot :
-    // dépendance de DÉVELOPPEMENT, absente de l'image servie (le Dockerfile ne copie que
-    // `dist/`), et l'unique archive extraite est le binaire Chrome téléchargé depuis les
-    // serveurs Google — non contrôlable par un tiers.
+    // La montée de `@lhci/cli` en 0.16.0 (6ᵉ vague) les a résolus : `extract-zip` ne
+    // figure plus dans l'arbre vulnérable, et `audit-ci` a signalé de lui-même
+    // « Consider not allowlisting advisories ». Les exceptions sont donc RETIRÉES plutôt
+    // que conservées « au cas où » : une exception devenue inutile masque la réapparition
+    // de l'avis, et c'est exactement la dette silencieuse que la politique interdit.
     //
-    // AUCUN correctif amont : la plage vulnérable est `*`. Le seul remède proposé par npm
-    // est de RÉTROGRADER `@lhci/cli` en 0.12.0, ce qui casserait l'audit d'accessibilité.
-    //
-    // Ouverte le : 2026-09-23 (5ᵉ vague de dérive, SH-49)
-    // À réexaminer le : 2026-12-23, ou dès qu'une version corrigée d'`extract-zip` paraît.
-    "GHSA-7pqw-9j4j-h8q3",
+    // La première aura tenu 84 jours, sur les 3 mois prévus. Elle illustre le bon
+    // fonctionnement du dispositif : une exception DATÉE finit par être rouverte, et ici
+    // c'est la veille elle-même qui l'a rendue superflue.
+    // ─────────────────────────────────────────────────────────────────────────────
 
     // ─────────────────────────────────────────────────────────────────────────────
     // NON OUVERTE le 2026-09-23 : GHSA-2883-xcg3-v3hh (js-yaml).
