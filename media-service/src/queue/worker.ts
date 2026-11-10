@@ -3,6 +3,8 @@ import IORedis from 'ioredis';
 import type { MediaServiceConfig } from '../config';
 import type { MediaMetrics } from '../metrics';
 import { logger } from '../logger';
+import { createMediaStorage } from '../storage/s3';
+import { runPipeline, type PipelineDeps, type TranscodeOutcome } from '../transcode/pipeline';
 
 /**
  * Charge utile d'un job de transcodage (design EP04 §7).
@@ -15,24 +17,56 @@ export interface TranscodeJobData {
   posterKey: string;
 }
 
-/** Résultat rendu à BullMQ. SH-15 rend une enveloppe vide ; SH-16 la remplira. */
-export interface TranscodeJobResult {
-  renditions: unknown[];
-}
+/**
+ * Résultat rendu à BullMQ.
+ *
+ * SH-15 rendait une enveloppe vide, ce qui rendait l'état `READY` INATTEIGNABLE : le
+ * validateur du monolithe exige une durée, des dimensions et au moins une piste. Le type
+ * est désormais celui que produit réellement le pipeline — une seule définition, donc
+ * aucune dérive possible entre le worker et son propre contrat.
+ */
+export type TranscodeJobResult = TranscodeOutcome;
 
 /**
- * Traitement d'un job — **NO-OP volontaire en SH-15** (C2.1.2).
+ * Traitement d'un job — le VRAI pipeline depuis SH-16b (C2.1.2).
  *
- * Le pipeline `ffprobe`/`ffmpeg` arrive en SH-16. Ici, on prouve seulement que la file
- * est consommée de bout en bout : c'est ce qui rend ce scaffolding vérifiable, au lieu
- * d'un dossier vide qui « compilerait » sans rien démontrer.
+ * Les dépendances sont INJECTÉES plutôt que construites ici : c'est ce qui permet de
+ * tester l'orchestration sur un stockage simulé (`pipeline.spec.ts`) sans jamais toucher
+ * S3, et de tester ce câblage-ci sans ffmpeg.
  */
-export async function processTranscodeJob(job: Job<TranscodeJobData>): Promise<TranscodeJobResult> {
-  logger.info(
-    { jobId: job.id, mediaId: job.data.mediaId },
-    'Job de transcodage reçu (traitement effectif livré en SH-16)',
+export async function processTranscodeJob(
+  job: Job<TranscodeJobData>,
+  deps: PipelineDeps,
+): Promise<TranscodeJobResult> {
+  logger.info({ jobId: job.id, mediaId: job.data.mediaId }, 'Transcodage démarré');
+
+  const resultat = await runPipeline(
+    {
+      ...deps,
+      // La progression BullMQ rend le job observable EN COURS de route. Un échec
+      // d'écriture de progression ne doit surtout pas faire échouer le transcodage :
+      // ce serait perdre des minutes de calcul pour un détail de supervision.
+      onProgress: (percent) => {
+        void job.updateProgress(percent).catch((err: Error) => {
+          logger.warn({ jobId: job.id, raison: err.message }, 'Progression non enregistrée');
+        });
+      },
+    },
+    job.data,
   );
-  return { renditions: [] };
+
+  logger.info(
+    {
+      jobId: job.id,
+      mediaId: job.data.mediaId,
+      pistes: resultat.renditions.length,
+      type: resultat.type,
+      dureeSecondes: Math.round(resultat.durationSeconds),
+    },
+    'Transcodage terminé',
+  );
+
+  return resultat;
 }
 
 /**
@@ -43,6 +77,10 @@ export function createTranscodeWorker(
   config: MediaServiceConfig,
   metrics: MediaMetrics,
 ): Worker<TranscodeJobData, TranscodeJobResult> {
+  // Construit UNE FOIS par worker et non par job : le client S3 porte un pool de
+  // connexions, le recréer à chaque job en ouvrirait un nouveau à chaque fois.
+  const deps: PipelineDeps = { storage: createMediaStorage(config.s3), tmpDir: config.tmpDir };
+
   // `maxRetriesPerRequest: null` est EXIGÉ par BullMQ sur la connexion d'un Worker :
   // avec la valeur par défaut d'ioredis, les commandes bloquantes finissent par être
   // abandonnées et le worker cesse silencieusement de consommer.
@@ -63,8 +101,9 @@ export function createTranscodeWorker(
     async (job) => {
       const stopTimer = metrics.jobDuration.startTimer();
       try {
-        const result = await processTranscodeJob(job);
+        const result = await processTranscodeJob(job, deps);
         metrics.jobsTotal.inc({ result: 'completed' });
+        metrics.renditionsTotal.inc(result.renditions.length);
         return result;
       } catch (err) {
         metrics.jobsTotal.inc({ result: 'failed' });
