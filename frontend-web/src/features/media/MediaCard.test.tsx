@@ -90,4 +90,13 @@ describe('MediaCard', () => {
     renderCard(makeMedia({ status: 'READY', errorReason: 'Aucun flux vidéo décodable' }));
     expect(screen.queryByText('Aucun flux vidéo décodable')).not.toBeInTheDocument();
   });
+
+  it("n'offre AUCUNE suppression par défaut (SH-54)", () => {
+    // Cette carte servira aussi à la vue recruteur : y afficher « Supprimer » sur le média
+    // d'autrui serait un non-sens. L'action doit être demandée explicitement — ce test
+    // tombe si le défaut bascule un jour à `true`.
+    renderCard(makeMedia());
+
+    expect(screen.queryByRole('button', { name: /supprimer/i })).not.toBeInTheDocument();
+  });
 });

@@ -44,7 +44,7 @@ export default function Portfolio() {
 
       {!isPending &&
         !isError &&
-        (items.length === 0 ? <MediaEmptyState /> : <MediaGrid items={items} />)}
+        (items.length === 0 ? <MediaEmptyState /> : <MediaGrid deletable items={items} />)}
     </section>
   );
 }

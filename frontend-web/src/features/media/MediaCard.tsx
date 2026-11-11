@@ -1,4 +1,5 @@
 import { STATUS_META, formatDuration } from './media-meta';
+import { MediaDeleteControl } from './MediaDeleteControl';
 import { MediaStatusBadge } from './MediaStatusBadge';
 import type { PublicMedia } from './types';
 
@@ -10,7 +11,18 @@ import type { PublicMedia } from './types';
  * porte son icône et son indice textuel, si bien que la grille reste lisible même quand
  * aucun média n'a d'image.
  */
-export function MediaCard({ media }: { media: PublicMedia }) {
+export function MediaCard({
+  media,
+  deletable = false,
+}: {
+  media: PublicMedia;
+  /**
+   * Affiche l'action de suppression (SH-54). FAUX par défaut, et c'est voulu : cette carte
+   * servira aussi à la vue recruteur, où supprimer le média d'autrui n'a aucun sens. Il
+   * faut le demander explicitement, on ne peut pas l'obtenir par oubli.
+   */
+  deletable?: boolean;
+}) {
   const { hint, Icon } = STATUS_META[media.status];
   const isReady = media.status === 'READY';
   // Un média redevenu READY après un échec passé peut encore porter l'ancien `errorReason`
@@ -43,6 +55,7 @@ export function MediaCard({ media }: { media: PublicMedia }) {
         {isFailed && media.errorReason !== null && (
           <span className="text-hud-muted text-xs">{media.errorReason}</span>
         )}
+        {deletable && <MediaDeleteControl mediaId={media.id} title={media.title} />}
       </div>
     </li>
   );

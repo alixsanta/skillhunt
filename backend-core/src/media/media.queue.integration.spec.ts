@@ -1,4 +1,4 @@
-import { Queue } from 'bullmq';
+import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { MediaQueue, MEDIA_QUEUE_NAME } from './media.queue';
 
@@ -66,5 +66,85 @@ describeIf('MediaQueue (intégration Redis)', () => {
     const pourCeMedia = waiting.filter((job) => job.data.mediaId === mediaId);
     expect(pourCeMedia).toHaveLength(1);
     expect(await inspector.getJob(mediaId)).toBeDefined();
+  });
+
+  // ── SH-54 : libération du job avant suppression d'un média ──────────────────────────
+  describe('releaseTranscode (SH-54)', () => {
+    const donnees = (mediaId: string) => ({
+      mediaId,
+      sourceKey: `private/media/f1/${mediaId}/master.mp4`,
+      outputPrefix: `private/media/f1/${mediaId}/hls/`,
+      posterKey: `private/media/f1/${mediaId}/poster.jpg`,
+    });
+
+    it("rend true quand aucun job n'existe pour ce média", async () => {
+      expect(await mediaQueue.releaseTranscode('66666666-0000-0000-0000-000000000000')).toBe(true);
+    });
+
+    it('RETIRE un job en attente : il ne sera jamais transcodé', async () => {
+      const mediaId = '66666666-0000-0000-0000-000000000001';
+      await mediaQueue.enqueueTranscode(donnees(mediaId));
+      expect(await inspector.getJob(mediaId)).toBeDefined();
+
+      expect(await mediaQueue.releaseTranscode(mediaId)).toBe(true);
+
+      expect(await inspector.getJob(mediaId)).toBeUndefined();
+    });
+
+    it("rend false tant qu'un worker exécute RÉELLEMENT le job, puis true une fois fini", async () => {
+      // Le cas qui justifie la méthode : un vrai worker tient le job. Simuler son état
+      // par un bouchon ne prouverait pas que BullMQ refuse bien le retrait d'un job actif.
+      const mediaId = '66666666-0000-0000-0000-000000000002';
+      let liberer: () => void = () => undefined;
+      const retenue = new Promise<void>((resolve) => {
+        liberer = resolve;
+      });
+
+      const workerConnection = new IORedis(url as string, { maxRetriesPerRequest: null });
+      const worker = new Worker(
+        MEDIA_QUEUE_NAME,
+        async (job) => {
+          // Les jobs laissés en attente par les tests voisins passent sans être retenus :
+          // seul celui de ce test est tenu actif.
+          if (job.id === mediaId) {
+            await retenue;
+          }
+          return { renditions: [] };
+        },
+        { connection: workerConnection },
+      );
+
+      try {
+        const actif = new Promise<void>((resolve) => {
+          worker.on('active', (job) => {
+            if (job.id === mediaId) resolve();
+          });
+        });
+        const termine = new Promise<void>((resolve) => {
+          worker.on('completed', (job) => {
+            if (job.id === mediaId) resolve();
+          });
+        });
+
+        await mediaQueue.enqueueTranscode(donnees(mediaId));
+        await actif;
+
+        expect(await mediaQueue.releaseTranscode(mediaId)).toBe(false);
+        // Refuser ne doit rien casser : le job est toujours là, toujours actif.
+        expect(await (await inspector.getJob(mediaId))?.getState()).toBe('active');
+
+        liberer();
+        await termine;
+
+        // Une fois le job terminé, plus rien ne s'oppose à la suppression — c'est ce qui
+        // rend supprimable un média dont le statut n'aurait jamais été mis à jour.
+        expect(await mediaQueue.releaseTranscode(mediaId)).toBe(true);
+        expect(await inspector.getJob(mediaId)).toBeUndefined();
+      } finally {
+        liberer();
+        await worker.close();
+        await workerConnection.quit();
+      }
+    });
   });
 });

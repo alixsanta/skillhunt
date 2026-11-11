@@ -322,3 +322,151 @@ describe('MediaService — confirmation du dépôt', () => {
     expect(media.sizeBytes).toBe('2048');
   });
 });
+
+// ── SH-54 — Suppression d'un média ────────────────────────────────────────────────────
+// Avant ce ticket, le 409 de quota disait « Supprimez-en un avant d'en ajouter » alors
+// qu'aucune route ne le permettait : un quota plein était une impasse définitive.
+describe('MediaService — suppression (SH-54)', () => {
+  const AUTRE = '22222222-2222-2222-2222-222222222222';
+  const MEDIA_ID = '77777777-7777-7777-7777-777777777777';
+  const PREFIXE = `private/media/${FREELANCE}/${MEDIA_ID}/`;
+
+  let storage: FakeStorageService;
+
+  /** Dépôt espionnable : la suppression doit être vérifiée sur l'appel RÉELLEMENT émis. */
+  function contexte(status: MediaStatus, proprietaire = FREELANCE) {
+    const media = {
+      id: MEDIA_ID,
+      freelanceId: proprietaire,
+      status,
+      sourceKey: `private/media/${proprietaire}/${MEDIA_ID}/master.mp4`,
+      mimeType: 'video/mp4',
+    } as Media;
+
+    const remove = jest.fn(async (entity: Media) => entity);
+    const repo = {
+      findOne: async ({ where }: { where: { id: string } }) =>
+        where.id === MEDIA_ID ? media : null,
+      remove,
+    } as unknown as Repository<Media>;
+
+    const releaseTranscode = jest.fn(async () => true);
+    const queue = { enqueueTranscode: jest.fn(), releaseTranscode };
+
+    return { service: new MediaService(repo, storage, queue as never), remove, releaseTranscode };
+  }
+
+  /** Dépose les objets d'un média transcodé, plus ceux d'un AUTRE média du même freelance. */
+  async function seedObjects(proprietaire = FREELANCE) {
+    const base = `private/media/${proprietaire}/${MEDIA_ID}/`;
+    await storage.put(`${base}master.mp4`, Buffer.from('m'), 'video/mp4');
+    await storage.put(`${base}poster.jpg`, Buffer.from('p'), 'image/jpeg');
+    await storage.put(`${base}hls/720p.m3u8`, Buffer.from('l'), 'application/vnd.apple.mpegurl');
+    await storage.put(`${base}hls/720p/seg-00000.ts`, Buffer.from('s'), 'video/mp2t');
+    // Voisin : un autre média du MÊME freelance, qui doit survivre à la purge.
+    await storage.put(`private/media/${proprietaire}/voisin/master.mp4`, Buffer.from('v'), 'video/mp4');
+  }
+
+  beforeEach(() => {
+    storage = new FakeStorageService();
+  });
+
+  it('supprime la ligne ET tous les objets du média, sans toucher au média voisin', async () => {
+    await seedObjects();
+    const { service, remove } = contexte(MediaStatus.READY);
+
+    await service.deleteOwn(MEDIA_ID, FREELANCE);
+
+    expect(remove).toHaveBeenCalledWith(expect.objectContaining({ id: MEDIA_ID }));
+    // Supprimer la ligne sans les objets laisserait du stockage orphelin, facturé.
+    for (const cle of ['master.mp4', 'poster.jpg', 'hls/720p.m3u8', 'hls/720p/seg-00000.ts']) {
+      expect(storage.peek(`${PREFIXE}${cle}`)).toBeUndefined();
+    }
+    expect(storage.peek(`private/media/${FREELANCE}/voisin/master.mp4`)).toBeDefined();
+  });
+
+  it("ÉTANCHÉITÉ : refuse en 404 le média d'un autre freelance, et ne supprime RIEN", async () => {
+    // 404 et non 403, comme `updateOwn` : l'existence du média d'autrui n'a pas à être
+    // révélée. Ce test tombe si le contrôle de propriété saute (C2.2.3).
+    await seedObjects(AUTRE);
+    const { service, remove, releaseTranscode } = contexte(MediaStatus.READY, AUTRE);
+
+    await expect(service.deleteOwn(MEDIA_ID, FREELANCE)).rejects.toThrow(NotFoundException);
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(releaseTranscode).not.toHaveBeenCalled();
+    expect(storage.peek(`private/media/${AUTRE}/${MEDIA_ID}/master.mp4`)).toBeDefined();
+  });
+
+  it('rejette un média inconnu en 404', async () => {
+    const { service, remove } = contexte(MediaStatus.READY);
+
+    await expect(
+      service.deleteOwn('99999999-9999-9999-9999-999999999999', FREELANCE),
+    ).rejects.toThrow(NotFoundException);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('refuse en 409 tant que le transcodage est RÉELLEMENT en cours, sans rien supprimer', async () => {
+    // Supprimer sous les pieds d'un worker en plein encodage laisserait celui-ci
+    // redéposer ses sorties APRÈS la purge : du stockage orphelin, sans ligne pour le
+    // retrouver. Le refus est tranché sur l'état réel du job, pas sur le statut en base.
+    await seedObjects();
+    const { service, remove, releaseTranscode } = contexte(MediaStatus.UPLOADED);
+    releaseTranscode.mockResolvedValue(false);
+
+    await expect(service.deleteOwn(MEDIA_ID, FREELANCE)).rejects.toThrow(ConflictException);
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(storage.peek(`${PREFIXE}master.mp4`)).toBeDefined();
+  });
+
+  it.each([MediaStatus.UPLOADED, MediaStatus.PROCESSING, MediaStatus.READY, MediaStatus.FAILED])(
+    'libère le job de la file avant de supprimer un média %s',
+    async (status) => {
+      // UPLOADED / PROCESSING : un job en attente est retiré, il ne tournera jamais.
+      // READY / FAILED : le job terminé est nettoyé — les échecs restent sinon
+      // indéfiniment dans la file (`removeOnFail: false`).
+      // Un média resté bloqué en UPLOADED dont le job est fini redevient supprimable.
+      const { service, remove, releaseTranscode } = contexte(status);
+
+      await service.deleteOwn(MEDIA_ID, FREELANCE);
+
+      expect(releaseTranscode).toHaveBeenCalledWith(MEDIA_ID);
+      expect(remove).toHaveBeenCalled();
+    },
+  );
+
+  it("supprime un DRAFT SANS interroger la file : aucun job n'a jamais existé pour lui", async () => {
+    // Un dépôt raté laisse un DRAFT qui compte dans le quota. Il doit rester
+    // supprimable même si Redis est indisponible — d'où l'absence d'appel à la file.
+    const { service, remove, releaseTranscode } = contexte(MediaStatus.DRAFT);
+    releaseTranscode.mockRejectedValue(new ServiceUnavailableException('Redis indisponible'));
+
+    await service.deleteOwn(MEDIA_ID, FREELANCE);
+
+    expect(releaseTranscode).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalled();
+  });
+
+  it('purge le stockage AVANT la ligne : si la purge échoue, la ligne reste pour réessayer', async () => {
+    // L'ordre inverse laisserait des objets orphelins que plus rien ne référence.
+    const { service, remove } = contexte(MediaStatus.READY);
+    jest.spyOn(storage, 'deletePrefix').mockRejectedValue(new Error('S3 indisponible'));
+
+    await expect(service.deleteOwn(MEDIA_ID, FREELANCE)).rejects.toThrow('S3 indisponible');
+
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('purge exactement le préfixe du média, terminé par « / »', async () => {
+    // Sans le séparateur final, `…/m1` emporterait aussi `…/m10/…` (cf. storage.service.ts).
+    const { service } = contexte(MediaStatus.READY);
+    const purge = jest.spyOn(storage, 'deletePrefix');
+
+    await service.deleteOwn(MEDIA_ID, FREELANCE);
+
+    expect(purge).toHaveBeenCalledTimes(1);
+    expect(purge).toHaveBeenCalledWith(PREFIXE);
+  });
+});

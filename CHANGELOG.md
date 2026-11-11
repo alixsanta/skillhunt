@@ -33,6 +33,17 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ## [Non publié]
 
+### Ajouté
+
+**Suppression d'une vidéo du portfolio** (SH-54)
+- Un freelance peut supprimer une de ses vidéos : la ligne et **tous** ses fichiers (master,
+  poster, pistes HLS) disparaissent, et une place du quota se libère.
+- Avant cela, un quota plein était une **impasse** : le message demandait de supprimer une
+  vidéo, et rien ne le permettait. Les brouillons laissés par des dépôts ratés, qui comptent
+  dans le quota, deviennent eux aussi supprimables.
+- La suppression est refusée tant qu'un transcodage est réellement en cours, et se confirme
+  en deux temps dans l'interface.
+
 ### Sécurité
 
 **Résorption de la cinquième vague de dérive npm** (SH-49)

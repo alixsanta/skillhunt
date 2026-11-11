@@ -7,11 +7,18 @@ import type { PublicMedia } from './types';
  * (matériel puis vidéos), un nom explicite les distingue pour les lecteurs d'écran
  * comme pour les tests. Calque de `GearGrid`.
  */
-export function MediaGrid({ items }: { items: PublicMedia[] }) {
+export function MediaGrid({
+  items,
+  deletable = false,
+}: {
+  items: PublicMedia[];
+  /** Transmis à chaque carte. Faux par défaut : cf. `MediaCard`. */
+  deletable?: boolean;
+}) {
   return (
     <ul aria-label="Vidéos du portfolio" className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       {items.map((media) => (
-        <MediaCard key={media.id} media={media} />
+        <MediaCard key={media.id} deletable={deletable} media={media} />
       ))}
     </ul>
   );

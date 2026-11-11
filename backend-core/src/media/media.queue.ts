@@ -91,6 +91,46 @@ export class MediaQueue implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Libère le job d'un média avant sa suppression (SH-54).
+   *
+   * @returns `true` si plus rien ne s'oppose à la suppression — aucun job, ou un job
+   *   retiré parce qu'il attendait ou était déjà terminé ; `false` si le job est EN
+   *   COURS d'exécution chez un worker.
+   *
+   * Le refus porte sur l'état RÉEL du job et non sur le statut en base : supprimer sous
+   * les pieds d'un worker en plein encodage le laisserait redéposer ses sorties après la
+   * purge, donc du stockage orphelin. À l'inverse, un média dont le job est terminé reste
+   * supprimable même si son statut n'a jamais été mis à jour.
+   *
+   * **503 explicite** si Redis est indisponible, comme à l'enfilement : sans la file, on
+   * ne sait pas si un worker est à l'œuvre, et supposer que non serait le pari risqué.
+   */
+  async releaseTranscode(mediaId: string): Promise<boolean> {
+    try {
+      const job = await this.queue.getJob(mediaId);
+      if (!job) {
+        return true;
+      }
+      if ((await job.getState()) === 'active') {
+        return false;
+      }
+      try {
+        await job.remove();
+        return true;
+      } catch {
+        // Course perdue : le job est passé actif entre la lecture de son état et son
+        // retrait — BullMQ refuse alors de retirer un job verrouillé par un worker.
+        return false;
+      }
+    } catch (err) {
+      this.logger.error(`Échec de libération du transcodage : ${(err as Error).message}`);
+      throw new ServiceUnavailableException(
+        'Le service de transcodage est momentanément indisponible. Réessayez dans quelques instants.',
+      );
+    }
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.events.close();
     await this.queue.close();

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -101,5 +102,32 @@ describe('Portfolio', () => {
     renderPage();
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
+
+  it('retire la vidéo du portfolio une fois la suppression confirmée (SH-54)', async () => {
+    // Bout en bout côté interface : le propriétaire voit l'action, confirme, et la grille
+    // se recharge sans la vidéo. C'est ce qui sort réellement un quota plein de l'impasse.
+    let supprime = false;
+    server.use(
+      http.get('*/api/v1/media/me', () =>
+        HttpResponse.json(
+          supprime
+            ? { items: [], total: 0, page: 1, limit: 100 }
+            : { items: [media('m-1', 'READY', 'Survol')], total: 1, page: 1, limit: 100 },
+        ),
+      ),
+      http.delete('*/api/v1/media/m-1', () => {
+        supprime = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Supprimer « Survol »' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmer la suppression' }));
+
+    expect(await screen.findByText(/ton portfolio est vide/i)).toBeInTheDocument();
+    expect(screen.queryByText('Survol')).not.toBeInTheDocument();
   });
 });

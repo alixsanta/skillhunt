@@ -9,6 +9,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -90,6 +91,24 @@ export class MediaController {
     @Body() dto: UpdateMediaDto,
   ) {
     return this.mediaService.updateOwn(id, user.userId, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @Roles(UserRole.FREELANCE)
+  @ApiOperation({
+    summary: 'Supprimer un de ses médias',
+    description:
+      'Supprime la ligne ET tous les objets du média (master, poster, pistes HLS). ' +
+      'Libère une place du quota. Refusé tant que le transcodage est réellement en cours.',
+  })
+  @ApiResponse({ status: 204, description: 'Média supprimé, stockage purgé.' })
+  @ApiResponse({ status: 404, description: 'Média introuvable ou appartenant à un autre compte.' })
+  @ApiResponse({ status: 409, description: 'Transcodage en cours : réessayer dans quelques instants.' })
+  @ApiResponse({ status: 503, description: 'File de transcodage indisponible.' })
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
+    // Étanchéité garantie par l'id du token : jamais d'identifiant de propriétaire client.
+    return this.mediaService.deleteOwn(id, user.userId);
   }
 
   @Post(':id/complete')

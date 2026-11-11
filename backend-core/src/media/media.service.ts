@@ -337,6 +337,40 @@ export class MediaService {
   }
 
   /**
+   * Supprime un média dont on est propriétaire, avec TOUS ses objets (SH-54, C2.2.3).
+   *
+   * Avant ce ticket, le 409 de quota prescrivait « Supprimez-en un avant d'en ajouter »
+   * sans qu'aucune route le permette : un quota plein — ou rempli de brouillons laissés
+   * par des dépôts ratés — était une impasse définitive.
+   *
+   * Un média d'autrui donne 404 et non 403, comme `updateOwn` : son existence n'a pas à
+   * être révélée.
+   */
+  async deleteOwn(mediaId: string, freelanceId: string): Promise<void> {
+    const media = await this.mediaRepo.findOne({ where: { id: mediaId } });
+    if (!media || media.freelanceId !== freelanceId) {
+      throw new NotFoundException('Média introuvable');
+    }
+
+    // Un DRAFT n'a jamais eu de job : inutile d'interroger la file, et surtout il doit
+    // rester supprimable quand Redis est indisponible — ce sont justement les brouillons
+    // des dépôts ratés qui encombrent le quota.
+    if (media.status !== MediaStatus.DRAFT) {
+      const libre = await this.queue.releaseTranscode(media.id);
+      if (!libre) {
+        throw new ConflictException(
+          'Transcodage en cours : réessayez la suppression dans quelques instants.',
+        );
+      }
+    }
+
+    // Le stockage AVANT la ligne. Si la purge échoue, la ligne subsiste et la suppression
+    // peut être rejouée ; l'ordre inverse laisserait des objets que plus rien ne référence.
+    await this.storage.deletePrefix(this.buildMediaPrefix(media.freelanceId, media.id));
+    await this.mediaRepo.remove(media);
+  }
+
+  /**
    * Enregistre un échec définitif et purge les sorties partielles.
    * Le MASTER est conservé : il permet de rejouer le transcodage après correction.
    */
