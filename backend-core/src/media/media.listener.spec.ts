@@ -229,6 +229,34 @@ describe('MediaTranscodeListener — câblage', () => {
     expect(service.markFailed).toHaveBeenCalledWith('m2', 'ffmpeg: exit 1');
   });
 
+  // Relevé en recette de bout en bout (SH-16b) : quand un job est INTERROMPU — worker tué,
+  // hôte mis en veille, verrou expiré — c'est BullMQ lui-même qui produit la raison, en
+  // anglais et dans son vocabulaire interne. Le portfolio l'affichait telle quelle.
+  it.each([
+    'job stalled more than allowable limit',
+    'Missing lock for job m3. moveToFinished',
+    'Lock mismatch for job m3. Cmd failed from active',
+  ])('traduit la raison interne de BullMQ « %s » en message utilisateur', async (interne) => {
+    const { events, service } = ecouteur();
+
+    events.emit('failed', { jobId: 'm3', failedReason: interne });
+    await Promise.resolve();
+
+    expect(service.markFailed).toHaveBeenCalledWith(
+      'm3',
+      'Le traitement a été interrompu. Déposez de nouveau la vidéo.',
+    );
+  });
+
+  it('applique un message par défaut quand BullMQ ne fournit aucune raison', async () => {
+    const { events, service } = ecouteur();
+
+    events.emit('failed', { jobId: 'm4' });
+    await Promise.resolve();
+
+    expect(service.markFailed).toHaveBeenCalledWith('m4', 'Échec du transcodage');
+  });
+
   it('un résultat inexploitable est journalisé, pas propagé en rejet non géré', async () => {
     const { events, service } = ecouteur();
     const journal = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);

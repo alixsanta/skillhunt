@@ -3,8 +3,9 @@ import IORedis from 'ioredis';
 import type { MediaServiceConfig } from '../config';
 import type { MediaMetrics } from '../metrics';
 import { logger } from '../logger';
-import { createMediaStorage } from '../storage/s3';
+import { createMediaStorage, type MediaStorage } from '../storage/s3';
 import { runPipeline, type PipelineDeps, type TranscodeOutcome } from '../transcode/pipeline';
+import { toTranscodeError } from '../transcode/errors';
 
 /**
  * Charge utile d'un job de transcodage (design EP04 §7).
@@ -40,20 +41,35 @@ export async function processTranscodeJob(
 ): Promise<TranscodeJobResult> {
   logger.info({ jobId: job.id, mediaId: job.data.mediaId }, 'Transcodage démarré');
 
-  const resultat = await runPipeline(
-    {
-      ...deps,
-      // La progression BullMQ rend le job observable EN COURS de route. Un échec
-      // d'écriture de progression ne doit surtout pas faire échouer le transcodage :
-      // ce serait perdre des minutes de calcul pour un détail de supervision.
-      onProgress: (percent) => {
-        void job.updateProgress(percent).catch((err: Error) => {
-          logger.warn({ jobId: job.id, raison: err.message }, 'Progression non enregistrée');
-        });
+  let resultat: TranscodeJobResult;
+  try {
+    resultat = await runPipeline(
+      {
+        ...deps,
+        // La progression BullMQ rend le job observable EN COURS de route. Un échec
+        // d'écriture de progression ne doit surtout pas faire échouer le transcodage :
+        // ce serait perdre des minutes de calcul pour un détail de supervision.
+        onProgress: (percent) => {
+          void job.updateProgress(percent).catch((err: Error) => {
+            logger.warn({ jobId: job.id, raison: err.message }, 'Progression non enregistrée');
+          });
+        },
       },
-    },
-    job.data,
-  );
+      job.data,
+    );
+  } catch (err) {
+    // POINT DE PASSAGE UNIQUE. Le message de l'erreur relancée devient le `failedReason`
+    // BullMQ, puis l'`errorReason` que le portfolio affiche tel quel. Seul un message
+    // UTILISATEUR sort d'ici ; la cause technique complète reste dans ce journal. Relevé
+    // en recette : l'erreur brute de ffprobe exposait sa ligne de commande et le chemin
+    // interne du conteneur (cf. `errors.ts`).
+    const erreur = toTranscodeError(err);
+    logger.error(
+      { jobId: job.id, mediaId: job.data.mediaId, raison: erreur.message, detail: erreur.detail },
+      'Transcodage en échec',
+    );
+    throw erreur;
+  }
 
   logger.info(
     {
@@ -76,10 +92,19 @@ export async function processTranscodeJob(
 export function createTranscodeWorker(
   config: MediaServiceConfig,
   metrics: MediaMetrics,
+  /**
+   * Substitution du stockage, pour les tests d'intégration : elle permet de faire passer
+   * un VRAI transcodage par la VRAIE file BullMQ sans dépendre d'un S3. En production,
+   * rien n'est passé et le client S3 est construit depuis la configuration.
+   */
+  overrides: { storage?: MediaStorage } = {},
 ): Worker<TranscodeJobData, TranscodeJobResult> {
   // Construit UNE FOIS par worker et non par job : le client S3 porte un pool de
   // connexions, le recréer à chaque job en ouvrirait un nouveau à chaque fois.
-  const deps: PipelineDeps = { storage: createMediaStorage(config.s3), tmpDir: config.tmpDir };
+  const deps: PipelineDeps = {
+    storage: overrides.storage ?? createMediaStorage(config.s3),
+    tmpDir: config.tmpDir,
+  };
 
   // `maxRetriesPerRequest: null` est EXIGÉ par BullMQ sur la connexion d'un Worker :
   // avec la valeur par défaut d'ioredis, les commandes bloquantes finissent par être

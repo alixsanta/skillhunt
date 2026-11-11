@@ -22,6 +22,8 @@ describeIf('bootstrap du media-service', () => {
   it('démarre, sert /health, puis s\'arrête proprement', async () => {
     running = await bootstrap({
       REDIS_URL: url as string,
+      // Obligatoire depuis SH-16b : sans bucket, `loadConfig` refuse le démarrage.
+      AWS_S3_BUCKET: 'skillhunt-media-test',
       PORT: '0', // port éphémère : aucun conflit si le service tourne déjà en conteneur
       MEDIA_QUEUE_NAME: 'media-transcode-bootstrap-test',
     });
@@ -57,6 +59,7 @@ describeIf('bootstrap du media-service', () => {
       await expect(
         bootstrap({
           REDIS_URL: url as string,
+          AWS_S3_BUCKET: 'skillhunt-media-test',
           PORT: String(port),
           MEDIA_QUEUE_NAME: 'media-transcode-bootstrap-conflit',
         }).then((service) => {

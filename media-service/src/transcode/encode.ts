@@ -2,11 +2,12 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { RenditionSpec } from './ladder';
+import { MESSAGE_ECHEC_GENERIQUE, TranscodeError } from './errors';
 
 /** Durée cible d'un segment HLS, en secondes. 4 s est l'usage courant en VOD. */
 const HLS_SEGMENT_SECONDS = 4;
 
-/** Nombre de lignes de `stderr` conservées dans le message d'erreur. */
+/** Nombre de lignes de `stderr` conservées dans le DÉTAIL de l'erreur. */
 const LIGNES_ERREUR_CONSERVEES = 3;
 
 /**
@@ -35,20 +36,28 @@ function runFfmpeg(args: string[], onLine?: (ligne: string) => void): Promise<vo
     });
 
     // La sortie d'erreur est CONSERVÉE : sans elle, un échec d'encodage se résume à
-    // « exit 1 », inexploitable en supervision comme en recette.
+    // « exit 1 », inexploitable en supervision comme en recette. Elle part dans le
+    // `detail` de l'erreur — donc dans les JOURNAUX — et jamais dans son message, qui
+    // finit affiché à l'utilisateur (cf. `errors.ts`).
     let erreurs = '';
     processus.stderr.on('data', (morceau: Buffer) => {
       erreurs += morceau.toString();
     });
 
-    processus.on('error', reject);
+    processus.on('error', (err) => {
+      reject(
+        new TranscodeError(MESSAGE_ECHEC_GENERIQUE, `ffmpeg n'a pas pu démarrer : ${err.message}`),
+      );
+    });
     processus.on('close', (code) => {
       if (code === 0) {
         resolve();
         return;
       }
       const extrait = erreurs.trim().split('\n').slice(-LIGNES_ERREUR_CONSERVEES).join(' | ');
-      reject(new Error(`ffmpeg a échoué (code ${code}) : ${extrait}`));
+      reject(
+        new TranscodeError(MESSAGE_ECHEC_GENERIQUE, `ffmpeg a échoué (code ${code}) : ${extrait}`),
+      );
     });
   });
 }
@@ -98,6 +107,14 @@ export async function encodeRendition(
       'veryfast',
       '-b:v',
       String(rendition.bandwidth),
+      // Images-clés FORCÉES à instants fixes, multiples de la durée de segment. Sans
+      // elles, le muxer HLS ne peut couper qu'aux images-clés que l'encodeur choisit
+      // seul — une toutes les 250 images par défaut, soit 10 s à 25 i/s — et `-hls_time`
+      // reste lettre morte. Surtout, ces instants ne dépendent PAS de la définition :
+      // le segment N couvre donc le même intervalle dans toutes les pistes, condition
+      // de la bascule de qualité côté lecteur. Défaut relevé en recette de bout en bout.
+      '-force_key_frames',
+      `expr:gte(t,n_forced*${HLS_SEGMENT_SECONDS})`,
       '-c:a',
       'aac',
       '-b:a',

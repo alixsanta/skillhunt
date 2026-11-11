@@ -48,8 +48,11 @@ export const describeIfFfmpeg: jest.Describe = hasFfmpeg() ? describe : describe
  */
 export async function makeFixture(
   dir: string,
-  options: { spherical?: boolean } = {},
+  options: { spherical?: boolean; durationSeconds?: number } = {},
 ): Promise<string> {
+  // 2 s par défaut : assez pour sonder et encoder, assez court pour rester rapide. Une
+  // durée plus longue ne sert qu'aux tests de DÉCOUPAGE en segments, invisibles en 2 s.
+  const duree = options.durationSeconds ?? 2;
   // ⚠️ Conteneur MATROSKA pour la variante 360°, et c'est un constat, pas un choix :
   // le muxer mp4 de ffmpeg JETTE les tags de projection passés en `-metadata` (vérifié
   // sur ffmpeg 9.0.2 — `format.tags` ne contient plus que les marques `isom`). Un vrai
@@ -58,7 +61,10 @@ export async function makeFixture(
   // Matroska conserve les tags arbitraires, ce qui donne une fixture 360° RÉELLE.
   // La forme `side_data_list` des vrais mp4, elle, est couverte par les tests unitaires
   // de `detectSpherical` (probe.spec.ts).
-  const chemin = join(dir, options.spherical ? 'fixture-360.mkv' : 'fixture.mp4');
+  const chemin = join(
+    dir,
+    options.spherical ? 'fixture-360.mkv' : `fixture-${duree}s.mp4`,
+  );
 
   const args = [
     '-hide_banner',
@@ -68,7 +74,7 @@ export async function makeFixture(
     '-f',
     'lavfi',
     '-i',
-    'testsrc=size=640x360:rate=25:duration=2',
+    `testsrc=size=640x360:rate=25:duration=${duree}`,
     '-c:v',
     'libx264',
     '-preset',

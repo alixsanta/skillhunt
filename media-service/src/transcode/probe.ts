@@ -1,7 +1,11 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { TranscodeError } from './errors';
 
 const execFileAsync = promisify(execFile);
+
+/** Message UTILISATEUR d'une vidéo que ffprobe ne sait pas lire. Aucun détail interne. */
+const MESSAGE_ILLISIBLE = "Fichier illisible : ce n'est pas une vidéo exploitable.";
 
 /** Sortie utile du sondage. Tout le reste de `ffprobe` est ignoré volontairement. */
 export interface ProbeResult {
@@ -74,32 +78,41 @@ export function detectSpherical(sortie: FfprobeOutput): boolean {
  * On sonde le FICHIER TÉLÉCHARGÉ et non une URL : le 4K supporte mal les aléas réseau
  * en cours de `seek` (conception EP04 §7).
  *
- * `ffprobe` sort en code non nul sur un fichier illisible, ce qui rejette la promesse —
- * on laisse cette erreur remonter telle quelle : c'est un échec de transcodage légitime,
- * que BullMQ retentera avant de basculer le média en `FAILED`.
+ * `ffprobe` sort en code non nul sur un fichier illisible. C'est un échec de transcodage
+ * légitime, que BullMQ retentera avant de basculer le média en `FAILED` — mais l'erreur
+ * brute n'est PAS relayée : elle porte la ligne de commande et le chemin interne du
+ * conteneur, et finirait affichée dans le portfolio (cf. `errors.ts`).
  */
 export async function probeVideo(filePath: string): Promise<ProbeResult> {
-  const { stdout } = await execFileAsync('ffprobe', [
-    '-hide_banner',
-    '-loglevel',
-    'error',
-    '-print_format',
-    'json',
-    '-show_format',
-    '-show_streams',
-    filePath,
-  ]);
+  let stdout: string;
+  try {
+    ({ stdout } = await execFileAsync('ffprobe', [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-print_format',
+      'json',
+      '-show_format',
+      '-show_streams',
+      filePath,
+    ]));
+  } catch (err) {
+    throw new TranscodeError(MESSAGE_ILLISIBLE, (err as Error).message);
+  }
 
   let sortie: FfprobeOutput;
   try {
     sortie = JSON.parse(stdout) as FfprobeOutput;
   } catch {
-    throw new Error("Sortie ffprobe illisible : le dépôt n'est pas une vidéo exploitable.");
+    throw new TranscodeError(MESSAGE_ILLISIBLE, 'Sortie ffprobe non analysable en JSON.');
   }
 
   const video = sortie.streams?.find((flux) => flux.codec_type === 'video');
   if (!video || !video.width || !video.height) {
-    throw new Error('Aucun flux vidéo exploitable : dimensions absentes du sondage.');
+    throw new TranscodeError(
+      'Fichier sans piste vidéo exploitable.',
+      'Aucun flux vidéo, ou dimensions absentes du sondage ffprobe.',
+    );
   }
 
   // La durée du CONTENEUR fait foi quand elle existe : celle du flux manque sur certains
@@ -107,7 +120,10 @@ export async function probeVideo(filePath: string): Promise<ProbeResult> {
   // (`estNombrePositif`). Mieux vaut échouer ici, avec un message, que là-bas.
   const duree = Number(sortie.format?.duration ?? video.duration ?? Number.NaN);
   if (!Number.isFinite(duree) || duree <= 0) {
-    throw new Error('Durée introuvable ou nulle : sondage ffprobe incohérent.');
+    throw new TranscodeError(
+      'Durée de la vidéo introuvable.',
+      `Durée absente ou nulle au sondage ffprobe (valeur lue : ${String(duree)}).`,
+    );
   }
 
   return {

@@ -5,6 +5,7 @@ import type { TranscodeJobData } from '../queue/worker';
 import { selectLadder } from './ladder';
 import { probeVideo } from './probe';
 import { encodeRendition, extractPoster } from './encode';
+import { TranscodeError } from './errors';
 
 /**
  * Résultat rendu à BullMQ, dans la forme EXACTE attendue par `backend-core`
@@ -50,7 +51,12 @@ const MIME_PAR_EXTENSION: Record<string, string> = {
 function mimeTypeDuMaster(sourceKey: string): string {
   const mime = MIME_PAR_EXTENSION[extname(sourceKey).toLowerCase()];
   if (!mime) {
-    throw new Error(`Extension de master non supportée : ${sourceKey}`);
+    // La clé de stockage va dans le détail, JAMAIS dans le message : aucune clé interne
+    // ne doit atteindre l'utilisateur (même règle que `PublicMedia` côté monolithe).
+    throw new TranscodeError(
+      'Format de fichier non supporté.',
+      `Extension de master non supportée : ${sourceKey}`,
+    );
   }
   return mime;
 }
@@ -91,7 +97,14 @@ export async function runPipeline(
   try {
     await mkdir(sortie, { recursive: true });
 
-    await deps.storage.download(job.sourceKey, masterPath);
+    try {
+      await deps.storage.download(job.sourceKey, masterPath);
+    } catch (err) {
+      throw new TranscodeError(
+        'Le fichier déposé est introuvable en stockage.',
+        `Téléchargement de ${job.sourceKey} impossible : ${(err as Error).message}`,
+      );
+    }
     deps.onProgress?.(5);
 
     const sonde = await probeVideo(masterPath);

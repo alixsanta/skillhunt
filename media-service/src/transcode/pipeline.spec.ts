@@ -115,7 +115,7 @@ describeIfFfmpeg('runPipeline (SH-16b)', () => {
         { storage, tmpDir: join(dir, 'work') },
         { ...JOB, sourceKey: 'private/media/f-1/m-1/master.avi' },
       ),
-    ).rejects.toThrow(/extension/i);
+    ).rejects.toThrow('Format de fichier non supporté.');
   }, 180_000);
 
   it('NETTOIE le temporaire même quand le transcodage échoue', async () => {

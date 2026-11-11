@@ -121,6 +121,69 @@ maître de SH-17 aurait été vide.
 Le garde-fou `renditions.length === 0` a été ajouté, avec son test. L'affirmation du
 contrat est donc devenue vraie *après* ce ticket, pas avant.
 
+## Recette de bout en bout — 2026-11-11
+
+Jouée par l'API à travers la gateway (8088), sur un compte freelance créé pour l'occasion,
+avec `media-service` reconstruit depuis cette branche. Vidéos de test générées par ffmpeg.
+
+| Scénario | Résultat |
+|---|---|
+| Dépôt d'un 720p de 6 s | `UPLOADED` → **`READY` en 4 s** ; pistes 360p + 720p, **pas de 1080p inventé** |
+| Dépôt d'un 720p de 22 s | `READY` en 20 s ; **6 segments de 4 s, identiques sur les deux pistes** |
+| Fichier texte annoncé `video/mp4` | 3 tentatives → **`FAILED` en 16 s**, raison courte, temporaire vide |
+| Objets déposés | `master`, `poster.jpg`, `hls/<piste>.m3u8`, `hls/<piste>/seg-*.ts` — conforme à §5.4 |
+| En-têtes | types MIME exacts, **AES-256 au repos** sur chaque sortie |
+| API | aucune clé de stockage exposée (`sourceKey`, `posterKey`, `hlsPrefix`, `playlistKey`) |
+| Portfolio | cartes « PRÊT » avec leur durée, cartes « ÉCHEC » avec leur raison |
+
+### Cinq défauts que seule la recette pouvait révéler
+
+Tous dans du code que les tests unitaires disaient vert.
+
+1. **Le worker n'aurait pas démarré dans la stack.** `AWS_S3_BUCKET` est obligatoire depuis
+   ce ticket, mais les fichiers compose ne le fournissaient pas : l'étape de câblage avait
+   été sautée tant que Docker était arrêté. Corrigé dans les deux fichiers. En staging, les
+   deux identifiants S3 sont passés par substitution et **non** par `env_file`, qui aurait
+   livré au worker les mots de passe de base et les clés JWT.
+2. **`-hls_time 4` était lettre morte.** Sans images-clés forcées, ffmpeg ne coupe qu'aux
+   images-clés de l'encodeur — une toutes les 250 images, soit des segments de **10 s**.
+   Pire sur du contenu réel : les images-clés de changement de plan ne tombent pas aux
+   mêmes instants selon la définition, ce qui désaligne les pistes et casse la bascule de
+   qualité. Invisible sur une fixture de 2 s. Corrigé par `-force_key_frames`.
+3. **La raison d'échec exposait l'intérieur du conteneur.** L'erreur brute de `ffprobe`
+   devenait l'`errorReason` affiché dans le portfolio : ligne de commande complète, chemin
+   `/tmp/media/…`, adresse mémoire. Corrigé par `TranscodeError`, qui sépare un message
+   utilisateur d'un détail réservé aux journaux, avec un point de passage unique dans le
+   worker — vérifié par sabotage.
+4. **Même défaut côté monolithe pour les jobs interrompus** : BullMQ écrit alors lui-même
+   la raison (« job stalled more than allowable limit »), affichée telle quelle. Traduite
+   dans l'écouteur.
+5. **Trois tests d'intégration étaient cassés sans que rien ne le signale.** Les suites
+   Redis étaient sautées depuis le début du ticket. Elles attendaient encore l'enveloppe
+   vide de l'ancien no-op, et l'une portait un commentaire affirmant que « le bucket n'est
+   jamais atteint » — écrit sans pouvoir l'exécuter, et faux. Le stockage est désormais
+   injectable, et le test fait passer un **vrai** transcodage par la **vraie** file.
+
+Un sixième constat concerne mes propres tests : « ne fait pas échouer le transcodage quand
+la progression ne s'écrit pas » faisait échouer le téléchargement **avant** tout appel de
+progression. Il ne prouvait rien. Réécrit.
+
+### Constats laissés ouverts
+
+- **`PROCESSING` n'est jamais observé** : le média passe d'`UPLOADED` à `READY` sans
+  transition intermédiaire, personne n'écrivant ce statut au démarrage du job. L'état est
+  géré par l'interface mais reste mort, comme SH-18a le notait déjà.
+- **Hypothèse NON vérifiée — perte d'évènement si le monolithe est arrêté pendant un
+  transcodage.** Une nouvelle instance `QueueEvents` lit le flux à partir de sa fin : un
+  job qui se termine pendant un redémarrage de `backend-core` pourrait laisser son média
+  bloqué en `UPLOADED`. Je l'ai d'abord cru observé, à tort — ma lecture de la base avait
+  précédé l'évènement de quelques secondes, et le monolithe l'a bien traité. Le scénario
+  reste à tester délibérément (redémarrage du backend pendant un job) avant de conclure.
+- **L'inscription d'un email déjà pris rend 401** et non 409. Hors périmètre, relevé au
+  passage.
+- **L'image du worker tourne en Node 20**, et le SDK AWS avertit au démarrage qu'il exigera
+  Node 22. L'avertissement sort en texte brut, que la collecte de journaux ignore.
+
 ## Definition of Done (DoD)
 
 - [x] Résultat conforme au validateur du monolithe — **test croisé** : `contract.spec.ts`
@@ -131,10 +194,9 @@ contrat est donc devenue vraie *après* ce ticket, pas avant.
       fait tomber le test.
 - [x] Test d'échelle ABR sans sur-échantillonnage — **vérifié par sabotage** (2 échecs).
 - [x] Test de nettoyage du temporaire en cas d'échec — **vérifié par sabotage** (2 échecs).
-- [ ] ⛔ **Recette de bout en bout : NON FAITE.** Docker est arrêté sur le poste de
-      développement, donc ni LocalStack ni Redis. **`READY` n'a pas encore été observé en
-      conditions réelles** — c'est le dernier critère manquant de ce ticket, et il ne peut
-      pas être coché depuis le code seul.
+- [x] **Recette de bout en bout faite le 2026-11-11** sur la stack conteneurisée — voir la
+      section « Recette » ci-dessous. `READY` observé en conditions réelles, pour la
+      première fois du projet.
 - [x] ffmpeg installé en CI, fixture générée au setup.
 - [x] Lint et build verts sur `backend-core` et `media-service`.
 - [ ] ⛔ **CI non vérifiée** : depuis le 9 novembre, les workflows Node échouent en 2 s

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describeIfFfmpeg, makeFixture } from '../test/fixture';
 import { detectSpherical, probeVideo, type FfprobeOutput } from './probe';
+import { TranscodeError } from './errors';
 
 // ── Détection 360° : fonction PURE, donc testable sur les charges du TERRAIN ──────────
 // Un vrai mp4 360° porte sa projection dans `side_data_list`, forme que ffmpeg ne sait
@@ -116,5 +117,26 @@ describeIfFfmpeg('probeVideo (SH-16b)', () => {
     await writeFile(chemin, 'ceci est du texte, pas un flux vidéo');
 
     await expect(probeVideo(chemin)).rejects.toThrow();
+  }, 60_000);
+
+  it("n'expose NI commande NI chemin interne dans le message d'un fichier illisible", async () => {
+    // Relevé en recette de bout en bout : ce message devient l'`errorReason` affiché
+    // dans le portfolio. L'erreur brute de ffprobe y plaçait sa ligne de commande
+    // complète, le chemin `/tmp/media/…` du conteneur et une adresse mémoire.
+    const chemin = join(dir, 'pas-une-video.mp4');
+    await writeFile(chemin, 'ceci est du texte, pas un flux vidéo');
+
+    const erreur = await probeVideo(chemin).then(
+      () => null,
+      (err: unknown) => err as TranscodeError,
+    );
+
+    expect(erreur).toBeInstanceOf(TranscodeError);
+    expect(erreur?.message).toBe("Fichier illisible : ce n'est pas une vidéo exploitable.");
+    for (const interdit of ['ffprobe', 'Command failed', chemin, dir, '0x']) {
+      expect(erreur?.message).not.toContain(interdit);
+    }
+    // La cause technique n'est pas perdue pour autant : elle part aux journaux.
+    expect(erreur?.detail).toContain('ffprobe');
   }, 60_000);
 });

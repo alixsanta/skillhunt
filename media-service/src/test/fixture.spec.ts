@@ -28,7 +28,7 @@ describeIfFfmpeg('makeFixture (SH-16b)', () => {
 
     const infos = await stat(chemin);
     expect(infos.size).toBeGreaterThan(0);
-    expect(chemin.endsWith('fixture.mp4')).toBe(true);
+    expect(chemin.endsWith('fixture-2s.mp4')).toBe(true);
   }, 60_000);
 
   it('génère une variante 360° distincte, en conteneur Matroska', async () => {

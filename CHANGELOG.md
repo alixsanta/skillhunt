@@ -55,6 +55,14 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
   faisait donc basculer le média en `READY` : le portfolio aurait affiché « PRÊT » sur une
   vidéo injouable, et le manifeste maître à venir aurait été vide. Défaut relevé en
   écrivant le test de frontière, corrigé et couvert.
+- **La raison d'un échec de transcodage exposait l'intérieur du service** (SH-16b). Le
+  portfolio affichait la ligne de commande `ffprobe`, le chemin interne du conteneur et
+  une adresse mémoire. Un échec porte désormais deux textes distincts : un message court
+  destiné à l'utilisateur, et le détail technique réservé aux journaux. Les raisons
+  écrites par la file elle-même (job interrompu) sont traduites de la même façon.
+- **Les segments vidéo faisaient 10 s au lieu des 4 s prévus** (SH-16b), faute d'images-clés
+  forcées. Les pistes de qualité sont désormais découpées aux mêmes instants, condition
+  d'une bascule de qualité sans accroc.
 
 ### Sécurité
 

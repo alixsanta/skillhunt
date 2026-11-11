@@ -2,6 +2,31 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MediaQueue } from './media.queue';
 import { MediaService } from './media.service';
 
+/** Raison enregistrée quand BullMQ n'en fournit aucune. */
+const RAISON_PAR_DEFAUT = 'Échec du transcodage';
+
+/** Raison UTILISATEUR d'un job interrompu (worker tué, hôte en veille, verrou expiré). */
+const RAISON_INTERROMPU = 'Le traitement a été interrompu. Déposez de nouveau la vidéo.';
+
+/**
+ * Raisons d'échec produites par BullMQ LUI-MÊME, et non par le worker.
+ *
+ * Les messages du worker sont déjà des messages utilisateur (`TranscodeError`, côté
+ * media-service). Mais quand un job est interrompu, c'est BullMQ qui écrit la raison,
+ * en anglais et dans son vocabulaire interne — « job stalled more than allowable
+ * limit », « Missing lock for job … ». Le portfolio affichant `errorReason` tel quel,
+ * ces textes arrivaient sous les yeux de l'utilisateur (relevé en recette SH-16b).
+ */
+const RAISONS_INTERNES_BULLMQ = /stalled|missing lock|lock mismatch/i;
+
+/** Traduit la raison d'échec reçue de la file en message affichable. */
+export function raisonUtilisateur(failedReason: string | undefined): string {
+  if (!failedReason) {
+    return RAISON_PAR_DEFAUT;
+  }
+  return RAISONS_INTERNES_BULLMQ.test(failedReason) ? RAISON_INTERROMPU : failedReason;
+}
+
 /**
  * Écouteur `QueueEvents` (SH-16a, décision D7).
  *
@@ -32,7 +57,7 @@ export class MediaTranscodeListener implements OnModuleInit {
 
     this.queue.events.on('failed', ({ jobId, failedReason }) => {
       void this.mediaService
-        .markFailed(jobId, failedReason ?? 'Échec du transcodage')
+        .markFailed(jobId, raisonUtilisateur(failedReason))
         .catch((err: Error) => {
           this.logger.error(`Impossible de marquer l'échec de ${jobId} : ${err.message}`);
         });
