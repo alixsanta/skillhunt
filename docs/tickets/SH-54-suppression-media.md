@@ -90,10 +90,8 @@ Scénario : étanchéité entre freelances
       média voisin du même freelance intact. Ordre stockage-puis-ligne **vérifié par
       sabotage**.
 - [x] Sort du `PROCESSING` tranché (voir ci-dessus) et testé au niveau du service.
-- [ ] ⛔ **Tests d'intégration de `releaseTranscode` contre un vrai Redis : écrits, compilés,
-      PAS ENCORE EXÉCUTÉS.** Docker s'est arrêté pendant l'implémentation. Ce sont eux qui
-      prouvent que BullMQ refuse bien de retirer un job tenu par un vrai worker.
-- [ ] ⛔ **Recette de bout en bout non faite**, pour la même raison.
+- [x] Tests d'intégration de `releaseTranscode` contre un vrai Redis : **exécutés le 2026-11-11, 5/5 verts**. Un vrai worker tient le job : BullMQ refuse bien de le retirer tant qu'il est actif, puis le laisse partir une fois terminé.
+- [ ] ⛔ **Recette de bout en bout non faite** (session interrompue avant).
 - [ ] ⛔ **`src/api/schema.d.ts` non régénéré** : `npm run gen:api` exige le backend démarré.
       Le front n'en dépend pas (un `DELETE` sans corps ne consomme aucun type), mais le
       contrat généré ne porte pas encore la route.
