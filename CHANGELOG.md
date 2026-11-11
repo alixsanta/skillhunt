@@ -35,6 +35,36 @@ Aucun rebuild. Runbook détaillé : [`docs/tickets/SH-30-mise-en-production.md`]
 
 ### Sécurité
 
+**Résorption de la cinquième vague de dérive npm** (SH-49)
+- `multer` monté en **2.4.0** sur `backend-core` (dépendance directe ET override, 4 avis
+  `high`). **Montée de production, et la plus significative pour nous** : `multer` porte
+  l'upload de certifications via `FileInterceptor`, configuré avec un plafond `fileSize`
+  anti-DoS — or l'un des avis corrigés est précisément un **contournement de ce plafond**
+  par course dans un `fileFilter` asynchrone. Le garde-fou reposait donc sur une version
+  qui ne le tenait pas.
+- `js-yaml` corrigé sur les deux services : overrides **scopés** côté `backend-core`
+  (4.3.2 et 3.15.2, majeure préservée par chaîne), override **global** 4.3.2 côté
+  `frontend-web`. `qs` **6.16.0** et `hono` **4.13.8** côté front, outillage de
+  développement.
+- **Une seule exception ouverte** (§3.3) : `GHSA-7pqw-9j4j-h8q3` (extract-zip), avis
+  **successeur** de `GHSA-jmr9-qjv8-65gv` déjà documenté — même faille, même chaîne
+  `@lhci`, même absence de correctif (plage vulnérable `*`, seul remède une
+  rétrogradation qui casserait l'audit d'accessibilité).
+- `npm audit --audit-level=high` repasse à **0 vulnérabilité** sur `backend-core` ;
+  `audit:deps` repasse au vert sur `frontend-web`.
+
+> ⚠️ **Deux limites d'outillage rencontrées, toutes deux tracées.**
+> 1. L'override global `js-yaml: ^4.3.2` fait passer `@lhci/utils` d'une majeure 3 à une
+>    majeure 4, alors qu'il appelle `yaml.safeLoad`, supprimé en 4.x. La branche est
+>    **inatteignable ici** : elle ne sert qu'aux configurations `.yaml`/`.yml`, et le
+>    projet utilise `lighthouserc.json`. Le job d'accessibilité en CI le revérifie à
+>    chaque exécution.
+> 2. La montée de `vitest` en 4.1.11 (avis `moderate`, sous le seuil bloquant) est
+>    **impossible** : sa résolution de peers (`canvas` via jsdom) fait planter npm 10.9.2
+>    sous Node 24 (`Cannot read properties of null (reading 'edgesOut')`). Reportée à la
+>    prochaine montée de npm. C'est ce plantage qui a d'abord été imputé à tort à
+>    `js-yaml`, dont l'override fonctionne en réalité très bien.
+
 **Résorption de la quatrième vague de dérive npm** (SH-49)
 - `qs` monté en **6.16.0** sur `backend-core` via override. Seule montée de cette vague à
   toucher le **runtime de production** : `qs` est l'analyseur de chaînes de requête d'Express
