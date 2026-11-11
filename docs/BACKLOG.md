@@ -120,7 +120,7 @@ C4.2.1 de porter sur des anomalies réellement *détectées en production*, et n
 | [SH-17](tickets/SH-17-streaming-s3-cdn.md) | Streaming & stockage : S3 + Signed URLs — *flux sortant : manifeste HLS réécrit en segments signés, poster, consultation recruteur, purge* | 🔵 Backlog | 5 | C2.2.3, C2.4.1 | R8, R3 |
 | [SH-18a](tickets/SH-18a-portfolio-front.md) | Portfolio (front) : grille des cinq états, dépôt direct en trois temps avec progression réelle, carte du compte, section recruteur — *lecteur HLS et visionneuse 360° reportés en SH-18b, ils dépendent des routes de lecture de SH-17* | 🟢 Terminé | 3 | C2.4.1, C2.2.2, C2.1.2 | — |
 | [SH-18b](tickets/SH-18b-lecteur-portfolio.md) | Lecteur HLS + visionneuse 360° WebGL, poster réel, branchement de la section recruteur, suppression d'un média — *dépend de SH-17* | 🔵 Backlog | 3 | C2.4.1, C2.2.2 | — |
-| [SH-54](tickets/SH-54-suppression-media.md) | Suppression d'un média (`DELETE` + purge du stockage) — *relevé en revue SH-18a : le 409 de quota prescrit une suppression qu'aucune route n'offre, et les `DRAFT` laissés par un dépôt raté comptent dans le quota pendant 24 h* | 🟡 Prêt | 2 | C2.2.3, C2.2.2, C2.4.1 | R8 |
+| [SH-54](tickets/SH-54-suppression-media.md) | Suppression d'un média (`DELETE` + purge du stockage) — *relevé en revue SH-18a : le 409 de quota prescrit une suppression qu'aucune route n'offre, et les `DRAFT` laissés par un dépôt raté comptent dans le quota pendant 24 h* | 🟠 En cours | 2 | C2.2.3, C2.2.2, C2.4.1 | R8 |
 
 ## EP05 — Frontend Multi-support · *38 J/H* · 🎯 J4
 

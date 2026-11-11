@@ -57,11 +57,46 @@ Scénario : étanchéité entre freelances
   Et le média de l'autre freelance existe toujours
 ```
 
+### Décisions prises à l'implémentation
+
+- **Le sort du média en cours de transcodage se tranche sur l'état RÉEL du job**, pas sur le
+  statut en base (`MediaQueue.releaseTranscode`) :
+  - job **en attente** ou différé → retiré de la file, il ne sera jamais transcodé ;
+  - job **terminé** ou absent → rien ne s'oppose à la suppression (et le job en échec, que
+    `removeOnFail: false` garderait indéfiniment, est nettoyé au passage) ;
+  - job **réellement en cours** chez un worker → **409**. Supprimer sous ses pieds le
+    laisserait redéposer ses sorties après la purge : du stockage orphelin.
+
+  Conséquence utile : un média resté bloqué en `UPLOADED` dont le job est fini redevient
+  supprimable. Le statut en base aurait refusé à tort.
+- **Un `DRAFT` se supprime sans interroger la file** : aucun job n'a jamais existé pour lui,
+  et ce sont justement les brouillons des dépôts ratés qui encombrent le quota. Ils restent
+  donc supprimables même si Redis est indisponible.
+- **Le stockage est purgé AVANT la ligne.** Si la purge échoue, la ligne subsiste et la
+  suppression se rejoue ; l'ordre inverse laisserait des objets que plus rien ne référence.
+- **Côté interface, l'action est désactivée par défaut** (`deletable = false` sur
+  `MediaCard`) : la carte servira à la vue recruteur, où elle n'a aucun sens. Confirmation
+  en deux temps dans la carte, sans fenêtre modale — le projet n'a pas de composant de
+  dialogue, et en ajouter un pour un seul usage serait une dépendance de trop.
+- **Le message du 409 de quota n'a pas eu à changer** : « Supprimez-en un avant d'en
+  ajouter » est devenu vrai.
+
 ### Definition of Done (DoD)
 
-- [ ] Route `DELETE` documentée Swagger (`@ApiResponse` 204/404/409).
-- [ ] Test d'étanchéité RBAC (404 sur le média d'autrui) — **le test échoue si le filtre saute**.
-- [ ] Test de purge du stockage (objets réellement supprimés, pas seulement la ligne).
-- [ ] Sort du `PROCESSING` tranché et testé.
-- [ ] Message de quota cohérent avec ce que le produit permet réellement.
-- [ ] Lint, `format:check`, tests et CI verts.
+- [x] Route `DELETE` documentée Swagger (`@ApiResponse` 204/404/409/503).
+- [x] Test d'étanchéité RBAC (404 sur le média d'autrui) — **vérifié par sabotage** : retirer
+      le contrôle de propriété fait tomber le test.
+- [x] Test de purge du stockage — master, poster, playlist et segment réellement supprimés,
+      média voisin du même freelance intact. Ordre stockage-puis-ligne **vérifié par
+      sabotage**.
+- [x] Sort du `PROCESSING` tranché (voir ci-dessus) et testé au niveau du service.
+- [ ] ⛔ **Tests d'intégration de `releaseTranscode` contre un vrai Redis : écrits, compilés,
+      PAS ENCORE EXÉCUTÉS.** Docker s'est arrêté pendant l'implémentation. Ce sont eux qui
+      prouvent que BullMQ refuse bien de retirer un job tenu par un vrai worker.
+- [ ] ⛔ **Recette de bout en bout non faite**, pour la même raison.
+- [ ] ⛔ **`src/api/schema.d.ts` non régénéré** : `npm run gen:api` exige le backend démarré.
+      Le front n'en dépend pas (un `DELETE` sans corps ne consomme aucun type), mais le
+      contrat généré ne porte pas encore la route.
+- [x] Message de quota cohérent avec ce que le produit permet réellement.
+- [x] Lint, `format:check`, tests et build verts en local (backend 287 tests, front 279).
+- [ ] CI : invérifiable tant que le compte GitHub est verrouillé pour facturation.

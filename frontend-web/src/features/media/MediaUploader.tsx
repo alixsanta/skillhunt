@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { useCreateMedia } from './useCreateMedia';
 import { useCompleteMedia } from './useCompleteMedia';
 import { uploadToStorage } from './uploadToStorage';
+import { backendMessage } from './backend-message';
 import type { CreateMediaInput } from './types';
 
 type Etape = 'saisie' | 'declaration' | 'depot' | 'confirmation';
@@ -34,12 +34,7 @@ function estTypeAccepte(type: string): type is CreateMediaInput['contentType'] {
  * réponses n'ont pas de message utilisateur fiable à afficher tel quel.
  */
 function messageBackend(error: unknown): string | null {
-  if (!isAxiosError<{ message?: string | string[] }>(error)) return null;
-  const status = error.response?.status;
-  if (status !== 400 && status !== 409) return null;
-  const message = error.response?.data?.message;
-  if (!message) return null;
-  return [message].flat().join(' ');
+  return backendMessage(error, [400, 409]);
 }
 
 const inputClass =
