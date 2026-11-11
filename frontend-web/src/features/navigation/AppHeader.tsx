@@ -1,12 +1,11 @@
-import { Crosshair } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { useAuth } from '@/features/auth/useAuth';
 import { AccountMenu } from './AccountMenu';
 import { MainNav } from './MainNav';
-import { NotificationBell } from './NotificationBell';
 
 /**
- * En-tête applicatif (SH-46) : logo, navigation par rôle, notifications, menu compte.
+ * En-tête applicatif (SH-46) : logo, navigation par rôle, menu compte.
  * Hors session, seul le logo subsiste — il n'y a pas de rôle sur lequel fonder la navigation.
  */
 export function AppHeader() {
@@ -18,7 +17,7 @@ export function AppHeader() {
         to="/"
         className="focus-visible:ring-ring flex items-center gap-2 rounded-md focus-visible:ring-2 focus-visible:outline-none"
       >
-        <Crosshair className="text-hud-positive h-7 w-7" aria-hidden="true" />
+        <BrandMark className="text-hud-positive h-7 w-7" />
         <span className="text-lg font-bold tracking-widest text-white">
           SKILL<span className="text-hud-positive">HUNT</span>
         </span>
@@ -26,14 +25,7 @@ export function AppHeader() {
 
       {user && <MainNav role={user.role} />}
 
-      <div className="flex items-center gap-1">
-        {user && (
-          <>
-            <NotificationBell />
-            <AccountMenu />
-          </>
-        )}
-      </div>
+      <div className="flex items-center gap-1">{user && <AccountMenu />}</div>
     </div>
   );
 }

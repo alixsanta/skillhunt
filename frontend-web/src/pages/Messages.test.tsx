@@ -51,6 +51,29 @@ function renderPage() {
 }
 
 describe('Page Messages — liste des conversations (SH-24, S5)', () => {
+  it('étiquette chaque rôle via ROLE_LABELS, y compris un ADMIN (jamais « Recruteur »)', async () => {
+    // Non-régression : un ternaire à deux branches (FREELANCE / sinon Recruteur) étiquetait
+    // à tort un ADMIN comme « Recruteur ». ROLE_LABELS est la seule source de libellés (SH-51).
+    const admin: ConversationSummary = {
+      conversationId: 'u-admin:u-recruteur',
+      with: { id: 'u-admin', username: 'sam-admin', role: 'ADMIN' },
+      lastMessage: {
+        id: 'm-3',
+        conversationId: 'u-admin:u-recruteur',
+        senderId: 'u-admin',
+        body: 'Compte validé.',
+        createdAt: '2026-07-17T08:00:00.000Z',
+      },
+    };
+    server.use(respondWith([...CONVERSATIONS, admin]));
+    renderPage();
+
+    expect(await screen.findByText('sam-admin')).toBeInTheDocument();
+    expect(screen.getByText('Administrateur')).toBeInTheDocument();
+    expect(screen.queryByText('Recruteur')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Freelance')).toHaveLength(2);
+  });
+
   it('liste les conversations : interlocuteur + dernier message, lien vers le fil', async () => {
     server.use(respondWith(CONVERSATIONS));
     renderPage();

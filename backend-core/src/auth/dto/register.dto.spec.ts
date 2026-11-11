@@ -87,3 +87,114 @@ describe('RegisterDto — position conditionnelle par rôle (SH-34)', () => {
     expect(dto.location!.latitude).toBeCloseTo(43.6045);
   });
 });
+
+function build(password: string): RegisterDto {
+  return plainToInstance(RegisterDto, {
+    email: 'pilote@skillhunt.io',
+    username: 'PiloteJury',
+    password,
+    role: UserRole.RECRUITER,
+  });
+}
+
+async function messagesFor(password: string): Promise<string[]> {
+  const errors = await validate(build(password));
+  return errors.flatMap((error) => Object.values(error.constraints ?? {}));
+}
+
+describe('RegisterDto — robustesse du mot de passe (SH-51, C2.2.3)', () => {
+  it('accepte un mot de passe conforme', async () => {
+    expect(await messagesFor('PiloteDrone2026')).toHaveLength(0);
+  });
+
+  it('refuse en dessous de douze caractères', async () => {
+    expect(await messagesFor('Pilote2026')).toContain(
+      'Le mot de passe doit faire au moins 12 caractères',
+    );
+  });
+
+  it('refuse un mot de passe sans majuscule', async () => {
+    expect(await messagesFor('pilotedrone2026')).toContain(
+      'Le mot de passe doit contenir au moins une majuscule',
+    );
+  });
+
+  it('refuse un mot de passe sans minuscule', async () => {
+    expect(await messagesFor('PILOTEDRONE2026')).toContain(
+      'Le mot de passe doit contenir au moins une minuscule',
+    );
+  });
+
+  it('refuse un mot de passe sans chiffre', async () => {
+    expect(await messagesFor('PiloteDroneAAAA')).toContain(
+      'Le mot de passe doit contenir au moins un chiffre',
+    );
+  });
+
+  it('laisse passer le mot de passe des comptes de démonstration', async () => {
+    // Non-régression : la nouvelle règle ne doit invalider aucun compte existant.
+    expect(await messagesFor('MotDePasse2026!')).toHaveLength(0);
+  });
+});
+
+// SH-51 : `username` est désormais porté par le payload du JWT, donc renvoyé dans l'en-tête
+// Authorization de chaque requête authentifiée. Sans borne, un username de plusieurs Ko produit
+// un token que la gateway rejette (431, buffers d'en-tête) sur toutes les requêtes du compte.
+describe('RegisterDto — validation du username (SH-51, C2.2.3)', () => {
+  async function usernameErrors(username: string): Promise<string[]> {
+    const errors = await validate(plainToInstance(RegisterDto, { ...BASE, username, role: UserRole.RECRUITER }));
+    return errors.filter((e) => e.property === 'username').flatMap((e) => Object.values(e.constraints ?? {}));
+  }
+
+  it('accepte un nom d\'utilisateur usuel', async () => {
+    expect(await usernameErrors('Marcus_Thorne-01')).toHaveLength(0);
+  });
+
+  it('accepte exactement 50 caractères', async () => {
+    expect(await usernameErrors('a'.repeat(50))).toHaveLength(0);
+  });
+
+  it('refuse au-delà de 50 caractères (charge utile portée par chaque en-tête Authorization)', async () => {
+    expect(await usernameErrors('a'.repeat(51))).toContain(
+      "Le nom d'utilisateur ne doit pas dépasser 50 caractères",
+    );
+  });
+
+  // Un nom d'AFFICHAGE, pas un identifiant technique : l'espace d'un nom composé et les
+  // lettres accentuées sont légitimes. Les refuser rejetterait des utilisateurs réels.
+  it.each(['Marcus Thorne', "Élodie O'Neil", 'Jean-Pierre M.', 'Mila M'])(
+    "accepte le nom d'affichage %s",
+    async (username) => {
+      expect(await usernameErrors(username)).toHaveLength(0);
+    },
+  );
+
+  it('refuse un nom commençant par une espace', async () => {
+    expect(await usernameErrors('  Marcus')).toContain(
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+        "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
+    );
+  });
+
+  it('refuse un nom contenant des caractères de contrôle', async () => {
+    expect(await usernameErrors('Marcus\nThorne')).toContain(
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+        "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
+    );
+  });
+
+  it('refuse un nom contenant des caractères spéciaux hors jeu autorisé', async () => {
+    expect(await usernameErrors('<script>alert(1)</script>')).toContain(
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+        "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
+    );
+  });
+
+  it.each(['DemoPilote', 'DemoRecruteur', 'DemoAdmin'])(
+    'laisse passer le username du compte de démonstration %s (scripts/seed-demo.sh)',
+    async (username) => {
+      // Non-régression : les comptes de démo (scripts/seed-demo.sh) doivent rester acceptés.
+      expect(await usernameErrors(username)).toHaveLength(0);
+    },
+  );
+});

@@ -23,7 +23,14 @@ export function decodeAccessToken(token: string): AuthUser | null {
       return null;
     }
 
-    return { userId: payload.userId, email: payload.email, role: payload.role };
+    // `username` est repris s'il est présent, JAMAIS exigé : un token antérieur à SH-51
+    // n'en a pas, et le rejeter fermerait la session au lieu de dégrader l'affichage.
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role,
+      username: payload.username,
+    };
   } catch {
     return null;
   }

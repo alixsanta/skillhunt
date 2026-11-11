@@ -95,6 +95,68 @@ describe('Page Mon compte — déconnexion (SH-20)', () => {
   });
 });
 
+describe('Page Mon compte — libellé du rôle (SH-51)', () => {
+  it('affiche « Freelance » et jamais la valeur technique', async () => {
+    renderAccount();
+    expect(await screen.findByText('Freelance')).toBeInTheDocument();
+    expect(screen.queryByText('FREELANCE')).not.toBeInTheDocument();
+  });
+});
+
+describe('Page Mon compte — étanchéité RBAC des actions (SH-51)', () => {
+  it("propose l'Armurerie à un freelance", async () => {
+    renderAccount();
+    expect(await screen.findByRole('link', { name: /mon armurerie/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /recherche/i })).not.toBeInTheDocument();
+  });
+
+  it("ne propose jamais l'Armurerie à un recruteur", async () => {
+    renderAccount(RECRUITER_TOKEN);
+    expect(await screen.findByRole('link', { name: /recherche/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /armurerie/i })).not.toBeInTheDocument();
+  });
+});
+
+const NAMED_TOKEN = fakeJwt({
+  userId: 'u-1',
+  email: 'pilote@skillhunt.io',
+  role: 'FREELANCE',
+  username: 'PiloteJury',
+});
+
+describe("Page Mon compte — nom d'utilisateur (SH-51)", () => {
+  it('met le nom en identité principale et relègue l’email', async () => {
+    renderAccount(NAMED_TOKEN);
+    expect(await screen.findByText('PiloteJury')).toBeInTheDocument();
+    expect(screen.getByText('pilote@skillhunt.io')).toBeInTheDocument();
+  });
+
+  it("reste utilisable avec un token antérieur, sans nom d'utilisateur", async () => {
+    renderAccount(); // le TOKEN par défaut du harnais ne porte pas `username`
+    expect(await screen.findByText('pilote')).toBeInTheDocument();
+  });
+});
+
+describe('Page Mon compte — rencontre de SH-51 et SH-18a', () => {
+  it("n'affiche le Portfolio qu'UNE fois : la carte, pas un bouton en double", async () => {
+    // SH-51 dérive les boutons de `NAV_ITEMS` ; SH-18a y a ajouté `/portfolio` ET une carte
+    // dédiée. Sans le drapeau `hasAccountCard`, le freelance verrait deux entrées Portfolio.
+    // La carte est gardée : elle seule porte le compteur et l'accès direct à la publication.
+    renderAccount();
+
+    expect(await screen.findByRole('link', { name: /mon armurerie/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Portfolio' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: /publier une vidéo/i })).toBeInTheDocument();
+  });
+
+  it('garde les autres entrées de navigation en boutons dérivés', async () => {
+    // Le drapeau ne doit écarter QUE le Portfolio : Messages reste un bouton dérivé.
+    renderAccount();
+
+    expect(await screen.findByRole('link', { name: 'Messages' })).toBeInTheDocument();
+  });
+});
+
 describe('Page Mon compte — carte portfolio (SH-18a)', () => {
   it('mène au portfolio et permet de publier directement', async () => {
     server.use(

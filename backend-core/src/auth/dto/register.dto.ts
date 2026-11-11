@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail, IsString, IsNotEmpty, MinLength, IsIn, IsOptional,
-  IsDefined, IsLatitude, IsLongitude, ValidateIf, ValidateNested,
+  IsEmail, IsString, IsNotEmpty, MinLength, MaxLength, IsIn, IsOptional,
+  IsDefined, IsLatitude, IsLongitude, ValidateIf, ValidateNested, Matches,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserRole } from '../../common/enums';
@@ -35,14 +35,42 @@ export class RegisterDto {
   @IsEmail({}, { message: 'Format de l\'adresse email invalide' })
   email!: string;
 
-  @ApiProperty({ example: 'MarcusThorne', description: 'Nom d\'utilisateur unique' })
+  // SH-51 : porté par le payload du JWT depuis ce lot, donc renvoyé dans l'en-tête
+  // Authorization de CHAQUE requête authentifiée. Sans borne ni jeu de caractères restreint,
+  // une chaîne non contrôlée de plusieurs Ko produirait un token que la gateway rejette (431,
+  // buffers d'en-tête) sur toutes les requêtes du compte (C2.2.3).
+  @ApiProperty({
+    example: 'Marcus Thorne',
+    description:
+      "Nom d'affichage (50 caractères max). Lettres, chiffres, espaces, apostrophes, tirets, " +
+      "points et tirets bas ; doit commencer par une lettre ou un chiffre.",
+  })
   @IsString()
   @IsNotEmpty({ message: 'Le nom d\'utilisateur ne peut pas être vide' })
+  @MaxLength(50, { message: "Le nom d'utilisateur ne doit pas dépasser 50 caractères" })
+  // Jeu de caractères d'un NOM D'AFFICHAGE, pas d'un identifiant technique : les espaces et
+  // les lettres accentuées sont légitimes (« Marcus Thorne », « Élodie O'Neil »). Ce qui est
+  // exclu, ce sont les caractères de contrôle et le balisage. Une seule répétition, non
+  // ambiguë : aucun retour sur trace catastrophique possible (C2.2.3).
+  @Matches(/^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$/u, {
+    message:
+      "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, espaces, apostrophes, " +
+      "tirets, points et tirets bas, et doit commencer par une lettre ou un chiffre",
+  })
   username!: string;
 
-  @ApiProperty({ example: 'P@ssw0rdSecureDrone2026', description: 'Mot de passe fort (8 caractères minimum)' })
+  // Robustesse du mot de passe (SH-51 — C2.2.3). La règle ne s'applique qu'à la CRÉATION :
+  // aucun compte existant n'est invalidé, et `LoginDto` reste volontairement permissif.
+  @ApiProperty({
+    example: 'P@ssw0rdSecureDrone2026',
+    description:
+      'Mot de passe : 12 caractères minimum, dont au moins une minuscule, une majuscule et un chiffre',
+  })
   @IsString()
-  @MinLength(8, { message: 'Le mot de passe doit faire au moins 8 caractères' })
+  @MinLength(12, { message: 'Le mot de passe doit faire au moins 12 caractères' })
+  @Matches(/[a-z]/, { message: 'Le mot de passe doit contenir au moins une minuscule' })
+  @Matches(/[A-Z]/, { message: 'Le mot de passe doit contenir au moins une majuscule' })
+  @Matches(/[0-9]/, { message: 'Le mot de passe doit contenir au moins un chiffre' })
   password!: string;
 
   @ApiProperty({

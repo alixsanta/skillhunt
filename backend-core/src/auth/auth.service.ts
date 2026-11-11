@@ -181,7 +181,12 @@ export class AuthService {
   }
 
   private async issueTokens(user: User): Promise<TokenPair> {
-    const payload: JwtPayload = { userId: user.id, email: user.email, role: user.role };
+    const payload: JwtPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username,
+    };
 
     const accessToken = this.jwt.sign(
       { ...payload, type: 'access' },

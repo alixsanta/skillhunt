@@ -37,7 +37,11 @@ export function SearchMap({ center, radiusKm, results, highlightedId }: SearchMa
     // h-full : en split-view (SH-46) cette carte remplit tout le panneau de droite, dont
     // la hauteur résolue vient du conteneur flex parent (voir Search.tsx) — Leaflet a
     // besoin d'une hauteur réelle sur toute la chaîne, jamais d'une valeur fixe en dur.
-    <div className="border-hud-border h-full overflow-hidden rounded-lg border">
+    <div
+      role="region"
+      aria-label="Carte des freelances"
+      className="border-hud-border h-full overflow-hidden rounded-lg border"
+    >
       <MapContainer
         center={[center.lat, center.lon]}
         zoom={zoomForRadius(radiusKm)}

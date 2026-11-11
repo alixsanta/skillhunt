@@ -15,6 +15,11 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: UserRole;
+  /**
+   * Nom d'affichage (SH-51) — porté pour éviter un aller-retour serveur juste pour saluer
+   * l'utilisateur par son nom. Donnée d'AFFICHAGE : aucune autorisation ne s'y adosse.
+   */
+  username?: string;
 }
 
 // Décorateur personnalisé pour extraire l'utilisateur connecté dans les contrôleurs

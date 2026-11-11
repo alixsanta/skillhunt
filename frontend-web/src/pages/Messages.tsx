@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { InitialsAvatar } from '@/components/ui/InitialsAvatar';
 import { useConversations } from '@/features/chat/useConversations';
+import { ROLE_LABELS } from '@/features/auth/role-labels';
 
 /**
  * Liste des conversations (SH-24, S5) — indispensable côté freelance : c'est ici qu'il
@@ -53,7 +54,7 @@ export default function Messages() {
                     <span className="flex items-baseline justify-between gap-2">
                       <span className="font-semibold text-white">{conversation.with.username}</span>
                       <span className="text-hud-muted text-xs tracking-widest uppercase">
-                        {conversation.with.role === 'FREELANCE' ? 'Freelance' : 'Recruteur'}
+                        {ROLE_LABELS[conversation.with.role]}
                       </span>
                     </span>
                     <span className="text-hud-muted truncate text-sm">

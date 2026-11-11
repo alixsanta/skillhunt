@@ -5,6 +5,16 @@ export interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
+  /**
+   * L'entrée a sa PROPRE carte sur la page compte, plus riche qu'un simple bouton.
+   *
+   * La page compte dérive ses boutons de cette table (SH-51). Le Portfolio y a en plus une
+   * carte dédiée (SH-18a) portant le compteur de vidéos et l'accès direct à la publication,
+   * que le bouton dérivé n'a pas. Sans ce drapeau, il apparaîtrait deux fois. Le drapeau
+   * vit ICI plutôt qu'en filtre dans la page : cette table reste la source unique de ce
+   * qu'un rôle voit, y compris de cette exception.
+   */
+  hasAccountCard?: true;
 }
 
 /**
@@ -17,7 +27,7 @@ export interface NavItem {
 export const NAV_ITEMS: Record<UserRole, readonly NavItem[]> = {
   FREELANCE: [
     { to: '/mon-armurerie', label: 'Mon Armurerie', icon: Warehouse },
-    { to: '/portfolio', label: 'Portfolio', icon: PlayCircle },
+    { to: '/portfolio', label: 'Portfolio', icon: PlayCircle, hasAccountCard: true },
     { to: '/messages', label: 'Messages', icon: MessageSquare },
   ],
   RECRUITER: [

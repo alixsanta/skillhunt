@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/useAuth';
+import { getHomeRoute } from '@/features/navigation/home-route';
 
 export default function Login() {
-  const { login, verifyTwoFactor } = useAuth();
-  const navigate = useNavigate();
+  const { user, status, login, verifyTwoFactor } = useAuth();
   const location = useLocation();
 
   const [email, setEmail] = useState('');
@@ -16,8 +16,8 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Route d'origine mémorisée par ProtectedRoute, sinon l'accueil.
-  const from = (location.state as { from?: string } | null)?.from ?? '/';
+  // Route d'origine mémorisée par ProtectedRoute, sinon l'écran du rôle (SH-51).
+  const from = (location.state as { from?: string } | null)?.from ?? null;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -38,7 +38,6 @@ export default function Login() {
         setTwoFactorToken(outcome.twoFactorToken);
         return;
       }
-      navigate(from, { replace: true });
     } catch {
       // Message générique : ne révèle pas si l'email existe (anti-énumération de comptes).
       setError('Email ou mot de passe incorrect.');
@@ -55,7 +54,6 @@ export default function Login() {
     setSubmitting(true);
     try {
       await verifyTwoFactor(twoFactorToken, code.trim());
-      navigate(from, { replace: true });
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status;
       setError(
@@ -66,6 +64,25 @@ export default function Login() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Tant que le refresh silencieux du démarrage est en vol, on ne conclut RIEN : décider sur
+  // `user` seul (nul pendant la restauration) ferait clignoter le formulaire avant un saut vers
+  // l'écran du rôle pour un utilisateur déjà connecté. Même approche que ProtectedRoute (SH-20),
+  // pour une seule façon d'attendre la session dans toute l'application (SH-51).
+  if (status === 'restoring') {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Chargement de votre session…</p>
+      </main>
+    );
+  }
+
+  // Redirection PAR RENDU une fois la session ouverte (SH-51). Un `navigate()` dans le
+  // gestionnaire de soumission lirait un `user` périmé — la closure est capturée avant
+  // qu'AuthProvider n'ait renseigné la session.
+  if (user) {
+    return <Navigate to={from ?? getHomeRoute(user.role)} replace />;
   }
 
   if (twoFactorToken) {

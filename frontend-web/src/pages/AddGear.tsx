@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { getBrands, getModels } from '@/features/gear/gear-catalog';
 import { CATEGORY_META, GEAR_CATEGORIES } from '@/features/gear/gear-meta';
 import type { AddGearInput, GearCategory } from '@/features/gear/types';
 import { useCreateGear } from '@/features/gear/useCreateGear';
@@ -94,6 +95,11 @@ export default function AddGear() {
     );
   }
 
+  // Suggestions dérivées de la catégorie puis de la marque (SH-51). Tant qu'aucune
+  // catégorie n'est choisie, il n'y a rien de pertinent à proposer.
+  const brandOptions = category === '' ? [] : getBrands(category);
+  const modelOptions = category === '' ? [] : getModels(category, brand);
+
   return (
     <div className="flex flex-1 items-center justify-center p-4 lg:p-8">
       <div className="border-hud-border bg-hud-card w-full max-w-xl rounded-xl border p-8">
@@ -115,7 +121,13 @@ export default function AddGear() {
             <select
               id="category"
               value={category}
-              onChange={(event) => setCategory(event.target.value as GearCategory | '')}
+              onChange={(event) => {
+                // Changer de catégorie invalide marque ET modèle (SH-51) : sans ça, le champ
+                // affiche « DJI » pendant que les suggestions dessous listent des caméras 360.
+                setCategory(event.target.value as GearCategory | '');
+                setBrand('');
+                setModel('');
+              }}
               aria-invalid={fieldErrors.category ? true : undefined}
               aria-describedby={fieldErrors.category ? 'category-error' : undefined}
               className={inputClass}
@@ -134,15 +146,32 @@ export default function AddGear() {
             <label htmlFor="brand" className="text-white">
               Marque
             </label>
+            {/* `<datalist>` natif : suggère sans jamais contraindre, et reste accessible
+                au clavier comme aux lecteurs d'écran sans aucune dépendance ajoutée. */}
             <input
               id="brand"
+              list="brand-options"
+              autoComplete="off"
               value={brand}
-              onChange={(event) => setBrand(event.target.value)}
+              onChange={(event) => {
+                // Changer de marque invalide le modèle (SH-51) : même logique que la catégorie
+                // ci-dessus — un modèle d'une autre marque n'a pas de sens à rester affiché.
+                setBrand(event.target.value);
+                setModel('');
+              }}
               placeholder="DJI, Insta360, Boston Dynamics…"
               aria-invalid={fieldErrors.brand ? true : undefined}
-              aria-describedby={fieldErrors.brand ? 'brand-error' : undefined}
+              aria-describedby={fieldErrors.brand ? 'brand-error' : 'brand-hint'}
               className={inputClass}
             />
+            <datalist id="brand-options">
+              {brandOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+            <p id="brand-hint" className="text-hud-muted text-xs">
+              Choisis dans la liste, ou saisis librement si ton matériel n'y figure pas.
+            </p>
             {fieldError('brand')}
           </div>
 
@@ -152,6 +181,8 @@ export default function AddGear() {
             </label>
             <input
               id="model"
+              list="model-options"
+              autoComplete="off"
               value={model}
               onChange={(event) => setModel(event.target.value)}
               placeholder="Mavic 3 Enterprise"
@@ -159,6 +190,11 @@ export default function AddGear() {
               aria-describedby={fieldErrors.model ? 'model-error' : undefined}
               className={inputClass}
             />
+            <datalist id="model-options">
+              {modelOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
             {fieldError('model')}
           </div>
 

@@ -6,11 +6,19 @@ on:
     paths:
       - 'frontend-web/**'
       - '.github/workflows/frontend-ci.yml'
+      # SH-51 : password-rules.test.ts lit RegisterDto sur le disque pour verrouiller
+      # l'alignement front/back des règles de mot de passe. Sans ce chemin, une PR qui ne
+      # touche QUE ce DTO backend ne déclenche jamais la CI frontend : le verrou ne mordrait
+      # pas dans le sens qu'il annonce (le backend qui dérive sans que le front le détecte).
+      # Ne retire pas cette ligne pour « nettoyer » les triggers : c'est intentionnel.
+      - 'backend-core/src/auth/dto/register.dto.ts'
   pull_request:
     branches: [ "main", "develop" ]
     paths:
       - 'frontend-web/**'
       - '.github/workflows/frontend-ci.yml'
+      # Voir le commentaire équivalent sous `push` ci-dessus.
+      - 'backend-core/src/auth/dto/register.dto.ts'
 
 jobs:
   validation-frontend:
