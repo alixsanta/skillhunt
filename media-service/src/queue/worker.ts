@@ -3,6 +3,9 @@ import IORedis from 'ioredis';
 import type { MediaServiceConfig } from '../config';
 import type { MediaMetrics } from '../metrics';
 import { logger } from '../logger';
+import { createMediaStorage, type MediaStorage } from '../storage/s3';
+import { runPipeline, type PipelineDeps, type TranscodeOutcome } from '../transcode/pipeline';
+import { toTranscodeError } from '../transcode/errors';
 
 /**
  * Charge utile d'un job de transcodage (design EP04 §7).
@@ -15,24 +18,71 @@ export interface TranscodeJobData {
   posterKey: string;
 }
 
-/** Résultat rendu à BullMQ. SH-15 rend une enveloppe vide ; SH-16 la remplira. */
-export interface TranscodeJobResult {
-  renditions: unknown[];
-}
+/**
+ * Résultat rendu à BullMQ.
+ *
+ * SH-15 rendait une enveloppe vide, ce qui rendait l'état `READY` INATTEIGNABLE : le
+ * validateur du monolithe exige une durée, des dimensions et au moins une piste. Le type
+ * est désormais celui que produit réellement le pipeline — une seule définition, donc
+ * aucune dérive possible entre le worker et son propre contrat.
+ */
+export type TranscodeJobResult = TranscodeOutcome;
 
 /**
- * Traitement d'un job — **NO-OP volontaire en SH-15** (C2.1.2).
+ * Traitement d'un job — le VRAI pipeline depuis SH-16b (C2.1.2).
  *
- * Le pipeline `ffprobe`/`ffmpeg` arrive en SH-16. Ici, on prouve seulement que la file
- * est consommée de bout en bout : c'est ce qui rend ce scaffolding vérifiable, au lieu
- * d'un dossier vide qui « compilerait » sans rien démontrer.
+ * Les dépendances sont INJECTÉES plutôt que construites ici : c'est ce qui permet de
+ * tester l'orchestration sur un stockage simulé (`pipeline.spec.ts`) sans jamais toucher
+ * S3, et de tester ce câblage-ci sans ffmpeg.
  */
-export async function processTranscodeJob(job: Job<TranscodeJobData>): Promise<TranscodeJobResult> {
+export async function processTranscodeJob(
+  job: Job<TranscodeJobData>,
+  deps: PipelineDeps,
+): Promise<TranscodeJobResult> {
+  logger.info({ jobId: job.id, mediaId: job.data.mediaId }, 'Transcodage démarré');
+
+  let resultat: TranscodeJobResult;
+  try {
+    resultat = await runPipeline(
+      {
+        ...deps,
+        // La progression BullMQ rend le job observable EN COURS de route. Un échec
+        // d'écriture de progression ne doit surtout pas faire échouer le transcodage :
+        // ce serait perdre des minutes de calcul pour un détail de supervision.
+        onProgress: (percent) => {
+          void job.updateProgress(percent).catch((err: Error) => {
+            logger.warn({ jobId: job.id, raison: err.message }, 'Progression non enregistrée');
+          });
+        },
+      },
+      job.data,
+    );
+  } catch (err) {
+    // POINT DE PASSAGE UNIQUE. Le message de l'erreur relancée devient le `failedReason`
+    // BullMQ, puis l'`errorReason` que le portfolio affiche tel quel. Seul un message
+    // UTILISATEUR sort d'ici ; la cause technique complète reste dans ce journal. Relevé
+    // en recette : l'erreur brute de ffprobe exposait sa ligne de commande et le chemin
+    // interne du conteneur (cf. `errors.ts`).
+    const erreur = toTranscodeError(err);
+    logger.error(
+      { jobId: job.id, mediaId: job.data.mediaId, raison: erreur.message, detail: erreur.detail },
+      'Transcodage en échec',
+    );
+    throw erreur;
+  }
+
   logger.info(
-    { jobId: job.id, mediaId: job.data.mediaId },
-    'Job de transcodage reçu (traitement effectif livré en SH-16)',
+    {
+      jobId: job.id,
+      mediaId: job.data.mediaId,
+      pistes: resultat.renditions.length,
+      type: resultat.type,
+      dureeSecondes: Math.round(resultat.durationSeconds),
+    },
+    'Transcodage terminé',
   );
-  return { renditions: [] };
+
+  return resultat;
 }
 
 /**
@@ -42,7 +92,20 @@ export async function processTranscodeJob(job: Job<TranscodeJobData>): Promise<T
 export function createTranscodeWorker(
   config: MediaServiceConfig,
   metrics: MediaMetrics,
+  /**
+   * Substitution du stockage, pour les tests d'intégration : elle permet de faire passer
+   * un VRAI transcodage par la VRAIE file BullMQ sans dépendre d'un S3. En production,
+   * rien n'est passé et le client S3 est construit depuis la configuration.
+   */
+  overrides: { storage?: MediaStorage } = {},
 ): Worker<TranscodeJobData, TranscodeJobResult> {
+  // Construit UNE FOIS par worker et non par job : le client S3 porte un pool de
+  // connexions, le recréer à chaque job en ouvrirait un nouveau à chaque fois.
+  const deps: PipelineDeps = {
+    storage: overrides.storage ?? createMediaStorage(config.s3),
+    tmpDir: config.tmpDir,
+  };
+
   // `maxRetriesPerRequest: null` est EXIGÉ par BullMQ sur la connexion d'un Worker :
   // avec la valeur par défaut d'ioredis, les commandes bloquantes finissent par être
   // abandonnées et le worker cesse silencieusement de consommer.
@@ -63,8 +126,9 @@ export function createTranscodeWorker(
     async (job) => {
       const stopTimer = metrics.jobDuration.startTimer();
       try {
-        const result = await processTranscodeJob(job);
+        const result = await processTranscodeJob(job, deps);
         metrics.jobsTotal.inc({ result: 'completed' });
+        metrics.renditionsTotal.inc(result.renditions.length);
         return result;
       } catch (err) {
         metrics.jobsTotal.inc({ result: 'failed' });

@@ -16,17 +16,35 @@ export interface MediaServiceConfig {
   concurrency: number;
   /** Répertoire de travail du transcodage (SH-16). */
   tmpDir: string;
+  /**
+   * Stockage objet (SH-16b). Le worker lit le master et dépose ses sorties DIRECTEMENT
+   * en S3 (architecture EP04 §4) : le job ne porte que des clés, pas d'URL signée.
+   * Cela ne fait pas de lui autre chose qu'un worker pur — S3 n'est ni une base métier,
+   * ni une API authentifiée à lui.
+   */
+  s3: {
+    bucket: string;
+    /** Absent ⇒ S3 réel. Renseigné ⇒ LocalStack/MinIO, et le path-style est forcé. */
+    endpoint?: string;
+    region: string;
+  };
 }
 
 const DEFAULT_PORT = 3002;
 const DEFAULT_QUEUE_NAME = 'media-transcode';
 const DEFAULT_CONCURRENCY = 1;
 const DEFAULT_TMP_DIR = '/tmp/media';
+const DEFAULT_REGION = 'eu-west-3';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): MediaServiceConfig {
   const redisUrl = env.REDIS_URL;
   if (!redisUrl) {
     throw new Error('REDIS_URL manquant : le worker ne peut pas joindre la file de jobs.');
+  }
+
+  const bucket = env.AWS_S3_BUCKET;
+  if (!bucket) {
+    throw new Error('AWS_S3_BUCKET manquant : le worker ne saurait où déposer ses sorties.');
   }
 
   return {
@@ -35,6 +53,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): MediaServiceCo
     queueName: env.MEDIA_QUEUE_NAME ?? DEFAULT_QUEUE_NAME,
     concurrency: toPositiveInt(env.MEDIA_WORKER_CONCURRENCY, DEFAULT_CONCURRENCY, 'MEDIA_WORKER_CONCURRENCY'),
     tmpDir: env.MEDIA_TMP_DIR ?? DEFAULT_TMP_DIR,
+    s3: {
+      bucket,
+      // `|| undefined` et NON `??` : une substitution compose non résolue laisse une
+      // chaîne VIDE, que `??` laisserait passer — le client S3 échouerait alors sur un
+      // endpoint invalide. Même piège que celui déjà traité en storage.module.ts.
+      endpoint: env.AWS_S3_ENDPOINT || undefined,
+      region: env.AWS_REGION ?? DEFAULT_REGION,
+    },
   };
 }
 

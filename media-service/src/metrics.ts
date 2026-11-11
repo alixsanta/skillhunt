@@ -31,6 +31,16 @@ export class MediaMetrics {
     registers: [this.registry],
   });
 
+  /**
+   * Pistes de qualité produites (SH-16b). Rapporté au nombre de jobs, il révèle une
+   * échelle ABR qui dérive — par exemple une source dont aucune piste ne sort.
+   */
+  readonly renditionsTotal = new Counter({
+    name: 'media_renditions_total',
+    help: 'Nombre de pistes de qualité produites par le transcodage',
+    registers: [this.registry],
+  });
+
   constructor() {
     // Saturation du process : tas, event loop lag, descripteurs de fichiers.
     collectDefaultMetrics({ register: this.registry });

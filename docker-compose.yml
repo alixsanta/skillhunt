@@ -192,10 +192,20 @@ services:
       REDIS_URL: redis://redis:6379
       MEDIA_WORKER_CONCURRENCY: ${MEDIA_WORKER_CONCURRENCY:-1}
       MEDIA_TMP_DIR: /tmp/media
+      # Stockage objet (SH-16b) : le worker lit le master et dépose HLS + poster
+      # lui-même (EP04 §4). Endpoint INTERNE uniquement — il vit dans le réseau Docker
+      # et n'a aucun usage de l'endpoint public, réservé au navigateur (D9).
+      AWS_S3_ENDPOINT: http://localstack:4566
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-skillhunt-media}
+      AWS_REGION: ${AWS_REGION:-eu-west-3}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-test}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-test}
     # AUCUN port hôte (archi §2) : service interne. Prometheus le scrape sur le
     # réseau Docker privé, et il n'expose de toute façon aucune route métier.
     depends_on:
       redis:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
 
   frontend-web:

@@ -190,10 +190,22 @@ services:
       REDIS_URL: redis://redis:6379
       MEDIA_WORKER_CONCURRENCY: ${MEDIA_WORKER_CONCURRENCY:-1}
       MEDIA_TMP_DIR: /tmp/media
+      # Stockage objet (SH-16b). Mêmes cibles que backend-core, mais SANS `env_file` :
+      # `.env.staging` porte aussi les mots de passe de base et les clés JWT, dont un
+      # worker pur n'a aucun usage (moindre privilège, CLAUDE.md §8). Seuls les deux
+      # identifiants S3 lui sont passés, par substitution — et `:?` fait refuser le
+      # démarrage s'ils manquent, plutôt que de lancer un worker qui perdrait ses sorties.
+      AWS_S3_ENDPOINT: http://localstack:4566
+      AWS_S3_BUCKET: skillhunt-staging
+      AWS_REGION: eu-west-3
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID est obligatoire pour le worker media}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY est obligatoire pour le worker media}
     networks:
       - skillhunt-private-net
     depends_on:
       redis:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
     logging:
       driver: "json-file"

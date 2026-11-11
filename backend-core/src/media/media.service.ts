@@ -96,6 +96,12 @@ function estRenditionValide(valeur: unknown, prefixeAttendu: string): boolean {
 /**
  * Valide la forme du résultat rendu par le worker. Donnée externe : jamais de confiance.
  *
+ * ⚠️ **Ces règles existent en DEUX copies**, faute de paquet partagé dans le monorepo :
+ * ici, et dans `media-service/src/transcode/contract.spec.ts`, qui confronte la sortie
+ * RÉELLE du pipeline à chacune d'elles. Toute modification de l'une impose de relire
+ * l'autre — sans quoi une dérive ne se manifesterait qu'en recette, sur un média bloqué
+ * en PROCESSING sans message exploitable.
+ *
  * `raw` est `unknown` et non `string` : BullMQ (`queue-events.js`, `QueueEvents`) fait
  * déjà `JSON.parse(returnvalue)` avant d'émettre `completed` depuis la version installée
  * ici — reparser une chaîne déjà transformée en objet JavaScript la stringifie en
@@ -129,6 +135,11 @@ function parseTranscodeResult(raw: unknown, prefixeAttendu: string): TranscodeJo
     typeof candidate.mimeType !== 'string' ||
     !ALLOWED_MEDIA_MIME_TYPES.includes(candidate.mimeType as never) ||
     !Array.isArray(candidate.renditions) ||
+    // `length === 0` est EXIGÉ en plus de `every` : sur un tableau vide, `every` rend
+    // `true`. Sans ce test, un résultat par ailleurs valide mais sans aucune piste
+    // faisait passer le média en READY — le portfolio aurait affiché « PRÊT » sur une
+    // vidéo injouable, et le manifeste maître de SH-17 aurait été vide (SH-16b).
+    candidate.renditions.length === 0 ||
     !candidate.renditions.every((rendition) => estRenditionValide(rendition, prefixeAttendu))
   ) {
     throw new BadRequestException('Résultat de transcodage non conforme');

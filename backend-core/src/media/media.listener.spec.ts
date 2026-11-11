@@ -101,6 +101,16 @@ describe('MediaService — issue du transcodage', () => {
   // Cas de SÉCURITÉ : une `playlistKey` hors du préfixe du média correspond à un autre
   // freelance. SH-17 la transformera en URL signée — la laisser passer ouvrirait un
   // accès signé au stockage d'AUTRUI. C'est le cas le plus important de ce fichier.
+  it('REJETTE un résultat sans aucune piste de qualité', async () => {
+    // Un média READY sans aucune piste n'est pas lisible : le manifeste maître que SH-17
+    // générera serait vide, et le portfolio afficherait « PRÊT » sur une vidéo injouable.
+    const { service } = contexte();
+
+    await expect(
+      service.applyTranscodeResult(MEDIA_ID, resultat({ renditions: [] })),
+    ).rejects.toThrow(/non conforme/i);
+  });
+
   it('rejette une playlistKey pointant vers le casier d\'un AUTRE freelance', async () => {
     const { service } = contexte();
     const autreFreelance = '22222222-2222-2222-2222-222222222222';
@@ -217,6 +227,34 @@ describe('MediaTranscodeListener — câblage', () => {
     await Promise.resolve();
 
     expect(service.markFailed).toHaveBeenCalledWith('m2', 'ffmpeg: exit 1');
+  });
+
+  // Relevé en recette de bout en bout (SH-16b) : quand un job est INTERROMPU — worker tué,
+  // hôte mis en veille, verrou expiré — c'est BullMQ lui-même qui produit la raison, en
+  // anglais et dans son vocabulaire interne. Le portfolio l'affichait telle quelle.
+  it.each([
+    'job stalled more than allowable limit',
+    'Missing lock for job m3. moveToFinished',
+    'Lock mismatch for job m3. Cmd failed from active',
+  ])('traduit la raison interne de BullMQ « %s » en message utilisateur', async (interne) => {
+    const { events, service } = ecouteur();
+
+    events.emit('failed', { jobId: 'm3', failedReason: interne });
+    await Promise.resolve();
+
+    expect(service.markFailed).toHaveBeenCalledWith(
+      'm3',
+      'Le traitement a été interrompu. Déposez de nouveau la vidéo.',
+    );
+  });
+
+  it('applique un message par défaut quand BullMQ ne fournit aucune raison', async () => {
+    const { events, service } = ecouteur();
+
+    events.emit('failed', { jobId: 'm4' });
+    await Promise.resolve();
+
+    expect(service.markFailed).toHaveBeenCalledWith('m4', 'Échec du transcodage');
   });
 
   it('un résultat inexploitable est journalisé, pas propagé en rejet non géré', async () => {

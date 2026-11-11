@@ -12,6 +12,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1140.0",
     "bullmq": "^5.81.3",
     "ioredis": "^5.11.1",
     "pino": "^10.3.1",
@@ -27,5 +28,13 @@
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.61.1"
+  },
+  "overrides": {
+    "@eslint/eslintrc": {
+      "js-yaml": "^4.3.2"
+    },
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^3.15.2"
+    }
   }
 }
